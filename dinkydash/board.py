@@ -26,7 +26,7 @@ from datetime import date, datetime, timedelta
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
 from .config import feature_on
-from .context import build_countdowns, compute_chore_assignments
+from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
 
 # The agenda's row budget, not just today's cap. Today fills it first and
@@ -128,8 +128,7 @@ def build_view(config, payload, today, now=None):
     # A switched-off feature is absent from the view, not hidden by the
     # template, so no later card can show what it owns. Special dates owns the
     # whole "Coming up" card, birthdays included.
-    chores = (compute_chore_assignments(config.get("recurring"), today)
-              if feature_on(config, "tasks") else [])
+    tasks = tasks_for(config, today) if feature_on(config, "tasks") else []
     countdowns = (build_countdowns(
         config.get("people"), config.get("special_dates"), today,
         limit=MAX_COUNTDOWNS,
@@ -143,7 +142,7 @@ def build_view(config, payload, today, now=None):
         # "12:00" and the agenda's time column is a fixed width.
         "clock": clock_of(config),
         "date_display": today.strftime("%A, %-d %B"),
-        "chores": chores,
+        "tasks": tasks,
         "countdowns": countdowns,
         "events": [],
         "tomorrow": [],

@@ -59,7 +59,7 @@ def ids_for(config_path, key="people"):
 
 class TestBackfill:
     def test_opening_a_list_gives_the_file_ids(self, client, config_path):
-        assert "id" not in people(config_path)[0]
+        assert "id:" not in config_path.read_text()
         assert client.get("/settings/people").status_code == 200
         assert all(p["id"] for p in people(config_path))
 
@@ -185,20 +185,20 @@ class TestDeleting:
 
 
 class TestReordering:
-    """Moving a chore changes its display position, not its participant rotation."""
+    """Moving a task changes its display position, not its participant rotation."""
 
     def test_moving_down_swaps_with_the_next_one(self, client, config_path):
         client.get("/settings/recurring")
-        first = ids_for(config_path, "recurring")[0]
+        first = ids_for(config_path, "tasks")[0]
         client.post(f"/settings/recurring/{first}/move", data={"direction": "down"})
-        titles = [c["title"] for c in config_module.load_config(config_path)["recurring"]]
+        titles = [c["title"] for c in config_module.load_config(config_path)["tasks"]]
         assert titles == ["Feed the dog", "Set the table"]
 
     def test_moving_the_top_one_up_does_nothing(self, client, config_path):
         client.get("/settings/recurring")
-        first = ids_for(config_path, "recurring")[0]
+        first = ids_for(config_path, "tasks")[0]
         client.post(f"/settings/recurring/{first}/move", data={"direction": "up"})
-        titles = [c["title"] for c in config_module.load_config(config_path)["recurring"]]
+        titles = [c["title"] for c in config_module.load_config(config_path)["tasks"]]
         assert titles == ["Set the table", "Feed the dog"]
 
     def test_moving_a_stranger_is_a_404(self, client, config_path):
@@ -472,22 +472,23 @@ class TestTheSetUpChecklist:
         assert "Theo and Biscuit are invented" in self.home(client)
         assert "invented" not in self.loaded(config_path)["people"][0]
 
-    def test_and_their_chores_follow_the_new_name(self, client, config_path):
+    def test_and_their_tasks_follow_the_new_name(self, client, config_path):
         client.post("/settings/people/mia12345",
                     data={"name": "Anna", "date_of_birth": "2017-03-15"})
-        assert self.loaded(config_path)["recurring"][0]["choices"] == ["Anna", "Theo"]
+        assignment = self.loaded(config_path)["tasks"][0]["assignment"]
+        assert assignment["people"] == ["mia12345", "theo1234"]
 
     def test_removing_a_person_takes_them_out_of_the_rotation(self, client, config_path):
         client.post("/settings/people/theo1234/delete", data={"confirmed": "yes"})
-        assert self.loaded(config_path)["recurring"][0]["choices"] == ["Mia"]
+        assert self.loaded(config_path)["tasks"][0]["assignment"]["people"] == ["mia12345"]
 
-    def test_a_rotation_left_empty_is_said_on_the_chores_row(self, client, config_path):
+    def test_a_rotation_left_empty_is_said_on_the_tasks_row(self, client, config_path):
         client.post("/settings/people/mia12345/delete", data={"confirmed": "yes"})
         client.post("/settings/people/theo1234/delete", data={"confirmed": "yes"})
         assert "1 with nobody assigned" in self.home(client)
-        assert self.loaded(config_path)["recurring"][0]["choices"] == []
+        assert self.loaded(config_path)["tasks"][0]["assignment"]["people"] == []
 
-    def test_the_chores_row_names_the_jobs(self, client):
+    def test_the_tasks_row_names_the_jobs(self, client):
         # So a starter job left behind is visible from the home page.
         assert "Set the table" in self.home(client)
 
@@ -1158,3 +1159,31 @@ people:
         path.write_text('family_name: ""\ntimezone: "Europe/Berlin"\n')
         a_client = client_for(create_app(FileStore(path)))
         assert 'id="family-name-nudge"' in self.home(a_client)
+
+
+class TestTaskCaps:
+    """40 tasks, 80-character titles, refused in plain English."""
+
+    def add(self, client, title):
+        return client.post("/settings/recurring/new",
+                           data={"title": title, "choices": ["Mia"]})
+
+    def test_a_title_of_eighty_characters_saves(self, client, config_path):
+        assert self.add(client, "x" * 80).status_code == 302
+        assert len(config_module.load_config(config_path)["tasks"]) == 3
+
+    def test_a_longer_title_is_refused_and_nothing_is_stored(self, client, config_path):
+        client.get("/settings/recurring")
+        response = self.add(client, "x" * 81)
+        assert response.status_code == 200
+        assert "80 characters or fewer" in response.get_data(as_text=True)
+        assert len(config_module.load_config(config_path)["tasks"]) == 2
+
+    def test_the_forty_first_task_is_refused(self, client, config_path):
+        for n in range(38):
+            assert self.add(client, f"Task {n}").status_code == 302
+        assert len(config_module.load_config(config_path)["tasks"]) == 40
+        response = self.add(client, "One too many")
+        assert response.status_code == 200
+        assert "up to 40 tasks" in response.get_data(as_text=True)
+        assert len(config_module.load_config(config_path)["tasks"]) == 40

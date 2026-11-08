@@ -43,7 +43,7 @@ def _format_event(event, clock=DEFAULT_CLOCK):
     return f"- {when}: {event['title']}{where}"
 
 
-def build_user_prompt(config, today, events_today, events_soon, chores,
+def build_user_prompt(config, today, events_today, events_soon, tasks,
                       countdowns):
     """Assemble everything the model needs into one prompt."""
     lines = [
@@ -93,10 +93,10 @@ def build_user_prompt(config, today, events_today, events_soon, chores,
             f"- {e['date']}: {e['title']}" for e in events_soon[:6]
         )
 
-    if chores:
+    if tasks:
         lines.append("")
-        lines.append("Whose turn it is today:")
-        lines.extend(f"- {c['title']}: {c['assigned_to']}" for c in chores)
+        lines.append("Tasks due today:")
+        lines.extend(f"- {t['title']}: {t['assigned_to']}" for t in tasks)
 
     if countdowns:
         lines.append("")

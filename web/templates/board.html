@@ -555,11 +555,11 @@
         </div>
 
         <div class="side">
-            {% if view.chores %}
+            {% if view.tasks %}
             <div>
                 <div class="label">Whose turn</div>
                 <div class="chores">
-                    {% for chore in view.chores %}
+                    {% for chore in view.tasks %}
                     <span class="chore">
                         {% if chore.emoji %}<span class="chore-emoji">{{ chore.emoji }}</span>{% endif %}
                         {{ chore.title }} &mdash; {{ chore.assigned_to }}

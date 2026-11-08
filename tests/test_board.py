@@ -17,8 +17,10 @@ CONFIG = {
     "family_name": "The Wilsons",
     "timezone": "Europe/Berlin",  # set up: a real family's dashboard, not the starter
     "theme": "light",
-    "people": [{"name": "Mia", "date_of_birth": "2017-03-15"}],
-    "recurring": [{"title": "Set the table", "emoji": "🍽", "choices": ["Mia", "Theo"]}],
+    "people": [{"id": "mia", "name": "Mia", "date_of_birth": "2017-03-15"},
+               {"id": "theo", "name": "Theo", "date_of_birth": "2019-06-20"}],
+    "tasks": [{"id": "t1", "title": "Set the table", "emoji": "🍽", "recurrence": {"kind": "daily"},
+               "assignment": {"mode": "rotate", "people": ["mia", "theo"], "offset": 0}}],
     "special_dates": [{"title": "Christmas", "emoji": "🎄", "date": "12/25"}],
 }
 
@@ -78,9 +80,9 @@ class TestFreshBoard:
         view = build_view(CONFIG, data, TODAY)
         assert [e["title"] for e in view["events"]] == ["School run"]
 
-    def test_recomputes_chores_and_countdowns_from_config(self):
+    def test_recomputes_tasks_and_countdowns_from_config(self):
         view = build_view(CONFIG, payload("2026-09-03"), TODAY)
-        assert view["chores"][0]["assigned_to"] in {"Mia", "Theo"}
+        assert view["tasks"][0]["assigned_to"] in {"Mia", "Theo"}
         assert view["countdowns"][0]["title"] == "Christmas"
 
 
@@ -103,10 +105,10 @@ class TestStaleBoard:
         view = build_view(CONFIG, self.data, TODAY)
         assert [e["title"] for e in view["events"]] == ["School run", "Swimming"]
 
-    def test_chores_are_todays_not_yesterdays(self):
+    def test_tasks_are_todays_not_yesterdays(self):
         view = build_view(CONFIG, self.data, TODAY)
         fresh = build_view(CONFIG, payload("2026-09-03"), TODAY)
-        assert view["chores"] == fresh["chores"]
+        assert view["tasks"] == fresh["tasks"]
 
     def test_countdowns_are_todays(self):
         view = build_view(CONFIG, self.data, TODAY)
@@ -253,7 +255,7 @@ class TestEmptyStates:
         assert view["events"] == []
         assert view["tomorrow"] == []
         # Chores and countdowns never needed the model.
-        assert view["chores"]
+        assert view["tasks"]
         assert view["countdowns"]
         assert view["headline"] == "Nothing booked in today."
         assert view["overdue"] is False
@@ -262,7 +264,7 @@ class TestEmptyStates:
         view = build_view(CONFIG, payload("2026-09-03"), TODAY)
         assert view["events"] == []
         assert view["state"] == "ready"
-        assert view["chores"]
+        assert view["tasks"]
 
     def test_an_agenda_with_no_brief_yet_shows_the_day_without_a_banner(self):
         # A `--tick` that refreshed the calendars before the brief leaves a
@@ -302,7 +304,7 @@ class TestStillSettingUp:
         starter = config_module.starter_config()
         view = build_view(starter, None, TODAY)
         assert view["state"] == "first"
-        assert [c["assigned_to"] for c in view["chores"]]
+        assert [c["assigned_to"] for c in view["tasks"]]
         assert view["countdowns"]
 
     def test_an_agenda_with_no_brief_shows_the_agenda(self):

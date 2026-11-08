@@ -431,9 +431,12 @@ changes exactly the lines it means to.
 
 `config.example.yaml` documents every key. Two are migrated on load: a single `calendar_url` becomes
 the first entry in `calendars`, and `calendar_filter_emails` becomes that entry's `shared_with` — or
-is dropped with a warning when there is no single URL to attach it to.
+is dropped with a warning when there is no single URL to attach it to. A third, `recurring`, becomes
+`tasks` (`config.migrate_chores`): daily rotating tasks that name people by id, with an `assignment.offset`
+chosen so today's person is unchanged. The people's new ids exist only in memory until `ensure_ids`
+reports the migration (`_migrated`) and the settings UI saves once.
 
-Every item in the five edited lists — people, pets, recurring, special_dates, calendars — carries a
+Every item in the five edited lists — people, pets, tasks, special_dates, calendars — carries a
 short `id`. The settings UI addresses items by it, because a position is not an identity: delete the
 first person and everyone below renumbers onto somebody else's edit form. Ids are backfilled by
 `ensure_ids`, which the settings UI calls on load and saves once if it added any. Deliberately not

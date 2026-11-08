@@ -1,4 +1,4 @@
-"""Deterministic context: ages, birthdays, countdowns, chore rotation.
+"""Deterministic context: ages, birthdays, countdowns, task assignment.
 
 Nothing here calls the network or the model. Everything is a pure function of
 the config plus the date you pass in, which is why the dashboard can recompute it
@@ -7,6 +7,8 @@ at render time even when the day's generated text is stale.
 
 import calendar as _calendar
 from datetime import date, datetime
+
+from .recurrence import occurrence_index, occurs_on
 
 
 def anniversary(year, month, day):
@@ -90,39 +92,57 @@ def compute_special_date_info(special_date, today):
     }
 
 
-def compute_chore_assignments(recurring, today):
-    """Whose turn each recurring job is on `today`.
+def _assignees(config, task, day):
+    """The people a task is for on `day`, as person dicts.
 
-    Rotation is by day-of-year modulo the number of people, so it keeps in step
-    whether or not the dashboard was switched on yesterday.
+    Assignment names people by id, so a rename changes nothing here. An id with no person
+    behind it is skipped before the rotation is counted.
     """
-    day_of_year = today.timetuple().tm_yday
-    assignments = []
-    for chore in recurring or []:
-        choices = chore.get("choices") or []
-        if not choices:
+    assignment = task.get("assignment") or {}
+    people = [p for p in config.get("people") or [] if isinstance(p, dict)]
+    mode = assignment.get("mode")
+    if mode == "everyone":
+        return people
+    by_id = {p.get("id"): p for p in people}
+    named = [by_id[i] for i in assignment.get("people") or [] if i in by_id]
+    if mode == "fixed":
+        return named[:1]
+    if mode == "rotate" and named:
+        offset = assignment.get("offset")
+        offset = offset if isinstance(offset, int) and not isinstance(offset, bool) else 0
+        return [named[(occurrence_index(task, day) + offset) % len(named)]]
+    return []
+
+
+def tasks_for(config, day):
+    """Each task due on `day` with who it is for.
+
+    `assigned_to` is the words the dashboard and the prompt use. A task with nobody to give it to
+    (a rotation or a fixed person who has been removed) is left out; "anyone" is its own answer.
+    """
+    due = []
+    for task in config.get("tasks") or []:
+        if not isinstance(task, dict) or not task.get("title") or not occurs_on(task, day):
             continue
-        assignments.append({
-            "emoji": chore.get("emoji", ""),
-            "title": chore["title"],
-            "assigned_to": choices[day_of_year % len(choices)],
+        mode = (task.get("assignment") or {}).get("mode")
+        people = _assignees(config, task, day)
+        if mode == "anyone":
+            label = "Anyone"
+        elif mode == "everyone":
+            label = "Everyone"
+        elif people:
+            label = ", ".join(p.get("name", "") for p in people)
+        else:
+            continue
+        due.append({
+            "id": task.get("id"),
+            "emoji": task.get("emoji", ""),
+            "title": task["title"],
+            "mode": mode,
+            "person_ids": [p.get("id") for p in people],
+            "assigned_to": label,
         })
-    return assignments
-
-
-def upcoming_for(chore, today, days=7):
-    """Who is up for `chore` on each of the next `days` days."""
-    choices = chore.get("choices") or []
-    if not choices:
-        return []
-    out = []
-    for offset in range(days):
-        d = date.fromordinal(today.toordinal() + offset)
-        out.append({
-            "date": d,
-            "assigned_to": choices[d.timetuple().tm_yday % len(choices)],
-        })
-    return out
+    return due
 
 
 def build_countdowns(people, special_dates, today, limit=None):

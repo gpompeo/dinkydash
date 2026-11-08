@@ -1,6 +1,6 @@
 """The settings UI.
 
-Every list section — people, pets, chores, dates, calendars — is the same
+Every list section — people, pets, tasks, dates, calendars — is the same
 shape: a list, an edit form, a delete. So they share one pair of routes driven
 by the SECTIONS table below rather than five near-identical copies.
 
@@ -23,7 +23,7 @@ from dinkydash import lifecycle, schedule, screens
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
 from dinkydash.clock import CLOCKS, DEFAULT_CLOCK, clock_of, format_time
-from dinkydash.context import compute_birthday_info, parse_monthday, upcoming_for
+from dinkydash.context import compute_birthday_info, parse_monthday, tasks_for
 from dinkydash.runner import refresh_calendars
 from dinkydash.runner import run as run_generation
 from web import CLOUD
@@ -100,7 +100,7 @@ SECTIONS = {
         "title": "People",
         "singular": "person",
         "add_label": "Add a person",
-        "blurb": "Birthdays here become countdowns, and names here are who chores rotate between.",
+        "blurb": "Birthdays here become countdowns, and names here are who tasks rotate between.",
         "fields": [
             ("name", "Name", "text", True, ""),
             ("date_of_birth", "Date of birth", "date", True, "Used for ages and the birthday countdown."),
@@ -122,17 +122,18 @@ SECTIONS = {
             ("avatar_emoji", "Emoji", "emoji", False, ""),
         ],
     },
+    # The section keeps its URL name while the task editor is built; what it edits is `tasks`.
     "recurring": {
-        "key": "recurring",
-        "title": "Chores",
-        "singular": "chore",
-        "add_label": "Add a chore",
-        "blurb": "Chores hand over at midnight and keep to the order you set. Nobody ticks anything off.",
+        "key": "tasks",
+        "title": "Tasks",
+        "singular": "task",
+        "add_label": "Add a task",
+        "blurb": "Tasks come up every day and hand over at midnight, in the order you set.",
         "fields": [
-            ("title", "Chore", "text", True, ""),
+            ("title", "Task", "text", True, ""),
             ("emoji", "Emoji", "emoji", False, ""),
             ("choices", "Whose turn, in order", "people", True,
-             "Rotates one person per day, by day of the year."),
+             "Rotates one person each time the task comes up."),
         ],
     },
     "special_dates": {
@@ -209,6 +210,33 @@ def save(config, *, invalidate_calendars=()):
 # The sections each switch owns. Off, they are not offered and their routes
 # answer 404; the data stays in the config.
 SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
+
+
+def task_form(config, task):
+    """A task as the Tasks form shows it: who is in the rotation, by name."""
+    by_id = {p.get("id"): p.get("name", "") for p in config.get("people") or []
+             if isinstance(p, dict)}
+    people = (task.get("assignment") or {}).get("people") or []
+    return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
+            "choices": [by_id[i] for i in people if i in by_id]}
+
+
+def task_from_form(config, existing, submitted):
+    """The task to store for a submitted Tasks form.
+
+    Whatever the form does not edit (the recurrence, the rotation offset) is kept from `existing`.
+    The rotation is stored as person ids, so a later rename changes nothing.
+    """
+    ids = {}
+    for person in config.get("people") or []:
+        ids.setdefault(person.get("name"), person.get("id"))
+    task = dict(existing or {})
+    assignment = dict(task.get("assignment") or {"mode": "rotate", "offset": 0})
+    assignment["people"] = [ids[n] for n in submitted.get("choices") or [] if n in ids]
+    task.update({"title": submitted["title"], "emoji": submitted.get("emoji", ""),
+                 "recurrence": task.get("recurrence") or {"kind": "daily"},
+                 "assignment": assignment})
+    return task
 
 
 def section_or_404(name):
@@ -320,7 +348,7 @@ def home():
 
     calendars = config.get("calendars") or []
     broken = [c for c in (payload or {}).get("calendar_statuses", []) if c.get("ok") is False]
-    jobs = [c for c in config.get("recurring") or [] if isinstance(c, dict)]
+    jobs = [c for c in config.get("tasks") or [] if isinstance(c, dict)]
 
     counts = {
         "people": len(config.get("people") or []),
@@ -330,7 +358,10 @@ def home():
         "calendars": len(calendars),
         # A job with nobody in its rotation is skipped on the dashboard. Say so on
         # the row rather than counting it as rotating.
-        "jobs_unassigned": sum(1 for c in jobs if not c.get("choices")),
+        "jobs_unassigned": sum(
+            1 for c in jobs
+            if (c.get("assignment") or {}).get("mode") in ("fixed", "rotate")
+            and not task_form(config, c)["choices"]),
     }
 
     # **Two personalities.** Until the family is set up and its first dashboard
@@ -554,7 +585,10 @@ def section_list(section_name):
     if section_name == "people":
         extras["birthdays"] = [compute_birthday_info(p, today) for p in items]
     if section_name == "recurring":
-        extras["turns"] = [upcoming_for(c, today, days=1) for c in items]
+        today_for = {t["id"]: t["assigned_to"] for t in tasks_for(config, today)}
+        extras["turns"] = [[{"assigned_to": today_for[c["id"]]}] if c.get("id") in today_for else []
+                           for c in items]
+        items = [task_form(config, c) for c in items]
     if section_name == "special_dates":
         extras["dates"] = []
         for item in items:
@@ -588,6 +622,8 @@ def section_edit(section_name, item_id):
         index, item = config_module.find_item(items, item_id)
         if item is None:
             abort(404)
+        if section_name == "recurring":
+            stored_task, item = item, task_form(config, item)
         if section_name == "calendars" and "show_locations" not in item:
             # Absent means shown, so the box starts ticked and the copy keeps
             # the file as it was until somebody saves.
@@ -617,11 +653,21 @@ def section_edit(section_name, item_id):
             item = submitted
         else:
             problems = validate(section, submitted, today)
+            if section_name == "recurring":
+                too_long = len(submitted.get("title") or "") > config_module.MAX_TITLE_LENGTH
+                if too_long:
+                    problems["title"] = (f"Keep the task to {config_module.MAX_TITLE_LENGTH} "
+                                         "characters or fewer.")
+                if is_new and len(items) >= config_module.MAX_TASKS:
+                    problems["title"] = (f"You can have up to {config_module.MAX_TASKS} tasks. "
+                                         "Remove one to add another.")
             if not problems:
                 # The mark `starter_config` puts on an invented person or pet.
                 # Saving the form is the touch that makes the item theirs,
                 # whatever they left in the boxes.
                 submitted.pop(config_module.INVENTED, None)
+                if section_name == "recurring":
+                    submitted = task_from_form(config, None if is_new else stored_task, submitted)
                 if is_new:
                     submitted["id"] = config_module.new_id(
                         i.get("id") for i in items if isinstance(i, dict)
@@ -630,8 +676,6 @@ def section_edit(section_name, item_id):
                 else:
                     submitted["id"] = item_id
                     items[index] = submitted
-                    if section_name == "people":
-                        follow_a_rename(config, item.get("name"), submitted.get("name"))
                 # Pressing Save explicitly refreshes this calendar even when
                 # the values are unchanged. The store also detects changed or
                 # removed sources and clears them in the same operation.
@@ -698,22 +742,6 @@ def suggested_calendar_label(config):
     return f"Calendar {number}"
 
 
-def follow_a_rename(config, old, new):
-    """A person renamed on the form keeps their turns in every chore.
-
-    Chores hold names as plain text, so without this the natural way to
-    replace the invented Mia — open her, type your own child's name, save —
-    leaves "Set the table" rotating between Mia and Theo for ever, and the
-    dashboard announcing the turn of somebody who is not there. Skipped when
-    another person still has the old name: then it was not a rename.
-    """
-    if not old or not new or old == new:
-        return
-    if old in config_module.people_names(config):
-        return
-    config_module.rename_in_chores(config, old, new)
-
-
 def check_feed(item, config):
     """Fetch a pasted iCal URL and describe what came back.
 
@@ -777,15 +805,16 @@ def check_feed(item, config):
 
 
 def removal_prompt(config, section, item):
-    """Name what will be removed, including the effects on chore assignments."""
+    """Name what will be removed, including the effects on task assignments."""
     name = item.get("name") or item.get("title") or item.get("label") or section["singular"]
     message = "This cannot be undone."
-    if section["key"] == "people" and config_module.people_names(config).count(name) == 1:
-        message += f" {name} will also be removed from chore rotations."
-        unassigned = [c["title"] for c in config.get("recurring") or []
-                      if c.get("choices") and all(p == name for p in c["choices"])]
+    if section["key"] == "people":
+        message += f" {name} will also be removed from task assignments."
+        unassigned = [c["title"] for c in config.get("tasks") or []
+                      if (c.get("assignment") or {}).get("people")
+                      and all(p == item.get("id") for p in c["assignment"]["people"])]
         if unassigned:
-            message += " These chores will have nobody assigned: " + ", ".join(unassigned) + "."
+            message += " These tasks will have nobody assigned: " + ", ".join(unassigned) + "."
     elif section["key"] == "calendars":
         message += " Stored events from this calendar will also be removed."
     return {"title": f"Remove {name}?", "message": message,
@@ -812,11 +841,8 @@ def section_delete(section_name, item_id):
                                       item_id=item_id))
     items.pop(index)
     if section_name == "people":
-        # Deleting Mia means Mia is gone from the dashboard, turns included — not
-        # a chore still announcing her day. Unless somebody else has the name.
-        gone = removed.get("name")
-        if gone and gone not in config_module.people_names(config):
-            config_module.drop_from_chores(config, gone)
+        # Deleting Mia means Mia is gone from the dashboard, turns included.
+        config_module.drop_from_tasks(config, removed.get("id"))
     save(config)
     flash(f"Removed {removed.get('name') or removed.get('title') or removed.get('label') or 'it'}.", "ok")
     return redirect(url_for("settings.section_list", section_name=section_name))
@@ -824,7 +850,7 @@ def section_delete(section_name, item_id):
 
 @bp.route("/<section_name>/<item_id>/move", methods=["POST"])
 def section_move(section_name, item_id):
-    """Reorder displayed items; this does not change a chore's participants."""
+    """Reorder displayed items; this does not change a task's participants."""
     section = section_or_404(section_name)
     config = current_config()
     items = config.get(section["key"]) or []

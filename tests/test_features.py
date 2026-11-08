@@ -67,18 +67,18 @@ class TestWall:
 
     def test_nothing_configured_looks_as_before(self):
         view = build_view(dict(BOARD_CONFIG), payload("2026-09-03"), TODAY)
-        assert view["chores"] and view["countdowns"]
+        assert view["tasks"] and view["countdowns"]
 
-    def test_tasks_off_hides_the_chores_only(self):
+    def test_tasks_off_hides_the_tasks_only(self):
         view = self.view(tasks=False)
-        assert view["chores"] == []
+        assert view["tasks"] == []
         assert view["countdowns"]
 
     def test_special_dates_off_hides_the_whole_coming_up_card(self):
         # Birthdays are countdowns too, so none may remain.
         view = self.view(special_dates=False)
         assert view["countdowns"] == []
-        assert view["chores"]
+        assert view["tasks"]
 
 
 class TestSettingsHome:
@@ -99,9 +99,9 @@ class TestSettingsHome:
         client.post("/settings/features", data={"tasks": "on", "special_dates": "on"})
         html = client.get("/settings/special_dates").get_data(as_text=True)
         assert "Christmas" in html
-        assert stored(config_path)["recurring"][0]["title"] == "Set the table"
+        assert stored(config_path)["tasks"][0]["title"] == "Set the table"
 
-    def test_tasks_off_hides_chores_in_settings(self, client):
+    def test_tasks_off_hides_tasks_in_settings(self, client):
         client.post("/settings/features", data={"special_dates": "on"})
         home = client.get("/settings/").get_data(as_text=True)
         assert "/settings/recurring" not in home

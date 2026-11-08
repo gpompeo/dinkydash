@@ -46,7 +46,7 @@
 <div>
     <div class="label">One plan for your family</div>
     <div class="card pad" style="display:flex;flex-direction:column;gap:0.875rem;">
-        <div class="hint">All your people, calendars, chores, countdowns and screens are included.</div>
+        <div class="hint">All your people, calendars, tasks, countdowns and screens are included.</div>
         {% for interval in ['year', 'month'] if interval in prices %}
         <form method="post" action="{{ url_for('billing.checkout') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -152,7 +152,7 @@
                 <div class="row-title">Put it on the screen</div>
                 <div class="row-sub">
                     {% if screen and setup.on_screen_first %}Open the link below on the TV, tablet or Pi and leave the page up. It redraws itself.
-                    {% elif screen %}Add a calendar first, so the screen shows today's plans and not just the chores.
+                    {% elif screen %}Add a calendar first, so the screen shows today's plans and not just the tasks.
                     {% else %}Once the first two steps are done, the link for the screen appears here.{% endif %}
                 </div>
             </div>
@@ -272,11 +272,11 @@
         {% if config.features.tasks %}
         <a class="row" href="{{ url_for('settings.section_list', section_name='recurring') }}">
             <div class="row-main">
-                <div class="row-title">Chores</div>
+                <div class="row-title">Tasks</div>
                 <div class="row-sub">
                     {# The titles, not a count: a starter job left behind — "Feed
                        Biscuit" after Biscuit has gone — should be visible from here. #}
-                    {% if counts.recurring and counts.recurring <= 3 %}{{ config.recurring | map(attribute='title') | join(' · ') }}{% else %}{{ counts.recurring }} chore{{ "s" if counts.recurring != 1 }}, rotating daily{% endif %}{% if counts.jobs_unassigned %}
+                    {% if counts.recurring and counts.recurring <= 3 %}{{ config.tasks | map(attribute='title') | join(' · ') }}{% else %}{{ counts.recurring }} task{{ "s" if counts.recurring != 1 }}{% endif %}{% if counts.jobs_unassigned %}
                     &middot; <span style="color:var(--amber-dark);font-weight:700;">{{ counts.jobs_unassigned }} with nobody assigned</span>{% endif %}
                 </div>
             </div>{{ icons.chevron() }}
@@ -310,7 +310,7 @@
     <div class="card pad" style="display:flex;flex-direction:column;gap:0.875rem;">
         <div class="checkline">
             <input type="checkbox" id="feature-tasks" name="tasks" {{ 'checked' if config.features.tasks }}>
-            <label for="feature-tasks">Chores</label>
+            <label for="feature-tasks">Tasks</label>
         </div>
         <div class="checkline">
             <input type="checkbox" id="feature-special_dates" name="special_dates" {{ 'checked' if config.features.special_dates }}>
