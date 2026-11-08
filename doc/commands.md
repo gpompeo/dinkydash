@@ -114,3 +114,22 @@ predates that file, Conductor falls back to its default `.env*` pattern: `.env` 
 does not. `.conductor/settings.toml` covers the gap by falling back to `config.example.yaml` and
 seeding a sample dashboard, so a workspace always opens on something real. Copied data still wins
 over both.
+
+## Ralph loop (unattended implementation)
+
+`scripts/ralph/ralph.sh` runs the same prompt (`scripts/ralph/prompt.md`) in a fresh container until
+the ready GitHub issues are done. Each iteration picks one issue whose blockers are closed, builds
+it test-first, commits to the current branch and closes the issue. It never pushes and refuses to
+run on `main` or with a dirty tree.
+
+```bash
+git switch -c feat/household-modules
+export CLAUDE_CODE_OAUTH_TOKEN=...   # from `claude setup-token`
+export GH_TOKEN=...                  # fine-grained, this repository, Issues read and write
+scripts/ralph/ralph.sh once          # one iteration to watch first
+scripts/ralph/ralph.sh 10            # then up to 10, stopping on COMPLETE or STUCK
+```
+
+The container (`scripts/ralph/Dockerfile`) bakes in Python 3.11, the dev and cloud requirements at
+`/opt/venv`, and the Claude Code and GitHub CLIs. It mounts only the checkout. Notes go to
+`.ralph/progress.txt` (gitignored). Read the commits and the issue comments before merging.
