@@ -22,6 +22,7 @@ from dinkydash import pins
 from web import manifest as manifest_module
 from web import parent, ratelimit
 from web.family import current_store
+from web.routes.board import change_counter
 
 bp = Blueprint("phone", __name__)
 pins_bp = Blueprint("pins", __name__)
@@ -99,6 +100,14 @@ def manifest():
         background_color="#fffaf5",
         theme_color="#fffaf5",
     )
+
+
+@bp.route("/h/changes")
+def changes():
+    """The change counter for this page: only a phone that has picked a name."""
+    if _person(_config(), session.get(PERSON)) is None:
+        return "", 401, NO_STORE
+    return change_counter(current_store())
 
 
 @bp.route("/h", strict_slashes=False)

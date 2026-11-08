@@ -494,7 +494,7 @@
    a real reload. `data-today` is only on a dashboard that is *for* a day — the
    ended screen has no date on it, and a frozen one says its dates are paused
    — so only those escalate to "Showing Thursday's dashboard". #}
-<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}">
+<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}"{% if changes_url %} data-changes="{{ changes_url }}"{% endif %}>
 
 {% if view.state == 'ended' %}
 <div class="waiting">
@@ -863,6 +863,38 @@
                 started = 0;
             });
     }
+
+    /* ---- following other devices ------------------------------------------
+       A phone that changes something moves a counter on the server. Asking for
+       it is cheap, so it is asked about every fifteen seconds, and a number
+       that moved sends the page through the same refresh as the timer. A failed
+       ask is silent: the timer is still running. Hidden pages do not ask. */
+
+    var POLL_SECONDS = 15;
+    var seen = null;
+    var pollTimer = null;
+
+    function poll() {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(poll, POLL_SECONDS * 1000);
+        var url = document.body.getAttribute("data-changes");
+        if (!url || document.hidden) { return; }
+        fetch(url, {cache: "no-store", credentials: "same-origin"})
+            .then(function (response) { return response.ok ? response.text() : null; })
+            .then(function (text) {
+                var number = text === null ? NaN : parseInt(text, 10);
+                if (isNaN(number)) { return; }
+                var moved = seen !== null && number !== seen;
+                seen = number;
+                if (moved) { setTimeout(refresh, 0); }
+            })
+            .catch(function () {});
+    }
+
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) { poll(); }
+    });
+    poll();
 
     function swap(next) {
         // Both live on <html>, which a swap keeps, so each has to be carried

@@ -33,6 +33,7 @@ This module and `config.py` are the only places under `dinkydash/` that touch
 a file.
 """
 
+import hashlib
 import json
 import logging
 import os
@@ -59,6 +60,9 @@ AGENDA_KEYS = ("events", "calendar_statuses", "calendars_fetched_at")
 
 # Beside the config, never in it. Holds secrets, so it stays out of git.
 AUTH_FILE = "auth.json"
+
+# Files beside the config whose change moves `change_token()`.
+CHANGE_FILES = ("completions.json", "shopping.json")
 
 
 class FileStore:
@@ -133,6 +137,29 @@ class FileStore:
         payload = {k: v for k, v in stored.items() if not owns(k)}
         payload.update(updates)
         _write_json(path, payload)
+
+    # -- noticing a change from another device -------------------------------
+
+    def change_token(self):
+        """A number that moves whenever the config, completions, shopping list or payload do.
+
+        Built from each file's modification time and size, never its content, so
+        the number can be served to a wall screen without carrying anything of
+        the family's. A missing file counts as a value of its own, so creating
+        or deleting one moves the number too. Only a change in the number means
+        anything; it is not ordered.
+        """
+        paths = [self.config_path, self._data_path(self.load_config())]
+        paths += [self.base / name for name in CHANGE_FILES]
+        marks = []
+        for path in paths:
+            try:
+                info = path.stat()
+                marks.append(f"{info.st_mtime_ns}:{info.st_size}")
+            except OSError:
+                marks.append("-")
+        digest = hashlib.sha256("|".join(marks).encode()).digest()
+        return int.from_bytes(digest[:6], "big")
 
     # -- who may sign in ---------------------------------------------------
 

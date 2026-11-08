@@ -13,8 +13,8 @@ dashboard is one piece of code reached two ways rather than two that drift.
 
 import os
 
-from flask import (Blueprint, current_app, redirect, render_template, request,
-                   url_for)
+from flask import (Blueprint, abort, current_app, redirect, render_template,
+                   request, url_for)
 
 from dinkydash import board as board_view
 from dinkydash import config as config_module
@@ -52,6 +52,20 @@ def _needs_a_family():
     return guard()
 
 
+def change_counter(store):
+    """The store's change token as a bare number, `no-store`, or a 404.
+
+    Shared by the wall and the phone page, each behind its own access rule. A
+    store with no `change_token` (cloud mode) has nothing to count, and the
+    page then never polls.
+    """
+    token = getattr(store, "change_token", None)
+    if token is None:
+        abort(404)
+    return str(token()), 200, {"Cache-Control": "no-store", "X-Robots-Tag": "noindex",
+                               "Content-Type": "text/plain; charset=utf-8"}
+
+
 def current_config():
     return current_store().load_config()
 
@@ -71,7 +85,15 @@ def index():
     return render_board(current_store())
 
 
-def render_board(store, manifest_url=None, access=None):
+@bp.route("/changes")
+def changes():
+    """The wall's change counter: a number and nothing else, same access as `/`."""
+    if current_app.config["MODE"] == CLOUD:
+        abort(404)
+    return change_counter(current_store())
+
+
+def render_board(store, manifest_url=None, access=None, changes_url=None):
     """The dashboard page for whichever family that store is for.
 
     Shared with `web/routes/screen.py`, so the signed-in view and the wall
@@ -92,7 +114,9 @@ def render_board(store, manifest_url=None, access=None):
         # separately could land the other side of midnight from it.
         now = config_module.now_for(config)
         view = board_view.build_view(config, payload, now.date(), now=now)
-    return render_template("board.html", view=view,
+    if changes_url is None and hasattr(store, "change_token"):
+        changes_url = url_for("board.changes")
+    return render_template("board.html", view=view, changes_url=changes_url,
                            manifest_url=manifest_url or url_for("board.manifest"))
 
 

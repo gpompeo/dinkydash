@@ -446,3 +446,7 @@ hard way.
 - The honest check is `scrot` over SSH on the Pi itself: a real 800x480 panel, a real kiosk browser,
   no capture artifacts. The dashboard refreshes itself every 5 minutes on a default config, so a
   change takes one refresh to appear — check `refresh_minutes` before concluding it did not work.
+
+## The change counter
+
+`/changes` (wall) and `/h/changes` (phone) return `FileStore.change_token()` as a bare number, `no-store`, with the access rule of the page they serve (`board.change_counter` is the shared body). The board script polls it every 15 seconds, skips while `document.hidden`, polls at once on `visibilitychange`, and calls the existing `refresh()` when the number moves; a failed poll is silent. It polls only when `<body data-changes>` is set, which `render_board` does for stores that have `change_token`. The token page (#4) must pass its own `changes_url`.
