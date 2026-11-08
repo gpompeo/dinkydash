@@ -88,6 +88,10 @@ def create_app(store=None, *, pool=None):
 
         parent.check_configuration(app)
         app.register_blueprint(parent_bp)
+
+        from .routes.phone import bp as phone_bp, pins_bp
+        app.register_blueprint(phone_bp)
+        app.register_blueprint(pins_bp, url_prefix="/settings/pins")
         # Read at render time, like the gates above, so the settings home
         # offers "Sign out" only when there is something to sign out of.
         app.jinja_env.globals["parent_sign_in_on"] = parent.enabled

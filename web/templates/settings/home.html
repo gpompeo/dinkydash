@@ -478,6 +478,14 @@
 </script>
 {% endif %}
 {% if parent_sign_in_on is defined and parent_sign_in_on() %}
+<div class="card" style="margin-top:1rem;">
+    <a class="row" href="{{ url_for('pins.pin_list') }}">
+        <div class="row-main">
+            <div class="row-title">Phone PINs</div>
+            <div class="row-sub">Who needs a PIN to use the phone page</div>
+        </div>{{ icons.chevron() }}
+    </a>
+</div>
 <form method="post" action="{{ url_for('parent.sign_out') }}" style="margin-top:1rem;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="btn outline" type="submit">Sign out</button>

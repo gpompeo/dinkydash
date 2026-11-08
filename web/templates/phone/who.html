@@ -1,0 +1,38 @@
+{% extends "settings/base.html" %}
+{% block title %}Who are you?{% endblock %}
+{% block manifest %}<link rel="manifest" href="{{ url_for('phone.manifest') }}">{% endblock %}
+{% block feedback %}{% endblock %}
+
+{% block appbar %}
+<h1 class="wordmark">DinkyDash</h1>
+{% endblock %}
+
+{% block content %}
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.875rem;">
+    <div>
+        <div class="card-title">Who are you?</div>
+        <div class="hint" style="margin-top:0.1875rem;">Pick your name.</div>
+    </div>
+    {% for person in people %}
+    <form method="post" action="{{ url_for('phone.who') }}"
+          style="display:flex;flex-direction:column;gap:0.5rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="person" value="{{ person.id }}">
+        {% if person.id in pinned %}
+        <div class="field">
+            <label for="pin-{{ person.id }}">PIN for {{ person.name }}</label>
+            <input type="password" id="pin-{{ person.id }}" name="pin" inputmode="numeric"
+                   pattern="[0-9]*" maxlength="8" autocomplete="off"
+                   {% if asking == person.id %}autofocus aria-invalid="true"{% endif %}>
+            {% if asking == person.id and problem %}
+            <div class="flash error" role="alert">{{ problem }}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+        <button class="btn outline" type="submit">{{ person.emoji or '' }} {{ person.name }}</button>
+    </form>
+    {% else %}
+    <div class="hint">There's nobody here yet. A parent can add people in the settings.</div>
+    {% endfor %}
+</div>
+{% endblock %}

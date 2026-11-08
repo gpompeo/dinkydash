@@ -57,6 +57,9 @@ log = logging.getLogger(__name__)
 # implementations enforce it, and no caller can talk its way past it.
 AGENDA_KEYS = ("events", "calendar_statuses", "calendars_fetched_at")
 
+# Beside the config, never in it. Holds secrets, so it stays out of git.
+AUTH_FILE = "auth.json"
+
 
 class FileStore:
     """One family, as files beside its own `config.yaml`.
@@ -130,6 +133,29 @@ class FileStore:
         payload = {k: v for k, v in stored.items() if not owns(k)}
         payload.update(updates)
         _write_json(path, payload)
+
+    # -- who may sign in ---------------------------------------------------
+
+    def load_auth(self):
+        """Member PIN hashes and the like, from `auth.json` beside the config.
+
+        Kept out of `config.yaml`, which is exported and edited by hand. The file
+        is created owner-only (mode 0600) and is gitignored.
+        """
+        auth = _read_json(self.base / AUTH_FILE, "the sign-in file")
+        return auth if isinstance(auth, dict) else {}
+
+    def update_auth(self, change):
+        """Apply `change(auth)` to a fresh read, under the lock, and save it.
+
+        A function rather than a whole-dict save, so two features that each own
+        a key in this file cannot overwrite one another.
+        """
+        with _locked(self.base):
+            auth = self.load_auth()
+            change(auth)
+            _write_json(self.base / AUTH_FILE, auth)
+            return auth
 
     # -- what was written recently ------------------------------------------
 

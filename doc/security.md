@@ -77,6 +77,8 @@ writes, so keep port 5000 on a trusted LAN and never expose it to the public int
 says so in a callout under **Quickstart**. Cloud mode cannot inherit this — see
 [hosted-mode.md](hosted-mode.md).
 
+With sign-in on, the phone page (`/h`, `web/routes/phone.py`) lets a family member pick their name and type a PIN if a parent set one. PINs are four to eight digits, hashed with `scrypt` (`dinkydash/pins.py`), compared in constant time and kept in `auth.json` beside the config (mode 0600, gitignored, never in `config.yaml`). Wrong PINs share the sign-in rate limit (ten in fifteen minutes per caller). A person with no PIN can be picked by anyone who reaches the page; that is the meaning of optional.
+
 ## The safety net, and what it does not cover
 
 `.github/workflows/test.yml` runs two jobs on every push and pull request: **pytest** (Python 3.11,

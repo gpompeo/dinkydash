@@ -14,6 +14,8 @@ load_payload(config)         save_agenda(config, agenda)
 recent_notes(config, days)   record_note(config, entry, keep)
 ```
 
+`FileStore` also has `load_auth()` and `update_auth(change)` for `auth.json` (member PIN hashes, and the screen token once it lands); `PostgresStore` has neither, and the phone page is not registered in cloud mode.
+
 Both implementations exist. `FileStore(config_path)` is `config.yaml` and two JSON files in one
 directory. `PostgresStore(pool, family_id)` is the same seven operations against rows, with the
 payload composed from `generations` (the brief) and `agendas` (the fetched window) and handed back

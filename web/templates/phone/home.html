@@ -1,0 +1,30 @@
+{% extends "settings/base.html" %}
+{% block title %}{{ person.name }}{% endblock %}
+{% block manifest %}<link rel="manifest" href="{{ url_for('phone.manifest') }}">{% endblock %}
+{% block feedback %}{% endblock %}
+
+{% block appbar %}
+<h1 class="wordmark">DinkyDash</h1>
+<form method="post" action="{{ url_for('phone.leave') }}" style="margin-left:auto;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="action muted" type="submit" style="background:none;border:0;font:inherit;">Not {{ person.name }}?</button>
+</form>
+{% endblock %}
+
+{% block content %}
+{% if tabs %}
+<nav aria-label="Sections" style="display:flex;gap:0.5rem;">
+    {% for key, label in tabs %}
+    <a class="btn {{ '' if key == current else 'outline' }}" href="{{ url_for('phone.tab', tab=key) }}"
+       {% if key == current %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+</nav>
+<div class="card pad">
+    <div class="hint">Nothing to show here yet.</div>
+</div>
+{% else %}
+<div class="card pad">
+    <div class="hint">Hi {{ person.name }}. Tasks and Shopping are both switched off, so there's nothing to do here yet.</div>
+</div>
+{% endif %}
+{% endblock %}
