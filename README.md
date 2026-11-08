@@ -105,7 +105,7 @@ iCal links, plus Raspberry Pi kiosk/screen setup.
 > [WireGuard](https://www.wireguard.com), or put a reverse proxy with basic auth in front of it.
 >
 > Hosted mode is a different matter — it authenticates every request and is scoped per family. See
-> [Hosted mode raises the stakes](CLAUDE.md#hosted-mode-raises-the-stakes).
+> [Hosted mode raises the stakes](doc/hosted-mode.md).
 
 ---
 
