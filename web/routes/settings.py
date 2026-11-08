@@ -27,6 +27,7 @@ from dinkydash.context import compute_birthday_info, parse_monthday, upcoming_fo
 from dinkydash.runner import refresh_calendars
 from dinkydash.runner import run as run_generation
 from web import CLOUD
+from web import parent
 from web import feedback as feedback_module
 from web import manifest as manifest_module
 from web import ratelimit
@@ -88,7 +89,7 @@ def _needs_a_session():
     in a process — attaching a cloud-mode hook to it would follow the next
     single-mode app that imported it.
     """
-    return guard()
+    return guard() or parent.guard()
 
 
 # Each field is (name, label, kind, required, help). `kind` decides both the

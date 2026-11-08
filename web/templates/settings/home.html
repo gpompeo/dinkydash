@@ -477,4 +477,10 @@
     })();
 </script>
 {% endif %}
+{% if parent_sign_in_on is defined and parent_sign_in_on() %}
+<form method="post" action="{{ url_for('parent.sign_out') }}" style="margin-top:1rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn outline" type="submit">Sign out</button>
+</form>
+{% endif %}
 {% endblock %}

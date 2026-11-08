@@ -46,6 +46,14 @@ so today's times are still there and still right.
 The dashboard never blanks itself. A failed run leaves the previous one up rather than clearing the
 screen, on the grounds that a stale kitchen dashboard beats an empty one.
 
+## Protecting the settings
+
+Set `DINKYDASH_PARENT_PASSWORD` (and `DINKYDASH_SECRET_KEY`, which signs the session cookie) in `.env`
+and restart. `/settings` then asks for the password at `/signin`; the session lasts thirty days, and
+**Sign out** is at the foot of the settings home. Unset, nothing changes. Ten attempts per
+quarter-hour per caller are allowed. The dashboard at `/` stays open until the wall screen token
+lands.
+
 ## Changing things
 
 Everything is editable from a phone at `/settings` — people, pets, chores and their rotation order,

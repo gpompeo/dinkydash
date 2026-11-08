@@ -82,6 +82,16 @@ def create_app(store=None, *, pool=None):
     app.register_blueprint(board_bp)
     app.register_blueprint(settings_bp, url_prefix="/settings")
 
+    if app.config["MODE"] == SINGLE:
+        from . import parent
+        from .routes.parent import bp as parent_bp
+
+        parent.check_configuration(app)
+        app.register_blueprint(parent_bp)
+        # Read at render time, like the gates above, so the settings home
+        # offers "Sign out" only when there is something to sign out of.
+        app.jinja_env.globals["parent_sign_in_on"] = parent.enabled
+
     if app.config["MODE"] == CLOUD:
         from . import turnstile
 

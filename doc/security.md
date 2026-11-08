@@ -70,9 +70,9 @@ repository and its issues.
   quotes the line it choked on, which is an appointment. `tests/test_secrets_and_headers.py` fails
   if any of that regresses.
 
-## Self-hosted has no authentication
+## Self-hosted has no authentication by default
 
-Anyone who can reach the port can edit the config. That is the same trust model as the file it
+Unless `DINKYDASH_PARENT_PASSWORD` is set (`web/parent.py`: a signed 30-day session, per-caller rate limit, CSRF on every form, refusing to start without `DINKYDASH_SECRET_KEY`), anyone who can reach the port can edit the config. That is the same trust model as the file it
 writes, so keep port 5000 on a trusted LAN and never expose it to the public internet. The README
 says so in a callout under **Quickstart**. Cloud mode cannot inherit this — see
 [hosted-mode.md](hosted-mode.md).
