@@ -42,6 +42,19 @@ fi
 repo=$(gh repo set-default --view 2>/dev/null || true)
 : "${repo:?no default repository; run 'gh repo set-default <owner>/<name>'}"
 
+# Issues and PRs belong to the fork, never upstream (caspii). The `upstream` remote is fine for
+# fetching, so only the places that choose a target are checked: the gh default and branch settings
+# (an editor can write a PR base there).
+if [[ "${repo,,}" == caspii/* ]]; then
+  echo "Default repository is '$repo' (upstream). Run 'gh repo set-default <your-fork>/dinkydash'." >&2
+  exit 1
+fi
+if upstream_keys=$(git config --get-regexp '^branch\..*' | grep -i caspii); then
+  echo "Branch config points at upstream (caspii); remove it before running:" >&2
+  echo "$upstream_keys" >&2
+  exit 1
+fi
+
 # The container can write to .git, so a hook or config change made there would run on the host
 # later. A fingerprint of both is taken before and checked after every iteration.
 gitdir=$(git rev-parse --git-common-dir)
