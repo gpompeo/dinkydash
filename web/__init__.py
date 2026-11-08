@@ -92,6 +92,12 @@ def create_app(store=None, *, pool=None):
         from .routes.phone import bp as phone_bp, pins_bp
         app.register_blueprint(phone_bp)
         app.register_blueprint(pins_bp, url_prefix="/settings/pins")
+
+        # Only with sign-in on: with it off the token address does not exist.
+        if parent.password():
+            from .routes.wall import admin_bp as wall_admin_bp, bp as wall_bp
+            app.register_blueprint(wall_bp)
+            app.register_blueprint(wall_admin_bp, url_prefix="/settings/wall")
         # Read at render time, like the gates above, so the settings home
         # offers "Sign out" only when there is something to sign out of.
         app.jinja_env.globals["parent_sign_in_on"] = parent.enabled

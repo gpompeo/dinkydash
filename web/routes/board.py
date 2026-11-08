@@ -49,7 +49,9 @@ def _needs_a_family():
     """
     if request.endpoint in OPEN_IN_CLOUD_MODE:
         return None
-    return guard()
+    # Single mode with sign-in on: the wall uses `/s/<token>` (web/routes/wall.py).
+    from web import parent
+    return guard() or parent.guard()
 
 
 def change_counter(store):

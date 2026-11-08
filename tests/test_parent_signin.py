@@ -86,8 +86,9 @@ class TestWhenOn:
         assert "Max-Age=2592000" in cookie or "Expires=" in cookie
         assert "HttpOnly" in cookie
 
-    def test_the_wall_dashboard_is_unchanged(self, locked):
-        assert locked.get("/").status_code == 200
+    def test_the_plain_dashboard_address_asks_for_sign_in(self, locked):
+        # The wall uses its token address instead (tests/test_wall_token.py).
+        assert locked.get("/").status_code == 302
 
     def test_the_session_cookie_is_signed_with_the_secret_key(self, store, monkeypatch):
         monkeypatch.setenv(parent.PASSWORD_VARIABLE, PASSWORD)

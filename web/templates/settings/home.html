@@ -485,6 +485,12 @@
             <div class="row-sub">Who needs a PIN to use the phone page</div>
         </div>{{ icons.chevron() }}
     </a>
+    <a class="row" href="{{ url_for('wall_admin.screen_page') }}">
+        <div class="row-main">
+            <div class="row-title">Wall screen link</div>
+            <div class="row-sub">The address a wall screen opens without signing in</div>
+        </div>{{ icons.chevron() }}
+    </a>
 </div>
 <form method="post" action="{{ url_for('parent.sign_out') }}" style="margin-top:1rem;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
