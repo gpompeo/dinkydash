@@ -18,7 +18,7 @@ on Linux, including a 64-bit Raspberry Pi; the container image is published for 
 
 > Self-hosting is **community-supported**. Issues and pull requests are welcome, but there's no support commitment — if you need it to just work, use the hosted version.
 
-**Hosted.** [Start a free 14-day trial.](https://app.dinkydash.co/login) No card required. After that it's $39 a year or $6 a month, and nothing is charged unless you choose to subscribe. Built from this same repo, in cloud mode — see [Two modes, always](CLAUDE.md#two-modes-always).
+**Hosted.** [Start a free 14-day trial.](https://app.dinkydash.co/login) No card required. After that it's $39 a year or $6 a month, and nothing is charged unless you choose to subscribe. Built from this same repo, in cloud mode — see [Single mode first](CLAUDE.md#single-mode-first).
 
 ## What the dashboard shows
 

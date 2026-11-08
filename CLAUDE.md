@@ -17,18 +17,15 @@ Three components:
 3. **The marketing site** (`website/`) — dinkydash.co, a second Flask app rendering Markdown
    through Jinja on request. No build step and no committed HTML.
 
-**This repo is public and MIT-licensed**, and the hosted multi-tenant SaaS is being built inside
-it, with self-hosting as the second mode of one codebase. Both facts constrain every change: see
-[This is a public repo](#this-is-a-public-repo) and [Two modes, always](#two-modes-always) below.
-Before making structural changes, read:
+**This repo is public and MIT-licensed.** Self-hosting is the product: single mode, one family. The
+multi-tenant cloud mode is frozen — it stays in the tree and its tests keep passing, but new work
+does not extend it. See [This is a public repo](#this-is-a-public-repo) and
+[Single mode first](#single-mode-first) below. Before making structural changes, read:
 
-- the hosted MVP plan — settled decisions, phases and what is still open. A Linear document on the
-  Dinky Dash team ([DinkyDash Hosted MVP — Plan](https://linear.app/keepthescore/document/dinkydash-hosted-mvp-plan-3ddbb8cf36a5)),
-  because it tracks Linear issues; the engineering rules it rested on are in this file and the
-  ones it points to.
-- the strategy document — positioning, pricing, SEO. Not in the repo by policy: it is a Linear
-  document on the Dinky Dash team. See [Strategy and marketing live in
-  Linear](#strategy-and-marketing-live-in-linear).
+- [doc/prd-household-modules.md](doc/prd-household-modules.md) — the plan for Tasks, Shopping, the
+  feature switches and optional sign-in: settled decisions, phases and acceptance criteria. Work is
+  tracked in GitHub Issues, with one milestone per phase; see [Work is tracked in GitHub
+  Issues](#work-is-tracked-in-github-issues).
 - [design/](design/) — mockups for the settings UI and the dashboard, with the reasoning
 
 ### The other instruction files
@@ -78,36 +75,19 @@ in every clone and fork after the commit that removes it, so the fix is rotation
 - **A new dependency is a supply-chain decision** in an app holding other families' calendars.
   Prefer the standard library; justify anything else in the PR.
 
-### Strategy and marketing live in Linear
+### Work is tracked in GitHub Issues
 
-**Commercial intent is not repo content.** Positioning, pricing reasoning, SEO and keyword research,
-competitor analysis, funnel thinking and launch plans live as Linear documents on the **Dinky Dash
-(`DIN`)** team. This holds for features and documentation too: *what* something does and *how* it is
-built is written here; *why it earns money* is written there. A feature note that argues for a
-conversion rate is in the wrong place, whatever file it is in.
+Engineering work — features, bugs, refactors, follow-ups — is tracked as GitHub Issues on this
+repository. A feature is broken into vertical slices, one issue each, and the phases of a PRD are
+milestones.
 
-The line to hold:
+**Issues in a public repo are world-readable**, exactly like the code, so the rules above apply to
+them too: no secret, no real family data, no calendar URL, no screenshot of a real dashboard.
+Anything that must not be public goes in a private repository instead, and the issue here says only
+that a private note exists.
 
-- **Here** — architecture, the two modes, code, tests, what a self-hoster needs to run it, and the
-  marketing site's own source in `website/`. Shipped public artefacts, and the engineering behind
-  them.
-- **In Linear** — prices and the argument for them, keyword volumes and competitor tables, revenue
-  targets, cost-per-family models, the hosted MVP plan with its phase tracking, and anything
-  framing this repo as top of a funnel.
-
-The shop window is the exception, and only the window. The README may state the hosted price and
-link the waitlist, and `website/` is a marketing site by definition. What must not appear is the
-*reasoning* behind either — the number is public, the case for the number is not.
-
-New strategy docs are written to a temporary file and pushed straight to Linear, never through the
-working tree where a stray `git add` can catch them:
-
-```bash
-linear document create --team DIN --title "..." --content-file /tmp/note.md
-```
-
-Relative links like `[CLAUDE.md](CLAUDE.md)` break once a document is in Linear. Rewrite them to full
-`https://github.com/caspii/dinkydash/blob/main/...` URLs before uploading.
+The fork has no commercial strategy, so nothing here needs a second home. If that changes, strategy
+documents (pricing, positioning, launch plans) live outside this repository and its issues.
 
 ### Handling other people's data
 
@@ -195,19 +175,24 @@ at 1.x or later for `output_config`. **`requirements.txt` is runtime only** — 
 
 ## Architecture
 
-### Two modes, always
+### Single mode first
 
-One codebase, two products:
+One codebase, two modes, one of them frozen:
 
 ```
-DINKYDASH_MODE=single   config.yaml · auth off · billing off · one family · local cron
-DINKYDASH_MODE=cloud    Postgres · magic links · Stripe · many families · worker + scheduler
+DINKYDASH_MODE=single   config.yaml · files on disk · one family · local cron     ← the product
+DINKYDASH_MODE=cloud    Postgres · magic links · Stripe · many families · worker  ← frozen
 ```
 
-**Every change must work in both.** The engine, the dashboard template, the CSS, the calendar handling
-and the settings UI are shared verbatim; mode gates four things and no others — authentication,
-billing, where the config is stored, and what drives the scheduler. A mode check anywhere else means
-the change is in the wrong layer.
+**Build for single mode.** New features go through `FileStore` and the config dict. Cloud mode is
+not extended: a feature that has no `PostgresStore` counterpart is switched off there rather than
+ported, and cloud code is touched only to keep its tests passing. Do not delete it as a side effect
+of another change; removal is its own piece of work, tracked in an issue.
+
+The engine, the dashboard template, the CSS, the calendar handling and the settings UI are still
+shared by both modes, so a change to them must not break the cloud suite. Mode gates four things
+and no others — authentication, billing, where the config is stored, and what drives the scheduler.
+A mode check anywhere else means the change is in the wrong layer.
 
 **Where the dashboard is served is part of the authentication gate**, not a fifth thing. Single mode
 puts it at `/`: one family, no session, the URL somebody types into a Pi's kiosk browser. Cloud mode
@@ -446,8 +431,8 @@ to tell you.
 - **Comments and docstrings state the rule and its reason, never the incident.** Say what a check
   protects against, in general terms — not the date it went wrong, who pressed what, the Sentry
   issue it opened, or what production did that day. That history goes in
-  [doc/operations.md](doc/operations.md), the log, or in Linear: the repo is public, and a war story
-  in code is operational detail published for ever.
+  [doc/operations.md](doc/operations.md), the log, or in the GitHub issue: the repo is public, and a
+  war story in code is operational detail published for ever.
 - **Nor the previous version.** A comment is read by somebody who has never seen the code any other
   way, so "this used to be X", "no longer does Y", "as it always has", "reversed in DIN-30" and
   "renamed because" all describe something that, to them, does not exist — and they have to read it
@@ -456,7 +441,7 @@ to tell you.
   one"*. **The test is whether the sentence still makes sense to somebody who arrived today.** This
   covers docstrings, config headers, `.env.example`, container configuration, test docstrings and commit-sized
   "why I changed this" notes — everything except `doc/operations.md`, which is the log and is dated
-  on purpose, and the Linear issue, which is where a decision's history belongs.
+  on purpose, and the GitHub issue, which is where a decision's history belongs.
 - **British English** throughout — UI copy, the model's system prompt, and `%-d %B` date formatting
   (`25 December`, not `December 25`).
 - **Times are 24-hour by default** (`08:20`), and a family can choose 12-hour (`8:20 am`) instead.
