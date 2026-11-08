@@ -50,6 +50,7 @@ inside `dinkydash/`.
 ```
 dinkydash/
 ├── context.py         ages, birthdays, countdowns, chore rotation (pure)
+├── recurrence.py      which days a task occurs on and its occurrence index (pure)
 ├── calendars.py       iCal fetch, parse, recurrence expansion, merge feeds
 ├── prompt.py          system + user prompt, note kinds, response schema
 ├── claude_client.py   the API call, with structured outputs
