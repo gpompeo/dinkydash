@@ -12,7 +12,9 @@ DinkyDash merges your calendars into one agenda, works out whose turn each chore
 
 ## Two ways to run it
 
-**Self-hosted (this repo).** Free, MIT-licensed, runs on your own hardware with your own Anthropic API key. Setup takes an afternoon and some comfort with a terminal.
+**Self-hosted (this repo).** Free and MIT-licensed, runs on your own hardware. Use Docker Compose
+on Linux, including a 64-bit Raspberry Pi; the container image is published for `linux/arm64` and
+`linux/amd64`. See the [self-hosted Docker quickstart](#quickstart) for setup and run instructions.
 
 > Self-hosting is **community-supported**. Issues and pull requests are welcome, but there's no support commitment — if you need it to just work, use the hosted version.
 
