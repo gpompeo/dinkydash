@@ -18,6 +18,7 @@ the cookie flags, CSRF, the rate limiter — is tested without one.
 
 import pathlib
 import re
+import runpy
 
 import pytest
 import yaml
@@ -973,22 +974,20 @@ class TestBothRequestLogsAreScrubbedAnyway:
 class TestTheLinkIsNotInTheAccessLog:
     """A login link in a log is a login in a log.
 
-    The token rides in the query string precisely because gunicorn's `%(U)s`
-    is the path without one. If this format ever goes back to the default
-    `%(r)s`, every sign-in link is written to the platform's log.
+    The token rides in the query string, so Gunicorn's access log must use
+    `%(U)s`, the path without the query string, rather than `%(r)s`.
     """
 
     @pytest.fixture
-    def run_command(self):
-        spec = yaml.safe_load((REPO / ".do" / "app.yaml").read_text())
-        return spec["services"][0]["run_command"]
+    def access_log_format(self):
+        return runpy.run_path(str(REPO / "gunicorn.conf.py"))["access_log_format"]
 
-    def test_the_format_is_set_at_all(self, run_command):
-        assert "--access-logformat" in run_command
+    def test_access_logs_are_written_to_standard_output(self):
+        assert runpy.run_path(str(REPO / "gunicorn.conf.py"))["accesslog"] == "-"
 
-    def test_it_logs_the_path_without_the_query_string(self, run_command):
-        assert "%(U)s" in run_command
+    def test_it_logs_the_path_without_the_query_string(self, access_log_format):
+        assert "%(U)s" in access_log_format
 
     @pytest.mark.parametrize("atom", ["%(r)s", "%(q)s"])
-    def test_and_never_the_query_string(self, run_command, atom):
-        assert atom not in run_command
+    def test_and_never_the_query_string(self, access_log_format, atom):
+        assert atom not in access_log_format

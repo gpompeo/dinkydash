@@ -421,11 +421,6 @@ class TestTheHardcodedFamilyIsGone:
         # `git grep` exits 1 with no matches, which is the passing case.
         assert found.stdout.strip() == "", found.stdout
 
-    def test_the_app_spec_does_not_set_it(self):
-        spec = yaml.safe_load((REPO / ".do" / "app.yaml").read_text())
-        assert "DINKYDASH_FAMILY_ID" not in {e["key"] for e in spec["envs"]}
-
-
 class TestHealthzStaysOpen:
     """**Not a detail.** The health check arrives with no cookie, on a hostname
     nobody signed in on. A 302 there fails it three times and App Platform

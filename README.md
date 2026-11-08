@@ -53,33 +53,47 @@ are still today's — the headline is one worked out from the day, and the dashb
 
 ## Quickstart
 
-You can see the real dashboard in about two minutes, with no API key and nothing to pay for.
+Self-host the app with Docker Compose on a Linux host, including a Raspberry Pi with a 64-bit OS.
+The published image supports `linux/amd64` and `linux/arm64`.
 
 ```bash
-git clone https://github.com/caspii/dinkydash.git
+git clone https://github.com/gpompeo/dinkydash.git
 cd dinkydash
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-cp config.example.yaml config.yaml    # edit by hand, or from /settings once it runs
-python sample_board.py                # a dashboard for today; calls no API, costs nothing
-python app.py
+mkdir -p data
+cp config.example.yaml data/config.yaml
+docker compose pull
+docker compose up -d
 ```
 
-- http://localhost:5000 — the dashboard
-- http://localhost:5000/settings — configure it from a phone
-- http://localhost:5000/preview — Pi, TV and tablet sizes side by side
+Open `http://<host-lan-address>:5000` for the dashboard or `/settings` to configure it from
+your phone. Compose mounts `./data` at `/data`; the configuration and generated dashboard/history
+files stay there across container replacements. The settings UI edits the same `data/config.yaml`
+file.
 
-The chore turns, ages and countdowns are computed from the `config.yaml` you just made, so
-editing it and reloading shows your own family. Only the headline is canned until
-you add an Anthropic API key.
+The dashboard, calendar refreshes, chores and countdowns work without an Anthropic key. The daily
+headline/brief requires one. To enable it, create a local `.env` file (already gitignored) containing
+`ANTHROPIC_API_KEY=your-key`, then restart the services with `docker compose up -d`. The key is
+passed to the containers at runtime and is not included in the image.
 
-**Then follow the [getting started guide](https://dinkydash.co/getting-started/)** — it has
-the API key step, where to find your calendar's iCal link for Google, iCloud and Outlook, and
-the whole Raspberry Pi build with systemd, kiosk mode and the screen schedule.
+Every five minutes, Compose checks whether it's time to update the dashboard: calendars refresh
+hourly by default and the brief is written once daily at 06:00 in the configured timezone. The
+first brief is generated as soon as the family configuration is set up. Change these settings in
+`/settings` or in `data/config.yaml`.
+
+The GitHub release workflow publishes the version-tagged image and `latest` to
+[GitHub Container Registry](https://github.com/gpompeo/dinkydash/pkgs/container/dinkydash) for
+both architectures. After the first release, set the GHCR package visibility to **Public** in
+GitHub's package settings if it was created as private; public access is needed for an
+unauthenticated `docker compose pull`.
+
+The getting-started guide has provider-specific directions for finding Google, iCloud and Outlook
+iCal links, plus Raspberry Pi kiosk/screen setup.
 
 > **There is no login.** The dashboard and the settings UI are both served without authentication, so
 > anyone who can reach the port can read your family's agenda and rewrite `config.yaml` — names,
-> birthdays, and every calendar link in it.
+> birthdays, and every calendar link in it. The Compose port is published on the host's network
+> interfaces: allow access only from your trusted LAN using the host firewall, and never forward
+> port 5000 or expose it directly to the public internet.
 >
 > That is deliberate rather than unfinished: DinkyDash is a config file with a web form on it, and
 > the file has no login either. It assumes it is on your home network, the same as a printer.
@@ -97,7 +111,8 @@ the whole Raspberry Pi build with systemd, kiosk mode and the screen schedule.
 
 | What you want | Where it is |
 |---|---|
-| Install it, and put it on a Raspberry Pi | [dinkydash.co/getting-started](https://dinkydash.co/getting-started/) |
+| Self-host with Docker Compose | [Quickstart](#quickstart) |
+| Find calendar links and set up a Raspberry Pi screen | [dinkydash.co/getting-started](https://dinkydash.co/getting-started/) |
 | Every config key, with comments | [`config.example.yaml`](config.example.yaml) |
 | Living with it: the daily cycle, the two buttons, what to check when something looks wrong | [`doc/running-it.md`](doc/running-it.md) |
 | Coming from an older version | [`doc/upgrading.md`](doc/upgrading.md) |

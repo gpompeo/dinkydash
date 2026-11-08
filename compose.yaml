@@ -1,0 +1,26 @@
+services:
+  web:
+    image: ghcr.io/gpompeo/dinkydash:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      DINKYDASH_CONFIG: /data/config.yaml
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/data
+
+  worker:
+    image: ghcr.io/gpompeo/dinkydash:latest
+    pull_policy: always
+    restart: unless-stopped
+    environment:
+      DINKYDASH_CONFIG: /data/config.yaml
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    command:
+      - sh
+      - -c
+      - while true; do python generate.py --tick; sleep 300; done
+    volumes:
+      - ./data:/data

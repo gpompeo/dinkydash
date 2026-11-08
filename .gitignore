@@ -13,6 +13,7 @@ generate.log
 
 # Personal data (not for public repo)
 config.yaml
+/data/
 
 # macOS Finder metadata
 .DS_Store

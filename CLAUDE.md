@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code and GitHub Copilot when working with this repository.
+`AGENTS.md` is a symlink to this file so both agents use the same instructions.
 
 ## Overview
 
@@ -180,11 +181,9 @@ addresses (Google `private-` + 32 hex, iCloud `/published/2/`). Its one allowlis
 public Ahrefs site key. **Allowlist only values that are public by design**; a real secret that
 reached a commit is fixed by rotating it. GitHub secret scanning is on as a second layer.
 
-Deploys: App Platform probes `/healthz` on the marketing app, which reads nothing. `create_app`
-calls `db.ready` and refuses to start if the database does not answer in ten seconds, so a wrong
-`DATABASE_URL` fails the deploy and fires the `DEPLOYMENT_FAILED` alert in `.do/app.yaml`. The
-worker sends a Sentry cron check-in after each completed pass, and a Sentry uptime monitor fetches
-`app.dinkydash.co/login`. `tests/test_deploy_spec.py` pins the probe, the alert and the DSN shape.
+Hosted operations have checks beyond this repository's self-hosted container setup; do not treat
+the Raspberry Pi image as a deployment of cloud mode. Cloud changes still require the database,
+worker, and privacy boundaries described above.
 
 Not covered: anything password-shaped in a URL other than the two calendar shapes needs its own
 gitleaks rule. `config.yaml` is in early history with two children's first names and no
@@ -367,11 +366,28 @@ disposable. See [doc/development.md](doc/development.md) for setup,
 port overrides, sign-in and Conductor configuration pickup. Both processes stop
 together; the launcher always selects cloud mode and refuses invalid setup.
 
-**Run the self-hosted app**
+**Run the self-hosted app directly**
 ```bash
 python app.py                       # or: flask run --host=0.0.0.0
 ```
 Dashboard at `/`, settings at `/settings`, all three screen sizes at once at `/preview`.
+
+**Run the self-hosted app with Docker Compose**
+```bash
+mkdir -p data
+cp config.example.yaml data/config.yaml
+docker compose pull
+docker compose up -d
+```
+The web and scheduled-worker services use the same GHCR image and share `./data:/data`.
+`DINKYDASH_CONFIG=/data/config.yaml` keeps settings and generated files persistent; the worker
+runs `generate.py --tick` every five minutes. `ANTHROPIC_API_KEY` is optional for serving and
+calendar refreshes, and is required for daily briefs. Put it in an untracked `.env` file.
+The image is published for `linux/arm64` and `linux/amd64` when a GitHub Release is published;
+the workflow is `.github/workflows/publish-image.yml`.
+
+The app has no login in self-hosted mode. Keep port 5000 on a trusted LAN and never expose it
+directly to the public internet.
 
 **Run the marketing site** (dinkydash.co)
 ```bash
@@ -380,11 +396,6 @@ FLASK_APP=website.site flask run --port 5001
 ```
 There is no build step and no `docs/` directory: `website/site.py` renders `content/*.md` through
 `website/templates/` on request. Adding a page is still "write a Markdown file" and nothing else.
-
-Deployed on DigitalOcean App Platform from `.do/app.yaml` — Python buildpack, no Dockerfile, and
-`doctl apps update <id> --spec .do/app.yaml` applies a change. **The one thing the dashboard has to
-do is create an app with a GitHub source**: `doctl` cannot introduce one (an API token carries no
-GitHub OAuth session), though it can update an app that already has one.
 
 ## Working on it
 
@@ -443,7 +454,7 @@ to tell you.
   before finding out it does not matter. Write the rule that holds now: not *"`DATABASE_URL` no
   longer belongs in `.env`"* but *"`.env` needs no `DATABASE_URL`; the launcher defaults to a local
   one"*. **The test is whether the sentence still makes sense to somebody who arrived today.** This
-  covers docstrings, config headers, `.env.example`, `.do/app.yaml`, test docstrings and commit-sized
+  covers docstrings, config headers, `.env.example`, container configuration, test docstrings and commit-sized
   "why I changed this" notes — everything except `doc/operations.md`, which is the log and is dated
   on purpose, and the Linear issue, which is where a decision's history belongs.
 - **British English** throughout — UI copy, the model's system prompt, and `%-d %B` date formatting
