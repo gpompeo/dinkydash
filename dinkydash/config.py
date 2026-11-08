@@ -48,6 +48,10 @@ DEFAULTS = {
 
 THEMES = ("light", "dark")
 
+# The modules a family can switch off. Switching one off hides what it owns and
+# keeps its data, so the data keys stay in the config whatever these say.
+FEATURE_DEFAULTS = {"tasks": True, "special_dates": True, "shopping": False}
+
 # Avatar colours the dashboard and the settings UI both understand. Names rather
 # than hex so a theme change doesn't strand a colour nobody can read.
 AVATAR_COLORS = ("purple", "blue", "green", "pink", "orange", "amber", "teal")
@@ -150,6 +154,16 @@ def with_defaults(raw):
 
     if config.get("theme") not in THEMES:
         config["theme"] = "light"
+
+    # Each switch is coerced to a real boolean for the same reason as the
+    # theme: a hand-edited file can hold anything, and a missing switch takes
+    # its default so an install that predates the block looks as it did.
+    features = config.get("features")
+    features = features if isinstance(features, dict) else {}
+    config["features"] = {
+        name: features[name] if isinstance(features.get(name), bool) else default
+        for name, default in FEATURE_DEFAULTS.items()
+    }
     # Coerced rather than trusted for the same reason as the theme: this value
     # arrives from a hand-edited file or a jsonb column, and an unrecognised
     # one should fall back to the default rather than reach a formatter.
@@ -157,6 +171,11 @@ def with_defaults(raw):
         config["clock"] = DEFAULT_CLOCK
 
     return config
+
+
+def feature_on(config, name):
+    """Whether the family has this module switched on."""
+    return bool((config.get("features") or FEATURE_DEFAULTS).get(name, FEATURE_DEFAULTS[name]))
 
 
 def new_id(taken=()):

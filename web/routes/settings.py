@@ -205,9 +205,17 @@ def save(config, *, invalidate_calendars=()):
     current_store().save_config(config, invalidate_calendars=invalidate_calendars)
 
 
+# The sections each switch owns. Off, they are not offered and their routes
+# answer 404; the data stays in the config.
+SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
+
+
 def section_or_404(name):
     section = SECTIONS.get(name)
     if not section:
+        abort(404)
+    feature = SECTION_FEATURES.get(name)
+    if feature and not config_module.feature_on(current_config(), feature):
         abort(404)
     return section
 
@@ -359,6 +367,17 @@ def screen_for_setup():
         return {"link": url_for("board.index", _external=True), "qr": None}
     link = absolute_url(board_path())
     return {"link": link, "qr": qr_svg(link)}
+
+
+@bp.route("/features", methods=["POST"])
+def set_features():
+    """The home page's switches. A ticked box is on; the data is never touched."""
+    config = current_config()
+    config["features"] = {name: name in request.form
+                          for name in config_module.FEATURE_DEFAULTS}
+    save(config)
+    flash("Saved.", "ok")
+    return redirect(url_for("settings.home"))
 
 
 @bp.route("/timezone", methods=["POST"])

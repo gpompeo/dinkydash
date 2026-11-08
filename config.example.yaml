@@ -66,6 +66,12 @@ pets:
     avatar_emoji: "🐕"
     invented: true
 
+# Modules a family can switch off. Off hides it everywhere and keeps its data.
+features:
+  tasks: true
+  special_dates: true
+  shopping: false
+
 # Rotated one person per day, by day of the year, in the order listed.
 recurring:
   - title: "Set the table"

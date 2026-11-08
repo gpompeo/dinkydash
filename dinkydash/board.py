@@ -25,6 +25,7 @@ from datetime import date, datetime, timedelta
 
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
+from .config import feature_on
 from .context import build_countdowns, compute_chore_assignments
 from .schedule import brief_due, refresh_interval
 
@@ -124,11 +125,15 @@ def build_view(config, payload, today, now=None):
     theme = config.get("theme", "light")
     theme = theme if theme in ("light", "dark") else "light"
 
-    chores = compute_chore_assignments(config.get("recurring"), today)
-    countdowns = build_countdowns(
+    # A switched-off feature is absent from the view, not hidden by the
+    # template, so no later card can show what it owns. Special dates owns the
+    # whole "Coming up" card, birthdays included.
+    chores = (compute_chore_assignments(config.get("recurring"), today)
+              if feature_on(config, "tasks") else [])
+    countdowns = (build_countdowns(
         config.get("people"), config.get("special_dates"), today,
         limit=MAX_COUNTDOWNS,
-    )
+    ) if feature_on(config, "special_dates") else [])
 
     view = {
         "family_name": config.get("family_name", ""),

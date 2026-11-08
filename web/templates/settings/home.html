@@ -269,6 +269,7 @@
                 <div class="row-sub">{{ config.pets | map(attribute='name') | join(', ') or "None" }}</div>
             </div>{{ icons.chevron() }}
         </a>
+        {% if config.features.tasks %}
         <a class="row" href="{{ url_for('settings.section_list', section_name='recurring') }}">
             <div class="row-main">
                 <div class="row-title">Chores</div>
@@ -280,12 +281,15 @@
                 </div>
             </div>{{ icons.chevron() }}
         </a>
+        {% endif %}
+        {% if config.features.special_dates %}
         <a class="row" href="{{ url_for('settings.section_list', section_name='special_dates') }}">
             <div class="row-main">
                 <div class="row-title">Special dates</div>
                 <div class="row-sub">{{ counts.special_dates }} countdown{{ "s" if counts.special_dates != 1 }}</div>
             </div>{{ icons.chevron() }}
         </a>
+        {% endif %}
         <a class="row" href="{{ url_for('settings.section_list', section_name='calendars') }}">
             <div class="row-main">
                 <div class="row-title">Calendars</div>
@@ -297,6 +301,29 @@
         </a>
     </div>
 </div>
+
+{# One switch per module. Off hides it everywhere and keeps its data. Headline,
+   agenda and family are always on, so they have no switch. #}
+<form method="post" action="{{ url_for('settings.set_features') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="label">Switch on what you use</div>
+    <div class="card pad" style="display:flex;flex-direction:column;gap:0.875rem;">
+        <div class="checkline">
+            <input type="checkbox" id="feature-tasks" name="tasks" {{ 'checked' if config.features.tasks }}>
+            <label for="feature-tasks">Chores</label>
+        </div>
+        <div class="checkline">
+            <input type="checkbox" id="feature-special_dates" name="special_dates" {{ 'checked' if config.features.special_dates }}>
+            <label for="feature-special_dates">Special dates and birthdays</label>
+        </div>
+        <div class="checkline">
+            <input type="checkbox" id="feature-shopping" name="shopping" {{ 'checked' if config.features.shopping }}>
+            <label for="feature-shopping">Shopping</label>
+        </div>
+        <div class="hint">Switching one off hides it and keeps what you've added. Switch it back on and it's all there.</div>
+        <button class="btn outline" type="submit">Save</button>
+    </div>
+</form>
 
 <div>
     <div class="label">Your dashboard</div>
