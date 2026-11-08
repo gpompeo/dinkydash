@@ -141,3 +141,17 @@ costs an API call; `python sample_board.py` does not. Other commands: [`doc/comm
 - `strftime("%-d")` is glibc-specific: fine on a Pi and in CI, not on Windows.
 - **Measuring the dashboard in headless Chrome is full of traps** (wrong viewport, reused instances,
   a `--screenshot` that hangs). See [`web/CLAUDE.md`](web/CLAUDE.md).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues on the fork `gpompeo/dinkydash`, through the `gh` CLI; never the upstream `caspii/dinkydash`. See `doc/agents/issue-tracker.md`.
+
+### Triage labels
+
+The default five roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `doc/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context; the glossary is `doc/terminology.md`, not a `GLOSSARY.md`. See `doc/agents/domain.md`.
