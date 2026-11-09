@@ -93,6 +93,9 @@ def create_app(store=None, *, pool=None):
         app.register_blueprint(phone_bp)
         app.register_blueprint(pins_bp, url_prefix="/settings/pins")
 
+        from .routes.activity import bp as activity_bp
+        app.register_blueprint(activity_bp, url_prefix="/settings/activity")
+
         # Only with sign-in on: with it off the token address does not exist.
         if parent.password():
             from .routes.wall import admin_bp as wall_admin_bp, bp as wall_bp

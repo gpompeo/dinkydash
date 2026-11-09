@@ -87,6 +87,14 @@
       "w": 390,
       "h": 844,
       "title": "Account"
+    },
+    {
+      "file": "Activity.dc.html",
+      "x": 1410,
+      "y": 1928,
+      "w": 390,
+      "h": 844,
+      "title": "Activity"
     }
   ],
   "annotations": [
@@ -124,6 +132,13 @@
       "y": 2820,
       "w": 390,
       "text": "Light/Dark lives here rather than in Account: it is a property of the screen on the wall, not of the person editing. An Auto option (dark after sunset, using the family timezone) would suit a kitchen dashboard \u2014 not drawn, say the word."
+    },
+    {
+      "id": "activity-note",
+      "x": 1880,
+      "y": 1928,
+      "w": 390,
+      "text": "Activity is for a parent. Streaks and a thirty-day grid per person sit above the one list that needs action: every due task left unticked in the last fourteen days, newest first, each with a single Tick button. The grid is a square per day (green done, ring something left, grey nothing due) with no red and no scolding, matching the wall's neutral treatment of missed tasks. Nothing older than fourteen days can be ticked, and nothing later than today."
     }
   ],
   "launch": {

@@ -477,6 +477,16 @@
     })();
 </script>
 {% endif %}
+{% if parent_sign_in_on is defined and config.features.tasks %}
+<div class="card" style="margin-top:1rem;">
+    <a class="row" href="{{ url_for('activity.page') }}">
+        <div class="row-main">
+            <div class="row-title">Activity</div>
+            <div class="row-sub">Streaks, the last thirty days, and ticks you missed</div>
+        </div>{{ icons.chevron() }}
+    </a>
+</div>
+{% endif %}
 {% if parent_sign_in_on is defined and parent_sign_in_on() %}
 <div class="card" style="margin-top:1rem;">
     <a class="row" href="{{ url_for('pins.pin_list') }}">
