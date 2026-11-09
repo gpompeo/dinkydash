@@ -577,8 +577,9 @@
         </div>
 
         <div class="side">
-            {% if view.tasks %}
+            {% if view.tasks or view.yesterday %}
             <div>
+                {% if view.tasks %}
                 <div class="label">Whose turn</div>
                 <div class="chores">
                     {% for chore in view.tasks %}
@@ -590,6 +591,7 @@
                     </span>
                     {% endfor %}
                 </div>
+                {% endif %}
                 {% if view.streaks %}
                 <div class="streaks">
                     {% for s in view.streaks %}<span>{{ s.name }}: {{ s.days }} {{ 'day' if s.days == 1 else 'days' }}</span>{% endfor %}

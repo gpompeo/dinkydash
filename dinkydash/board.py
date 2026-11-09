@@ -219,7 +219,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
                             for i in unbought[:MAX_SHOPPING]]
         view["shopping_more"] = max(0, len(unbought) - MAX_SHOPPING)
 
-    if tasks:
+    if feature_on(config, "tasks"):
         add_checkins(view, config, tasks, today, completions)
 
     fetched = (payload or {}).get("events") or []

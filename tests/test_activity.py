@@ -131,6 +131,31 @@ class TestPage:
             "task_id": "bins", "date": "junk", "person": "mia1"}).status_code == 400
 
 
+class TestAnyoneTask:
+    @pytest.fixture
+    def anyone(self, store):
+        sam = '  - id: sam1\n    name: "Sam"\n    date_of_birth: "2019-06-01"\n'
+        task = ('  - id: bins2\n    title: "Tidy"\n    recurrence: {kind: daily}\n'
+                '    assignment: {mode: anyone, people: []}\n')
+        store.config_path.write_text(CONFIG.replace("tasks:\n", sam + "tasks:\n") + task)
+        return today_of(store)
+
+    def test_the_form_asks_who_did_it(self, client, anyone):
+        page = client.get("/settings/activity").get_data(as_text=True)
+        assert '<select name="person"' in page
+
+    def test_a_correction_needs_an_explicit_person(self, client, store, anyone):
+        data = {"task_id": "bins2", "date": anyone.isoformat()}
+        assert client.post("/settings/activity/tick", data=data).status_code == 400
+        assert store.load_completions() == []
+
+    def test_the_person_chosen_is_credited(self, client, store, anyone):
+        r = client.post("/settings/activity/tick", data={
+            "task_id": "bins2", "date": anyone.isoformat(), "person": "sam1"})
+        assert r.status_code == 302
+        assert [c["person_id"] for c in store.load_completions()] == ["sam1"]
+
+
 class TestSignIn:
     @pytest.fixture
     def locked(self, store, monkeypatch):

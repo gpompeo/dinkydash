@@ -444,6 +444,21 @@ class TestCelebration:
         assert "everything for today" not in self._page(open_client)
         assert first.status_code == 302
 
+    def test_once_a_day_per_person_even_after_picking_a_name_again(self, open_client, store, today):
+        pick(open_client, "mia1")
+        for task in ("tk-mia", "tk-all"):
+            tick(open_client, task, today, "mia1")
+        assert "everything for today, Mia" in self._page(open_client)
+        # Somebody else uses the phone, then Mia picks her name again.
+        pick(open_client, "sam1")
+        for task in ("tk-sam", "tk-all"):
+            tick(open_client, task, today, "sam1")
+        assert "everything for today, Sam" in self._page(open_client)
+        pick(open_client, "mia1")
+        tick(open_client, "tk-all", today, "mia1", done="0")
+        tick(open_client, "tk-all", today, "mia1")
+        assert "everything for today" not in self._page(open_client)
+
     def test_the_best_streak_is_on_the_phone_and_not_the_wall(self, open_client, store, today):
         pick(open_client, "mia1")
         for task in ("tk-mia", "tk-all"):

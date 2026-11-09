@@ -49,6 +49,12 @@
             <div class="row-title">{{ row.task.emoji or '' }} {{ row.task.title }}</div>
             <div class="row-sub">{{ row.who }} · {{ row.day.strftime('%A %-d %B') }}</div>
         </div>
+        {% if not row.person_id %}
+        <select name="person" required aria-label="Who did {{ row.task.title }}?">
+            <option value="" disabled selected>Who did it?</option>
+            {% for p in household %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select>
+        {% endif %}
         <button class="btn outline" type="submit" aria-label="Tick {{ row.task.title }} for {{ row.who }}, {{ row.day.strftime('%-d %B') }}">Tick</button>
     </form>
     {% else %}

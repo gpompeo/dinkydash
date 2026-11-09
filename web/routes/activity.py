@@ -47,7 +47,8 @@ def page():
     rows = [dict(r, day=date.fromisoformat(r["date"]),
                  who=named.get(r["person_id"], "Anyone"))
             for r in activity.unticked(config, done, today)]
-    return render_template("settings/activity.html", people=people, rows=rows)
+    return render_template("settings/activity.html", people=people, rows=rows,
+                           household=_people(config))
 
 
 @bp.route("/tick", methods=["POST"])
@@ -58,10 +59,11 @@ def tick():
         day = date.fromisoformat(request.form.get("date", ""))
     except ValueError:
         abort(400)
-    people = _people(config)
-    # An "Anyone" task has no person of its own; the correction is credited to the
-    # first person listed, which no streak counts.
-    person_id = request.form.get("person") or (people[0]["id"] if people else "")
+    # An "Anyone" task has no person of its own, so the form asks who did it;
+    # a correction is only ever credited to somebody named.
+    person_id = request.form.get("person", "")
+    if not person_id:
+        abort(400)
     task_id = request.form.get("task_id", "")
     today = config_module.today_for(config)
     if not checkin.may_tick(config, task_id=task_id, day=day, person_id=person_id, today=today,

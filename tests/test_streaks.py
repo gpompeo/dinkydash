@@ -145,6 +145,31 @@ def test_yesterday_group_lists_what_was_left_open():
     assert view["yesterday"][0]["assigned_to"] == "Name p2"
 
 
+def test_yesterdays_open_group_shows_when_nothing_is_due_today():
+    once = task("a", kind="once")
+    once["recurrence"]["date"] = day(1).isoformat()
+    view = view_with([once], [])
+    assert view["tasks"] == []
+    assert [r["title"] for r in view["yesterday"]] == ["a"]
+
+
+def test_the_rendered_wall_shows_yesterday_when_today_has_no_tasks(tmp_path):
+    from dinkydash import config as config_module
+    from dinkydash.store import FileStore
+    from tests.conftest import client_for
+    from web import create_app
+    path = tmp_path / "config.yaml"
+    path.write_text("family_name: Test\ntimezone: UTC\npeople:\n  - {id: p1, name: Mia, date_of_birth: 2015-05-05}\n")
+    store = FileStore(path)
+    yesterday = config_module.today_for(store.load_config()) - timedelta(days=1)
+    config = store.load_config()
+    config["tasks"] = [{"id": "t1", "title": "Feed the fish", "emoji": "", "recurrence": {
+        "kind": "once", "date": yesterday.isoformat()}, "assignment": {"mode": "fixed", "people": ["p1"]}}]
+    store.save_config(config)
+    page = client_for(create_app(store)).get("/").get_data(as_text=True)
+    assert "Yesterday, still open" in page and "Feed the fish" in page
+
+
 def test_anyone_task_carries_its_own_streak():
     view = view_with([task("a", mode="anyone", people=())], [done("a", 1, "p2"), done("a", 2)])
     assert view["tasks"][0]["streak"] == 2

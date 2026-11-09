@@ -32,7 +32,8 @@ pins_bp = Blueprint("pins", __name__)
 
 # The session key that says whose phone this is.
 PERSON = "phone_person"
-# The day this phone last celebrated, so a finished day is celebrated once.
+# Person id to the day that person was last celebrated on this phone, so a
+# finished day is celebrated once per person however often a name is picked.
 CELEBRATED = "phone_celebrated"
 
 # Ten wrong PINs in a quarter of an hour, per caller.
@@ -157,7 +158,12 @@ def _streak(config, person):
 
 def _celebrate(config, person_id, day, today):
     """Say well done when `person_id`'s last task due on `day` is ticked, once a day."""
-    if day != today or session.get(CELEBRATED) == day.isoformat():
+    if day != today:
+        return
+    # Only today's entries are kept, so the cookie does not grow.
+    celebrated = {who: on for who, on in (session.get(CELEBRATED) or {}).items()
+                  if on == day.isoformat()}
+    if person_id in celebrated:
         return
     done = {(c["task_id"], c["date"], c["person_id"])
             for c in current_store().load_completions(today)}
@@ -165,7 +171,7 @@ def _celebrate(config, person_id, day, today):
            if t["mode"] != taskform.ANYONE and person_id in t["person_ids"]]
     if not due or any((t["id"], day.isoformat(), person_id) not in done for t in due):
         return
-    session[CELEBRATED] = day.isoformat()
+    session[CELEBRATED] = dict(celebrated, **{person_id: day.isoformat()})
     name = (_person(config, person_id) or {}).get("name", "")
     run = streaks.person_streak(config, person_id, current_store().load_completions(
         today - timedelta(days=streaks.MAX_DAYS)), today)
@@ -361,8 +367,11 @@ def who():
             return _who_refused(people, pinned, person, WRONG, 401)
     # Keep a parent's session: picking a name on their own phone must not sign
     # them out of the settings. Anyone else starts a fresh session.
+    celebrated = session.get(CELEBRATED)
     if not parent.is_parent():
         session.clear()
+        if celebrated:
+            session[CELEBRATED] = celebrated
     session.permanent = True
     session[PERSON] = person["id"]
     return redirect(url_for("phone.home"))
