@@ -66,6 +66,8 @@ AUTH_FILE = "auth.json"
 COMPLETIONS_FILE = "completions.json"
 KEEP_COMPLETIONS_DAYS = 400
 
+SHOPPING_FILE = "shopping.json"
+
 # Files beside the config whose change moves `change_token()`.
 CHANGE_FILES = ("completions.json", "shopping.json")
 
@@ -204,6 +206,20 @@ class FileStore:
             kept = [c for c in change(self.load_completions()) if c["date"] >= oldest]
             _write_json(self.base / COMPLETIONS_FILE, kept)
 
+    # -- the shopping list ---------------------------------------------------
+
+    def load_shopping(self):
+        """The shopping items as stored. A missing or damaged file reads as empty."""
+        found = _read_json(self.base / SHOPPING_FILE, "the shopping list")
+        return [i for i in found if _is_shopping_item(i)] if isinstance(found, list) else []
+
+    def update_shopping(self, change):
+        """Apply `change(items)` to a fresh read, under the lock, and save what it returns."""
+        with _locked(self.base):
+            items = change(self.load_shopping())
+            _write_json(self.base / SHOPPING_FILE, items)
+            return items
+
     # -- who may sign in ---------------------------------------------------
 
     def load_auth(self):
@@ -272,6 +288,11 @@ def _is_completion(entry):
     return isinstance(entry, dict) and all(
         isinstance(entry.get(k), str) and entry[k]
         for k in ("task_id", "date", "person_id"))
+
+
+def _is_shopping_item(item):
+    return isinstance(item, dict) and isinstance(item.get("id"), str) and bool(item["id"]) \
+        and isinstance(item.get("text"), str)
 
 
 def _same_completion(entry, found):

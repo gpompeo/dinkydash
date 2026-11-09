@@ -35,3 +35,12 @@ def test_no_streak_wording_reaches_the_prompt():
     text = prompt.build_user_prompt(CONFIG, day, [], [], tasks_for(CONFIG, day), [])
     assert "streak" not in text.lower()
     assert "in a row" not in text
+
+
+def test_shopping_text_never_reaches_the_prompt():
+    day = date(2026, 6, 1)
+    assert not any("shop" in name for name in inspect.signature(prompt.build_user_prompt).parameters)
+    config = dict(CONFIG, shopping=[{"text": "Dragon fruit"}])
+    text = prompt.build_user_prompt(config, day, [], [], tasks_for(config, day), [])
+    assert "Dragon fruit" not in text
+    assert "shopping" not in text.lower()

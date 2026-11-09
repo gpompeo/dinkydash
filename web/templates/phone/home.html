@@ -11,6 +11,36 @@
 </form>
 {% endblock %}
 
+{% macro shopping_row(item, bought) %}
+<div style="display:flex;flex-direction:column;gap:0.375rem;">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+        <form method="post" action="{{ url_for('phone.shopping_tick', item_id=item.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="done" value="{{ '0' if bought else '1' }}">
+            <button class="btn {{ '' if bought else 'outline' }}" type="submit"
+                    aria-pressed="{{ 'true' if bought else 'false' }}"
+                    aria-label="{{ item.text }}: {{ 'bought. Put back' if bought else 'not bought. Mark as bought' }}">{{ "✓" if bought else "○" }}</button>
+        </form>
+        <span>{{ item.text }}{% if item.quantity %} <span class="hint">{{ item.quantity }}</span>{% endif %}
+            {% if names.get(item.added_by) %}<span class="hint">added by {{ names[item.added_by] }}</span>{% endif %}</span>
+    </div>
+    <details>
+        <summary class="hint">Edit</summary>
+        <form method="post" action="{{ url_for('phone.shopping_edit', item_id=item.id) }}"
+              style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input name="text" value="{{ item.text }}" maxlength="{{ limits.text }}" aria-label="Item" required style="flex:1 1 10rem;">
+            <input name="quantity" value="{{ item.quantity }}" maxlength="{{ limits.quantity }}" aria-label="Quantity" style="flex:0 1 7rem;">
+            <button class="btn" type="submit">Save</button>
+        </form>
+        <form method="post" action="{{ url_for('phone.shopping_delete', item_id=item.id) }}" style="margin-top:0.5rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn outline" type="submit">Delete</button>
+        </form>
+    </details>
+</div>
+{% endmacro %}
+
 {% block content %}
 {% if tabs %}
 <nav aria-label="Sections" style="display:flex;gap:0.5rem;">
@@ -48,6 +78,31 @@
     {% endfor %}
 </div>
 {% endfor %}
+{% elif current == "shopping" %}
+<form class="card pad" method="post" action="{{ url_for('phone.shopping_add') }}"
+      style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input name="text" maxlength="{{ limits.text }}" placeholder="Add an item" aria-label="Item" required style="flex:1 1 10rem;">
+    <input name="quantity" maxlength="{{ limits.quantity }}" placeholder="How many?" aria-label="Quantity" style="flex:0 1 7rem;">
+    <button class="btn" type="submit">Add</button>
+</form>
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
+    <div class="card-title">To buy</div>
+    {% for item in open_items %}{{ shopping_row(item, false) }}{% else %}
+    <div class="hint">Nothing to buy.</div>
+    {% endfor %}
+</div>
+{% if bought_items %}
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
+    <div style="display:flex;align-items:center;">
+        <div class="card-title">Bought</div>
+        <form method="post" action="{{ url_for('phone.shopping_clear') }}" style="margin-left:auto;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn outline" type="submit">Clear bought</button>
+        </form>
+    </div>
+    {% for item in bought_items %}{{ shopping_row(item, true) }}{% endfor %}
+</div>
+{% endif %}
 {% else %}
 <div class="card pad">
     <div class="hint">Nothing to show here yet.</div>

@@ -20,7 +20,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
                    session, url_for)
 
 from dinkydash import config as config_module
-from dinkydash import checkin, pins, streaks
+from dinkydash import checkin, pins, shopping, streaks
 from dinkydash.context import tasks_for
 from web import manifest as manifest_module
 from web import parent, ratelimit
@@ -137,7 +137,12 @@ def _tab(name):
         abort(404)
     current = name or (keys[0] if keys else None)
     days = _task_days(config, person) if current == "tasks" else []
+    items = _shopping_items(config) if current == "shopping" else []
     return _render("phone/home.html", person=person, tabs=tabs, current=current, days=days,
+                   open_items=[i for i in items if not i.get("bought_at")],
+                   bought_items=[i for i in items if i.get("bought_at")],
+                   names={p["id"]: p.get("name", "") for p in _people(config)},
+                   limits={"text": shopping.MAX_TEXT, "quantity": shopping.MAX_QUANTITY},
                    streak=_streak(config, person) if current == "tasks" else None)
 
 
@@ -239,6 +244,90 @@ def tick():
         store.record_completion(entry, today)
         _celebrate(config, person_id, day, today)
     return redirect(url_for("phone.tab", tab="tasks"))
+
+
+# -- the shopping list --------------------------------------------------------
+
+def _shopping_items(config):
+    return shopping.current(current_store().load_shopping(), config_module.now_for(config))
+
+
+def _shopper():
+    """Who is writing to the list, or an early refusal.
+
+    The Shopping switch comes first so a hidden module answers 404 to every
+    route; then a phone with no name picked gets 401. CSRF has already been
+    checked app-wide. With sign-in on, every member may write to the list, so
+    being a named person is the whole access rule.
+    """
+    config = _config()
+    if not config_module.feature_on(config, "shopping"):
+        abort(404)
+    actor = _person(config, session.get(PERSON))
+    if actor is None:
+        abort(401)
+    return config, actor
+
+
+def _change_list(change):
+    """Run `change(items, now)` on the stored list; flash a problem and keep it if there is one."""
+    config, actor = _shopper()
+    now = config_module.now_for(config)
+    problems = []
+
+    def apply(items):
+        items = shopping.current(items, now)
+        changed, problem = change(items, now, actor)
+        if problem:
+            problems.append(problem)
+            return items
+        return changed
+
+    current_store().update_shopping(apply)
+    for problem in problems:
+        flash(problem, "error")
+    return redirect(url_for("phone.tab", tab="shopping"))
+
+
+def _known(items, item_id):
+    if not any(i["id"] == item_id for i in items):
+        abort(404)
+
+
+@bp.route("/h/shopping/add", methods=["POST"])
+def shopping_add():
+    return _change_list(lambda items, now, actor: shopping.add_item(
+        items, request.form.get("text"), request.form.get("quantity"), actor["id"], now))
+
+
+@bp.route("/h/shopping/clear", methods=["POST"])
+def shopping_clear():
+    return _change_list(lambda items, now, actor: (shopping.clear_bought(items), None))
+
+
+@bp.route("/h/shopping/<item_id>/edit", methods=["POST"])
+def shopping_edit(item_id):
+    def change(items, now, actor):
+        _known(items, item_id)
+        return shopping.edit_item(items, item_id, request.form.get("text"),
+                                  request.form.get("quantity"), now)
+    return _change_list(change)
+
+
+@bp.route("/h/shopping/<item_id>/tick", methods=["POST"])
+def shopping_tick(item_id):
+    def change(items, now, actor):
+        _known(items, item_id)
+        return shopping.set_bought(items, item_id, request.form.get("done") != "0", now), None
+    return _change_list(change)
+
+
+@bp.route("/h/shopping/<item_id>/delete", methods=["POST"])
+def shopping_delete(item_id):
+    def change(items, now, actor):
+        _known(items, item_id)
+        return shopping.delete_item(items, item_id), None
+    return _change_list(change)
 
 
 def _pinned(people):
