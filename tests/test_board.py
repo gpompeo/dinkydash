@@ -533,3 +533,30 @@ class TestTheFactOfTheDayIsNotShown:
         assert 'class="note' not in page
         # The title is allowed to wrap; it is not clipped in the markup.
         assert "overflow-wrap: break-word" in page
+
+
+class TestShoppingCard:
+    NOW = datetime(2026, 9, 3, 12, 0, tzinfo=tzinfo_for(CONFIG))
+
+    def config(self, on=True):
+        return dict(CONFIG, features={"tasks": True, "special_dates": True, "shopping": on})
+
+    def item(self, n, bought_at=None, quantity=""):
+        return {"id": f"i{n}", "text": f"Thing {n}", "quantity": quantity,
+                "added_by": "mia", "added_at": "2026-09-03T08:00:00", "bought_at": bought_at}
+
+    def view(self, items, on=True):
+        return build_view(self.config(on), None, TODAY, now=self.NOW, shopping=items)
+
+    def test_eight_unbought_then_a_count(self):
+        v = self.view([self.item(n) for n in range(11)])
+        assert [i["text"] for i in v["shopping"]] == [f"Thing {n}" for n in range(8)]
+        assert v["shopping_more"] == 3
+
+    def test_bought_items_are_not_shown_and_old_ones_are_gone(self):
+        items = [self.item(1, bought_at="2026-09-03T09:00:00+02:00"), self.item(2)]
+        assert [i["text"] for i in self.view(items)["shopping"]] == ["Thing 2"]
+
+    def test_follows_the_switch(self):
+        assert self.view([self.item(1)], on=False)["shopping"] == []
+

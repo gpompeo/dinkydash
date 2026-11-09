@@ -28,6 +28,7 @@ from .clock import clock_of, format_time
 from .config import feature_on
 from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
+from . import shopping as shopping_module
 from .streaks import person_streak, task_streak
 
 # The agenda's row budget, not just today's cap. Today fills it first and
@@ -38,6 +39,9 @@ MAX_EVENTS = 5
 # reads as today's first.
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
+
+# The wall's shopping card names this many unbought items, then counts the rest.
+MAX_SHOPPING = 8
 
 # Nothing pushes to the dashboard, so it reloads itself on a timer. Five minutes is
 # the ceiling — it is a panel on a wall, not a page anyone is watching — and
@@ -152,11 +156,14 @@ def add_checkins(view, config, tasks, today, completions):
         if (names := _open_names(config, t, yesterday, have))]
 
 
-def build_view(config, payload, today, now=None, completions=None):
+def build_view(config, payload, today, now=None, completions=None, shopping=None):
     """The complete view model for templates/board.html.
 
     `completions` is the list the store holds for the last 400 days, or None
     when it keeps none.
+
+    `shopping` is the stored shopping list, or None when the store keeps none.
+    The card needs `now` to know which bought items have expired.
 
     `now` is this moment on the family's clock, and only the banner reads it:
     without one every stale dashboard counts as late, which is what a caller
@@ -186,6 +193,8 @@ def build_view(config, payload, today, now=None, completions=None):
         "streaks": [],
         "yesterday": [],
         "countdowns": countdowns,
+        "shopping": [],
+        "shopping_more": 0,
         "events": [],
         "tomorrow": [],
         "headline": "",
@@ -201,6 +210,14 @@ def build_view(config, payload, today, now=None, completions=None):
         "today": today.isoformat(),
         "timezone": config.get("timezone") or "UTC",
     }
+
+    if shopping and now is not None and feature_on(config, "shopping"):
+        # Bought items are for the phone; the wall asks what is still to get.
+        unbought = [i for i in shopping_module.current(shopping, now)
+                    if not i.get("bought_at")]
+        view["shopping"] = [{"text": i["text"], "quantity": i.get("quantity") or ""}
+                            for i in unbought[:MAX_SHOPPING]]
+        view["shopping_more"] = max(0, len(unbought) - MAX_SHOPPING)
 
     if tasks:
         add_checkins(view, config, tasks, today, completions)

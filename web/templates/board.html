@@ -418,6 +418,18 @@
         .countdown.today strong { color: var(--accent); }
         .countdown-emoji { font-size: 1.55rem; flex-shrink: 0; line-height: 1.15; }
 
+        .shopping { display: flex; flex-direction: column; }
+        .shopping > * + * { margin-top: 0.45rem; }
+        .shop-item, .shop-more {
+            font-size: 1.4rem;
+            line-height: 1.25;
+            color: var(--text);
+            min-width: 0;
+            overflow-wrap: break-word;
+        }
+        .shop-qty, .shop-more { color: var(--text-muted); }
+        .shop-item.shed { display: none; }
+
         /* The full-screen message, for an account whose access is over. */
         .waiting {
             flex-grow: 1;
@@ -612,6 +624,18 @@
                 </div>
             </div>
             {% endif %}
+
+            {% if view.shopping %}
+            <div>
+                <div class="label">Shopping</div>
+                <div class="shopping">
+                    {% for item in view.shopping %}
+                    <div class="shop-item">{{ item.text }}{% if item.quantity %} <span class="shop-qty">&times; {{ item.quantity }}</span>{% endif %}</div>
+                    {% endfor %}
+                    <div class="shop-more" data-left="{{ view.shopping_more }}"{% if not view.shopping_more %} hidden{% endif %}>{% if view.shopping_more %}+{{ view.shopping_more }} more{% endif %}</div>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -691,6 +715,7 @@
         for (var i = 0; i < shed.length; i++) { shed[i].classList.remove("shed"); }
         var more = document.querySelector(".agenda > .events > .more");
         if (more) { more.hidden = true; more.textContent = ""; }
+        countShopping();
     }
 
     // The last row of a list still on screen, never its first: a day with one
@@ -732,12 +757,27 @@
             list.push([function () { countdown.classList.add("shed"); },
                        function () { countdown.classList.remove("shed"); }]);
         }
+        var item = lastShown(board.querySelectorAll(".shop-item"));
+        if (item) {
+            list.push([function () { item.classList.add("shed"); countShopping(); },
+                       function () { item.classList.remove("shed"); countShopping(); }]);
+        }
         var event = lastShown(board.querySelectorAll(".agenda > .events > .event"));
         if (event) {
             list.push([function () { event.classList.add("shed"); countMore(); },
                        function () { event.classList.remove("shed"); countMore(); }]);
         }
         return list;
+    }
+
+    // Shopping items shed here join the ones the server already left out.
+    function countShopping() {
+        var more = document.querySelector(".shop-more");
+        if (!more) return;
+        var n = document.querySelectorAll(".shop-item.shed").length +
+                parseInt(more.getAttribute("data-left") || "0", 10);
+        more.hidden = n === 0;
+        more.textContent = n ? "+" + n + " more" : "";
     }
 
     // Each of today's hidden rows is counted on the "+N more" line, so a row

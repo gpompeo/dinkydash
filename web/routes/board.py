@@ -119,8 +119,10 @@ def render_board(store, manifest_url=None, access=None, changes_url=None):
         now = config_module.now_for(config)
         load = getattr(store, "load_completions", None)
         completions = load(now.date() - timedelta(days=streaks.MAX_DAYS)) if load else None
+        load_list = getattr(store, "load_shopping", None)
         view = board_view.build_view(config, payload, now.date(), now=now,
-                                     completions=completions)
+                                     completions=completions,
+                                     shopping=load_list() if load_list else None)
     if changes_url is None and hasattr(store, "change_token"):
         changes_url = url_for("board.changes")
     return render_template("board.html", view=view, changes_url=changes_url,
