@@ -1165,8 +1165,13 @@ class TestTaskCaps:
     """40 tasks, 80-character titles, refused in plain English."""
 
     def add(self, client, title):
-        return client.post("/settings/recurring/new",
-                           data={"title": title, "choices": ["Mia"]})
+        return client.post("/settings/recurring/new", data={"title": title, "choices": [self.mia]})
+
+    @pytest.fixture(autouse=True)
+    def _mia(self, client, config_path):
+        client.get("/settings/recurring")
+        self.mia = next(p["id"] for p in config_module.load_config(config_path)["people"]
+                        if p["name"] == "Mia")
 
     def test_a_title_of_eighty_characters_saves(self, client, config_path):
         assert self.add(client, "x" * 80).status_code == 302
@@ -1187,3 +1192,36 @@ class TestTaskCaps:
         assert response.status_code == 200
         assert "up to 40 tasks" in response.get_data(as_text=True)
         assert len(config_module.load_config(config_path)["tasks"]) == 40
+
+
+class TestRotationPostsPersonIds:
+    """The form posts ids, labelled by name; nothing but a family member's id is stored."""
+
+    def ids(self, config_path):
+        return {p["name"]: p["id"] for p in config_module.load_config(config_path)["people"]}
+
+    def test_the_form_values_are_ids_and_the_labels_are_names(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = self.ids(config_path)
+        first = ids_for(config_path, "tasks")[0]
+        html = client.get(f"/settings/recurring/{first}").get_data(as_text=True)
+        assert f'value="{ids["Mia"]}"' in html and ">Mia</label>" in html
+
+    def test_unknown_and_empty_ids_are_never_stored(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = self.ids(config_path)
+        first = ids_for(config_path, "tasks")[0]
+        response = client.post(f"/settings/recurring/{first}", data={
+            "title": "Set the table",
+            "choices": [ids["Theo"], "", "nobody", ids["Theo"], ids["Mia"]]})
+        assert response.status_code == 302
+        stored = config_module.load_config(config_path)["tasks"][0]["assignment"]["people"]
+        assert stored == [ids["Theo"], ids["Mia"]]
+
+    def test_only_unknown_ids_is_the_choose_someone_error(self, client, config_path):
+        client.get("/settings/recurring")
+        first = ids_for(config_path, "tasks")[0]
+        response = client.post(f"/settings/recurring/{first}",
+                               data={"title": "Set the table", "choices": ["", "nobody"]})
+        assert response.status_code == 200
+        assert "Choose at least one person." in response.get_data(as_text=True)

@@ -19,8 +19,9 @@ CONFIG = {
     "timezone": "Europe/Berlin",
     "theme": "light",
     "people": [{"id": "mia12345", "name": "Mia", "date_of_birth": "2017-03-15"}],
-    "recurring": [{"id": "job12345", "title": "Set the table",
-                   "choices": ["Mia"], "emoji": "🍽"}],
+    "tasks": [{"id": "job12345", "title": "Set the table", "emoji": "🍽",
+               "recurrence": {"kind": "daily"},
+               "assignment": {"mode": "fixed", "people": ["mia12345"]}}],
 }
 
 def payload_for_today():
@@ -213,9 +214,9 @@ class TestABoardOutOfPostgres:
         # A stored note still loads. The dashboard does not show it.
         assert "An octopus fact." not in page
 
-    def test_it_recomputes_the_chore_rather_than_reading_it(
+    def test_it_recomputes_the_task_rather_than_reading_it(
             self, client, pg_pool, pg_family):
-        # Chores are a pure function of config + date and are not in the
+        # Tasks are a pure function of config + date and are not in the
         # payload, so seeing one proves build_view ran over the database config.
         page = client.get(board_path(pg_pool, pg_family)).get_data(as_text=True)
         assert "Set the table" in page
@@ -276,7 +277,10 @@ class TestABoardOutOfPostgres:
 
         manifest = re.compile(r'<link rel="manifest" href="[^"]+">')
         assert manifest.search(from_file) and manifest.search(from_rows)
-        assert manifest.sub("[manifest]", from_rows) == manifest.sub("[manifest]", from_file)
+        # Self-hosted pages poll the change counter; the store behind a cloud page has none (D24).
+        polling = re.compile(r' data-changes="[^"]*"')
+        assert (polling.sub("", manifest.sub("[manifest]", from_rows))
+                == polling.sub("", manifest.sub("[manifest]", from_file)))
 
 
 class TestWhichModelRunsIsNotAHostedSetting:

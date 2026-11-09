@@ -2,17 +2,17 @@
 {% if people %}
 <div class="rotation-list">
     {% for person in people %}
-    <div class="rotation-person" data-person="{{ person }}">
-        <span class="rotation-position" aria-hidden="true">{{ (loop.index ~ '.') if person in selected else '—' }}</span>
+    <div class="rotation-person" data-person="{{ person.name }}">
+        <span class="rotation-position" aria-hidden="true">{{ (loop.index ~ '.') if person.id in selected else '—' }}</span>
         <div class="checkline">
-            <input type="checkbox" id="p-{{ loop.index }}" name="{{ name }}" value="{{ person }}" {{ 'checked' if person in selected }} {{ field_access(name, help) }}>
-            <label for="p-{{ loop.index }}">{{ person }}</label>
+            <input type="checkbox" id="p-{{ loop.index }}" name="{{ name }}" value="{{ person.id }}" {{ 'checked' if person.id in selected }} {{ field_access(name, help) }}>
+            <label for="p-{{ loop.index }}">{{ person.name }}</label>
         </div>
         <div class="move">
-            <button type="submit" name="move_choice" value="up:{{ person }}" formnovalidate
-                    aria-label="Move {{ person }} earlier in the rotation" {{ 'disabled' if person not in selected or loop.first }}>&#9650;</button>
-            <button type="submit" name="move_choice" value="down:{{ person }}" formnovalidate
-                    aria-label="Move {{ person }} later in the rotation" {{ 'disabled' if person not in selected or loop.index == selected | length }}>&#9660;</button>
+            <button type="submit" name="move_choice" value="up:{{ person.id }}" formnovalidate
+                    aria-label="Move {{ person.name }} earlier in the rotation" {{ 'disabled' if person.id not in selected or loop.first }}>&#9650;</button>
+            <button type="submit" name="move_choice" value="down:{{ person.id }}" formnovalidate
+                    aria-label="Move {{ person.name }} later in the rotation" {{ 'disabled' if person.id not in selected or loop.index == selected | length }}>&#9660;</button>
         </div>
     </div>
     {% endfor %}

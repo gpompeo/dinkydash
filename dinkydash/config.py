@@ -216,6 +216,8 @@ def migrate_chores(config, chores, today):
 
     tasks, task_ids = [], set()
     for chore in chores:
+        if len(tasks) >= MAX_TASKS:
+            break
         if not isinstance(chore, dict) or not chore.get("title"):
             continue
         choices = [c for c in chore.get("choices") or [] if isinstance(c, str)]
@@ -223,7 +225,7 @@ def migrate_chores(config, chores, today):
         rotation = [ids[name] for name in choices if name in ids]
         task = {
             "id": chore.get("id") or new_id(task_ids),
-            "title": chore["title"],
+            "title": str(chore["title"])[:MAX_TITLE_LENGTH],
             "emoji": chore.get("emoji", ""),
             "recurrence": {"kind": "daily"},
             "assignment": {"mode": "rotate", "people": rotation, "offset": 0},

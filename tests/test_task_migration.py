@@ -89,3 +89,19 @@ def test_a_config_that_already_has_tasks_is_left_alone():
 
 def test_with_no_chores_there_are_no_tasks():
     assert config_module.with_defaults({}, today=date(2026, 5, 1))["tasks"] == []
+
+
+def test_the_migration_keeps_to_the_caps():
+    chores = [{"title": f"Chore {n}", "choices": []} for n in range(50)]
+    chores[0]["title"] = "x" * 200
+    config = config_module.with_defaults({"recurring": chores}, today=date(2026, 5, 1))
+    assert len(config["tasks"]) == config_module.MAX_TASKS
+    assert len(config["tasks"][0]["title"]) == config_module.MAX_TITLE_LENGTH
+
+
+def test_a_hand_edited_file_over_the_caps_still_shows_only_the_caps():
+    tasks = [{"id": f"t{n}", "title": "y" * 200, "recurrence": {"kind": "daily"},
+              "assignment": {"mode": "anyone"}} for n in range(60)]
+    due = tasks_for({"tasks": tasks}, date(2026, 5, 1))
+    assert len(due) == config_module.MAX_TASKS
+    assert all(len(t["title"]) == config_module.MAX_TITLE_LENGTH for t in due)

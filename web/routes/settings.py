@@ -213,26 +213,34 @@ SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
 
 
 def task_form(config, task):
-    """A task as the Tasks form shows it: who is in the rotation, by name."""
+    """A task as the Tasks form shows it: who is in the rotation, by person id.
+
+    `names` is the same list as words, for the list page.
+    """
     by_id = {p.get("id"): p.get("name", "") for p in config.get("people") or []
-             if isinstance(p, dict)}
+             if isinstance(p, dict) and p.get("id")}
     people = (task.get("assignment") or {}).get("people") or []
+    chosen = [i for i in people if i in by_id]
     return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
-            "choices": [by_id[i] for i in people if i in by_id]}
+            "choices": chosen, "names": [by_id[i] for i in chosen]}
+
+
+def known_person_ids(config, ids):
+    """The posted person ids that belong to somebody in this family, once each, in order."""
+    known = {p.get("id") for p in config.get("people") or [] if isinstance(p, dict) and p.get("id")}
+    return [i for i in dict.fromkeys(ids or []) if i and i in known]
 
 
 def task_from_form(config, existing, submitted):
     """The task to store for a submitted Tasks form.
 
     Whatever the form does not edit (the recurrence, the rotation offset) is kept from `existing`.
-    The rotation is stored as person ids, so a later rename changes nothing.
+    The form posts person ids and only ids of people in the family are kept, so a later rename
+    changes nothing and no empty id reaches an assignment.
     """
-    ids = {}
-    for person in config.get("people") or []:
-        ids.setdefault(person.get("name"), person.get("id"))
     task = dict(existing or {})
     assignment = dict(task.get("assignment") or {"mode": "rotate", "offset": 0})
-    assignment["people"] = [ids[n] for n in submitted.get("choices") or [] if n in ids]
+    assignment["people"] = known_person_ids(config, submitted.get("choices"))
     task.update({"title": submitted["title"], "emoji": submitted.get("emoji", ""),
                  "recurrence": task.get("recurrence") or {"kind": "daily"},
                  "assignment": assignment})
@@ -636,6 +644,8 @@ def section_edit(section_name, item_id):
         submitted = dict(item)
         for field in section["fields"]:
             submitted[field[0]] = parse_field(field, request.form, item)
+        if section_name == "recurring":
+            submitted["choices"] = known_person_ids(config, submitted["choices"])
 
         if section_name == "recurring" and (request.form.get("move_choice")
                                             or request.form.get("action") == "update_choices"):
@@ -698,7 +708,9 @@ def section_edit(section_name, item_id):
             item = submitted
 
     selected = item.get("choices") or []
-    participants = list(dict.fromkeys([*selected, *config_module.people_names(config)]))
+    everyone = {p["id"]: {"id": p["id"], "name": p.get("name", "")}
+                for p in config.get("people") or [] if isinstance(p, dict) and p.get("id")}
+    participants = [everyone[i] for i in dict.fromkeys([*selected, *everyone]) if i in everyone]
     return render_template(
         "settings/edit.html", section=section, section_name=section_name,
         item=item, item_id=item_id, is_new=is_new, problems=problems,

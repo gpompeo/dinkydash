@@ -8,6 +8,7 @@ at render time even when the day's generated text is stale.
 import calendar as _calendar
 from datetime import date, datetime
 
+from .config import MAX_TASKS, MAX_TITLE_LENGTH
 from .recurrence import occurrence_index, occurs_on
 
 
@@ -121,7 +122,7 @@ def tasks_for(config, day):
     (a rotation or a fixed person who has been removed) is left out; "anyone" is its own answer.
     """
     due = []
-    for task in config.get("tasks") or []:
+    for task in (config.get("tasks") or [])[:MAX_TASKS]:
         if not isinstance(task, dict) or not task.get("title") or not occurs_on(task, day):
             continue
         mode = (task.get("assignment") or {}).get("mode")
@@ -137,7 +138,7 @@ def tasks_for(config, day):
         due.append({
             "id": task.get("id"),
             "emoji": task.get("emoji", ""),
-            "title": task["title"],
+            "title": str(task["title"])[:MAX_TITLE_LENGTH],
             "mode": mode,
             "person_ids": [p.get("id") for p in people],
             "assigned_to": label,

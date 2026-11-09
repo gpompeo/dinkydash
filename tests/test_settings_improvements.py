@@ -148,12 +148,11 @@ def test_unchanged_and_cosmetic_task_edits_keep_each_rotation(household):
     before = tasks_for(config, today)
     # Rendering after the People list moves must still follow each task's own order.
     client.post('/settings/people/averyaaa/move', data={'direction': 'down'})
-    names = {p['id']: p['name'] for p in config['people']}
     for task in config['tasks']:
         url = '/settings/recurring/' + task['id']
         html = client.get(url).get_data(as_text=True)
         posted_choices = Form(html).checked_people()
-        assert posted_choices == [names[i] for i in task['assignment']['people']]
+        assert posted_choices == task['assignment']['people']
         data = MultiDict([('title', task['title']), ('emoji', '🌱')]
                          + [('choices', p) for p in posted_choices])
         assert client.post(url, data=data).status_code == 302
@@ -170,15 +169,15 @@ def ids_of(store, index):
 def test_reordering_a_draft_keeps_other_fields_and_only_save_persists(household):
     client, store, _ = household
     url = '/settings/recurring/tableaaa'
-    draft = MultiDict([('title', 'New title'), ('choices', 'Riley'), ('choices', 'Avery'),
-                      ('choices', 'Jordan'), ('move_choice', 'up:Jordan')])
+    draft = MultiDict([('title', 'New title'), ('choices', 'rileyaaa'), ('choices', 'averyaaa'),
+                      ('choices', 'jordanaa'), ('move_choice', 'up:jordanaa')])
     html = client.post(url, data=draft).get_data(as_text=True)
-    assert Form(html).checked_people() == ['Riley', 'Jordan', 'Avery']
+    assert Form(html).checked_people() == ['rileyaaa', 'jordanaa', 'averyaaa']
     assert Form(html).controls(name='title')[0]['value'] == 'New title'
     assert ids_of(store, 0) == ['rileyaaa', 'averyaaa']
     assert store.load_config()['tasks'][0]['title'] == 'Set the table'
     # Save the explicit new order while removing Riley.
-    data = MultiDict([('title', 'New title'), ('choices', 'Jordan'), ('choices', 'Avery')])
+    data = MultiDict([('title', 'New title'), ('choices', 'jordanaa'), ('choices', 'averyaaa')])
     assert client.post(url, data=data).status_code == 302
     assert ids_of(store, 0) == ['jordanaa', 'averyaaa']
     assert ids_of(store, 1) == ['averyaaa', 'rileyaaa']
@@ -186,9 +185,9 @@ def test_reordering_a_draft_keeps_other_fields_and_only_save_persists(household)
 
 def test_no_script_membership_update_is_not_a_save(household):
     client, store, _ = household
-    data = MultiDict([('title', 'New chore'), ('choices', 'Jordan'), ('action', 'update_choices')])
+    data = MultiDict([('title', 'New chore'), ('choices', 'jordanaa'), ('action', 'update_choices')])
     html = client.post('/settings/recurring/new', data=data).get_data(as_text=True)
-    assert Form(html).checked_people() == ['Jordan']
+    assert Form(html).checked_people() == ['jordanaa']
     assert len(store.load_config()['tasks']) == 2
 
 

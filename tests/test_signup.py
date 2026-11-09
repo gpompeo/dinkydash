@@ -223,7 +223,7 @@ class TestTheStartingConfig:
         open_the_link(client, link_in(sent[0]))
         config = family_of(pg_pool, NEWCOMER)["config"]
         assert [person["name"] for person in config["people"]] == ["Mia", "Theo"]
-        assert config["recurring"] and config["special_dates"] and config["pets"]
+        assert config["tasks"] and config["special_dates"] and config["pets"]
 
     def test_and_never_a_calendar_url(self, client, sent, pg_pool):
         """An iCal address is a password in a URL. A working example would put

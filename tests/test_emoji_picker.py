@@ -141,7 +141,7 @@ class TestWhatTheServerAccepts:
     CHORE = "/settings/recurring/table123"
 
     def save(self, client, emoji):
-        return client.post(self.CHORE, data={"title": "Set the table", "emoji": emoji, "choices": ["Mia"]})
+        return client.post(self.CHORE, data={"title": "Set the table", "emoji": emoji, "choices": ["mia12345"]})
 
     def test_any_emoji_saves(self, client, config_path):
         assert self.save(client, "🦩").status_code == 302
