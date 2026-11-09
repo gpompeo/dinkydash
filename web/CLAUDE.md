@@ -356,6 +356,15 @@ leftover space is shared — a zero basis would split that page by ratio and let
 column shrink shorter than its text. There is no note on the dashboard. Long event titles,
 chore pills and countdowns wrap (`overflow-wrap: break-word`, `min-width: 0` on the flex item).
 
+## Phone page, wall token and sign-in
+
+`web/parent.py` holds the optional sign-in (`enabled()`, `guard()`, the attempt limiter); the settings
+blueprint and `/` both call it. `routes/phone.py` serves `/h` (name picker, then `/h/<tab>`, which 404s
+while its feature is off) and `POST /h/tick`; `routes/wall.py` serves the wall at `/s/<token>`, only
+registered when a password is set. Each has its own `changes` route returning the change counter, and
+the board script polls it every 15 seconds. Every writing route checks CSRF and the access rule first.
+Task editor radios need no JavaScript (`settings/_task_rules.html`).
+
 ## Home screens and manifests
 
 **Saving a page to a home screen.** `/` and `/settings/` each serve their own web app manifest

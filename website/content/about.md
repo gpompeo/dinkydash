@@ -23,7 +23,7 @@ Once a day, at a time you pick, Claude reads the day ahead and writes the headli
 ## The principles
 
 - **Bring your own screen.** Anything with a browser works. There's no hardware to buy from us, now or later.
-- **Nothing to feed.** There's nothing to tick and nobody to chase. It looks after itself.
+- **Nothing to feed.** The turns move on by themselves, and nobody has to chase anybody. Ticking a task off from your phone is there if you want it, not something the wall needs.
 - **Yours to keep.** The code is MIT-licensed and public, so the dashboard can't be taken away from you.
 
 ## Two ways to have it

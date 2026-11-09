@@ -48,15 +48,46 @@ screen, on the grounds that a stale kitchen dashboard beats an empty one.
 
 ## Protecting the settings
 
-Set `DINKYDASH_PARENT_PASSWORD` (and `DINKYDASH_SECRET_KEY`, which signs the session cookie) in `.env`
-and restart. `/settings` then asks for the password at `/signin`; the session lasts thirty days, and
-**Sign out** is at the foot of the settings home. Unset, nothing changes. Ten attempts per
-quarter-hour per caller are allowed. The dashboard at `/` stays open until the wall screen token
-lands.
+Two variables in `.env` turn sign-in on; restart after setting them.
+
+| Variable | What it does |
+|---|---|
+| `DINKYDASH_PARENT_PASSWORD` | The parent password. `/settings` then asks for it at `/signin`. Unset, nothing changes and there is no sign-in |
+| `DINKYDASH_SECRET_KEY` | Signs the session cookie. Required whenever a password is set: the app refuses to start without it |
+
+The session lasts thirty days, and **Sign out** is at the foot of the settings home. Ten attempts per
+quarter-hour per caller are allowed.
+
+With sign-in on, the dashboard at `/` redirects to `/signin`. The wall screen opens
+`/s/<token>` instead: **Settings → Wall screen** shows the link and replaces it if it leaks. The
+token lives in `auth.json`.
+
+## Phones, check-ins and the shopping list
+
+Each person opens `/h` on their own phone, picks their name and ticks off today's tasks (and
+yesterday's). A parent can set a PIN per person under **Settings → PINs**, so one child can't tick
+for another. Parents who are signed in can correct the last fourteen days on the **Activity** page.
+Streaks are worked out from the check-ins each time, never stored. The shopping list sits on the same
+page while the Shopping switch is on. Turn Tasks, Shopping or Special dates off on the settings home
+and the module disappears everywhere; its data stays where it is.
+
+## What to back up
+
+Everything the app keeps is a file next to the code. Back these up; none of them is in git.
+
+| File | Holds |
+|---|---|
+| `config.yaml` | People, tasks, calendars, settings. The one that matters most |
+| `completions.json` | Who ticked what and when, kept 400 days. Streaks come from this |
+| `shopping.json` | The shopping list |
+| `auth.json` | The wall screen token and the phone PINs (hashed). Lose it and you replace the screen link and set the PINs again |
+| `.env` | The API key, the parent password and the secret key |
+
+`dashboard_data.json`, `content_history.json` and `generate.log` can be rebuilt by the next run.
 
 ## Changing things
 
-Everything is editable from a phone at `/settings` — people, pets, chores and their rotation order,
+Everything is editable from a phone at `/settings` — people, pets, tasks (when they come up and whose they are), special dates,
 special dates, calendars, and whether the dashboard is light or dark. It writes `config.yaml`, keeping
 your comments and formatting, so editing the file by hand and editing through the UI are
 interchangeable.

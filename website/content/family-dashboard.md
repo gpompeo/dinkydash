@@ -15,7 +15,7 @@ Worth being precise about, because most of the dashboard isn't AI at all.
 Claude writes **one thing**: the daily headline, written around your family's real day. Everything else works itself out from the date:
 
 - **The countdowns** recalculate every time the page loads, so they can't drift.
-- **The chore rota** moves to the next person when the date changes. Nothing to tick.
+- **The chore rota** moves to the next person when the date changes. Ticking it off from a phone is optional.
 - **The agenda** comes straight from your calendars, merged into one list in time order.
 
 That split is the whole trick. If the daily headline fails to write one day, the times, turns and countdowns are still today's. The headline is one worked out from the day, and the dashboard says so.
@@ -35,7 +35,7 @@ The headline is Claude's. The rest is arithmetic.
 
 Every other family calendar needs somebody to keep it current. Someone ticks the chores off, someone updates the ages, someone remembers to change the rota. That person gives up around week three, and then the wall is lying.
 
-DinkyDash has nothing to tick. The rota advances on the date whether anyone's looking or not, and a birthday countdown that says 28 days is doing the sum fresh, not reading a number somebody typed in November.
+Nothing has to be ticked for DinkyDash to work. The rota advances on the date whether anyone's looking or not, and a birthday countdown that says 28 days is doing the sum fresh, not reading a number somebody typed in November.
 
 ## Two ways to run it
 

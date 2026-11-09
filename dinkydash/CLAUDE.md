@@ -99,6 +99,17 @@ is where the second and third arrive, and it has both doors in one file on purpo
 the gate on the operator's page, sits beside them for the same reason: if another is ever added it
 should be as obvious as those are.
 
+## Household modules in the engine
+
+Pure modules, all taking dates and data and never reading the clock or a file: `recurrence.py`
+(`occurs_on`, `occurrence_index`; malformed rules never occur), `streaks.py` (worked out from
+completions each time, never stored), `activity.py` (the thirty-day grid), `checkin.py` (who may tick
+which day), `pins.py` (scrypt hashes), `taskform.py` (task form state and plain-English description).
+`context.tasks_for(config, day)` resolves assignment, and rotation counts `occurrence_index` plus
+`assignment.offset`. `FileStore` owns `completions.json` (trimmed to 400 days on write),
+`shopping.json`, `auth.json` and `change_token()`. `PostgresStore` has none of them: the pages that
+need them check with `getattr` and switch off in cloud mode. Shopping text never goes into a prompt.
+
 ## Signing somebody in, and signing somebody up
 
 `accounts.py` is the token lifecycle and nothing else: mint, hash, spend, sweep. Four things in it

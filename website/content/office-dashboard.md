@@ -16,7 +16,7 @@ That's the lot.
 
 Static office screens get ignored. Someone puts up a shared calendar and a motivational quote, and by week two nobody's looking. The headline changes every day, which is enough to make people glance — and while they're glancing they see the rota and the calendar.
 
-The rota is the part that earns its place. Who's buying the coffee, who's cleaning the fridge, who's running stand-up: it moves to the next person when the date changes, with nothing to tick and nobody to chase. That's the failure mode it fixes. A shared spreadsheet needs somebody to maintain it, and that person gives up in about three weeks.
+The rota is the part that earns its place. Who's buying the coffee, who's cleaning the fridge, who's running stand-up: it moves to the next person when the date changes, with nobody to chase. That's the failure mode it fixes. A shared spreadsheet needs somebody to maintain it, and that person gives up in about three weeks.
 
 ## Mapping it onto a team
 

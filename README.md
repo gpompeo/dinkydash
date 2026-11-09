@@ -27,7 +27,8 @@ on Linux, including a 64-bit Raspberry Pi; the container image is published for 
 - A personal calendar can show only the events shared with your partner, and keep
   work and private appointments to itself
 - A look at tomorrow underneath it, on the days today leaves room
-- Whose turn each chore is — it moves on with the date, nothing to tick off
+- Today's tasks and whose turn each one is — it moves on with the date, and anyone can tick one off from their phone, with streaks to keep
+- An optional shopping list the whole family can add to from a phone
 - Countdowns to birthdays, holidays and special dates
 - An AI-written headline, tied to the day
 - Light or dark, chosen in the settings UI
