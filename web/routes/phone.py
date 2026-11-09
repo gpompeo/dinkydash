@@ -20,7 +20,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
                    session, url_for)
 
 from dinkydash import config as config_module
-from dinkydash import checkin, pins, shopping, streaks
+from dinkydash import checkin, pins, shopping, streaks, taskform
 from dinkydash.context import tasks_for
 from web import manifest as manifest_module
 from web import parent, ratelimit
@@ -102,8 +102,8 @@ def manifest():
         short_name="DinkyDash",
         description="Tick off tasks and add to the shopping list.",
         start_url=url_for("phone.home"),
-        background_color="#fffaf5",
-        theme_color="#fffaf5",
+        background_color=manifest_module.PAGE_COLOUR,
+        theme_color=manifest_module.PAGE_COLOUR,
     )
 
 
@@ -162,7 +162,7 @@ def _celebrate(config, person_id, day, today):
     done = {(c["task_id"], c["date"], c["person_id"])
             for c in current_store().load_completions(today)}
     due = [t for t in tasks_for(config, day)
-           if t["mode"] != "anyone" and person_id in t["person_ids"]]
+           if t["mode"] != taskform.ANYONE and person_id in t["person_ids"]]
     if not due or any((t["id"], day.isoformat(), person_id) not in done for t in due):
         return
     session[CELEBRATED] = day.isoformat()
@@ -194,7 +194,7 @@ def _task_days(config, person):
     for day, label in ((today, "Today"), (yesterday, "Yesterday")):
         rows = []
         for task in tasks_for(config, day):
-            if task["mode"] == "anyone":
+            if task["mode"] == taskform.ANYONE:
                 doers = [c["person_id"] for c in done.values()
                          if c["task_id"] == task["id"] and c["date"] == day.isoformat()]
                 # Credited to the phone's owner on a tick; a finished one shows who did it.

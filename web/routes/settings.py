@@ -232,7 +232,7 @@ def task_form(config, task):
             "choices": chosen, "names": [by_id[i] for i in chosen],
             "rec": taskform.recurrence_state(task.get("recurrence"), today),
             "when": taskform.describe(task.get("recurrence"), today),
-            "mode": mode if mode in taskform.MODES else "rotate"}
+            "mode": mode if mode in taskform.MODES else taskform.ROTATE}
 
 
 def known_person_ids(config, ids):
@@ -267,7 +267,7 @@ def read_rules(form, submitted, item, stored, today):
     if "rec_kind" not in form:
         stored = stored or {}
         submitted["recurrence"] = stored.get("recurrence") or {"kind": "daily"}
-        submitted["mode"] = item.get("mode") or "rotate"
+        submitted["mode"] = item.get("mode") or taskform.ROTATE
         submitted["rec"] = item.get("rec")
         return {}
     submitted["rec"] = taskform.draft_state(form, today)
@@ -275,7 +275,7 @@ def read_rules(form, submitted, item, stored, today):
     mode = form.get("mode", "")
     if mode not in taskform.MODES:
         problems["mode"] = "Choose whose job it is."
-    submitted["mode"] = mode if mode in taskform.MODES else "rotate"
+    submitted["mode"] = mode if mode in taskform.MODES else taskform.ROTATE
     return problems
 
 
@@ -400,7 +400,7 @@ def home():
         # the row rather than counting it as rotating.
         "jobs_unassigned": sum(
             1 for c in jobs
-            if (c.get("assignment") or {}).get("mode") in ("fixed", "rotate")
+            if (c.get("assignment") or {}).get("mode") in taskform.NAMED_MODES
             and not task_form(config, c)["choices"]),
     }
 
@@ -519,8 +519,8 @@ def manifest():
         description=f"Change what {family} sees on the dashboard." if family
                     else "Change what the dashboard shows.",
         start_url=url_for("settings.home"),
-        background_color="#fffaf5",
-        theme_color="#fffaf5",
+        background_color=manifest_module.PAGE_COLOUR,
+        theme_color=manifest_module.PAGE_COLOUR,
     )
 
 
@@ -702,7 +702,7 @@ def section_edit(section_name, item_id):
             problems = validate(section, submitted, today)
             if section_name == "recurring":
                 problems.update(task_problems)
-                if submitted["mode"] in ("fixed", "rotate") and not submitted["choices"]:
+                if submitted["mode"] in taskform.NAMED_MODES and not submitted["choices"]:
                     problems["choices"] = "Choose at least one person."
                 too_long = len(submitted.get("title") or "") > config_module.MAX_TITLE_LENGTH
                 if too_long:

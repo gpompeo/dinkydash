@@ -1,7 +1,7 @@
 """Optional parent sign-in for a self-hosted install.
 
 With `DINKYDASH_PARENT_PASSWORD` unset nothing here does anything: the settings
-are open on the local network, as they always were. With it set, everything
+are open on the local network. With it set, everything
 under `/settings` needs a session, and the session comes from typing that
 password at `/signin`.
 

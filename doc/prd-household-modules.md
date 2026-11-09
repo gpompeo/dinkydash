@@ -147,7 +147,7 @@ operations are absent there and the features are forced off when cloud mode is s
 | Activity | `/settings/activity` | Parent only when sign-in is on. |
 | Feature switches | Settings home | One switch per module. |
 | Task editor | `/settings/tasks` | Recurrence and assignment pickers; replaces the Chores section. |
-| Change counter | `/version`, `/s/<token>/version`, `/h/version` | Returns a number and nothing else. |
+| Change counter | `/changes`, `/s/<token>/changes`, `/h/changes` | Returns a number and nothing else. |
 
 Interface rules:
 

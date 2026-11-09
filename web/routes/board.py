@@ -92,8 +92,6 @@ def index():
 @bp.route("/changes")
 def changes():
     """The wall's change counter: a number and nothing else, same access as `/`."""
-    if current_app.config["MODE"] == CLOUD:
-        abort(404)
     return change_counter(current_store())
 
 

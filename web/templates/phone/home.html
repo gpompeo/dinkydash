@@ -13,7 +13,7 @@
 
 {% macro shopping_row(item, bought) %}
 <div style="display:flex;flex-direction:column;gap:0.375rem;">
-    <div style="display:flex;align-items:center;gap:0.75rem;">
+    <div class="inline-row">
         <form method="post" action="{{ url_for('phone.shopping_tick', item_id=item.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="done" value="{{ '0' if bought else '1' }}">
@@ -57,8 +57,7 @@
 <div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
     <div class="card-title">{{ day.label }}</div>
     {% for row in day.rows %}
-    <form method="post" action="{{ url_for('phone.tick') }}"
-          style="display:flex;align-items:center;gap:0.75rem;">
+    <form class="inline-row" method="post" action="{{ url_for('phone.tick') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_id" value="{{ row.id }}">
         <input type="hidden" name="date" value="{{ day.date }}">

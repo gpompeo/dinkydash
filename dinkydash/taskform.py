@@ -12,7 +12,10 @@ from .recurrence import KINDS
 WEEKDAYS = [0, 1, 2, 3, 4]
 WEEKEND = [5, 6]
 MAX_EVERY = 365
-MODES = ("fixed", "rotate", "anyone", "everyone")
+FIXED, ROTATE, ANYONE, EVERYONE = "fixed", "rotate", "anyone", "everyone"
+MODES = (FIXED, ROTATE, ANYONE, EVERYONE)
+# The modes that name people in order, so a job with nobody listed is skipped.
+NAMED_MODES = (FIXED, ROTATE)
 
 # What the editor offers, in order. Weekdays and Weekends are presets of the stored "weekdays" kind.
 RECURRENCE_CHOICES = (
@@ -22,10 +25,10 @@ RECURRENCE_CHOICES = (
     ("once", "Once"),
 )
 MODE_CHOICES = (
-    ("fixed", "One person", "Always the first person in the list below."),
-    ("rotate", "Taking turns", "Passes it on each time it comes up, in the order below."),
-    ("anyone", "Anyone", "Shown for the whole family; whoever does it ticks it."),
-    ("everyone", "Everyone", "Each person has their own tick."),
+    (FIXED, "One person", "Always the first person in the list below."),
+    (ROTATE, "Taking turns", "Passes it on each time it comes up, in the order below."),
+    (ANYONE, "Anyone", "Shown for the whole family; whoever does it ticks it."),
+    (EVERYONE, "Everyone", "Each person has their own tick."),
 )
 NTH_CHOICES = ((1, "First"), (2, "Second"), (3, "Third"), (4, "Fourth"), (-1, "Last"))
 DAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
