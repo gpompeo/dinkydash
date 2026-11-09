@@ -8,7 +8,7 @@ import pytest
 from werkzeug.datastructures import MultiDict
 
 from dinkydash import config as config_module
-from dinkydash.context import build_countdowns, compute_chore_assignments
+from dinkydash.context import build_countdowns, tasks_for
 from dinkydash.store import FileStore
 from tests.conftest import board_path, client_for
 from web import create_app
@@ -20,9 +20,11 @@ CONFIG = {
         {"id": "rileyaaa", "name": "Riley", "date_of_birth": "1992-06-20"},
         {"id": "jordanaa", "name": "Jordan", "date_of_birth": "1994-07-21"},
     ],
-    "recurring": [
-        {"id": "tableaaa", "title": "Set the table", "choices": ["Riley", "Avery"]},
-        {"id": "plantsaa", "title": "Water the plants", "choices": ["Avery", "Riley"]},
+    "tasks": [
+        {"id": "tableaaa", "title": "Set the table", "recurrence": {"kind": "daily"},
+         "assignment": {"mode": "rotate", "people": ["rileyaaa", "averyaaa"], "offset": 0}},
+        {"id": "plantsaa", "title": "Water the plants", "recurrence": {"kind": "daily"},
+         "assignment": {"mode": "rotate", "people": ["averyaaa", "rileyaaa"], "offset": 0}},
     ],
     "special_dates": [{"id": "holidaya", "title": "Camping", "date": "07/01"}],
     "calendars": [],
@@ -139,49 +141,54 @@ def test_invalid_countdown_does_not_hide_other_dates_or_coerce_leap_day():
     assert build_countdowns([], dates, date(2028, 2, 28))[0]['days'] == 1
 
 
-def test_unchanged_and_cosmetic_chore_edits_keep_each_rotation(household):
+def test_unchanged_and_cosmetic_task_edits_keep_each_rotation(household):
     client, store, _ = household
     config = store.load_config()
     today = config_module.today_for(config)
-    before = compute_chore_assignments(config['recurring'], today)
-    # Rendering after the People list moves must still follow each chore's own order.
+    before = tasks_for(config, today)
+    # Rendering after the People list moves must still follow each task's own order.
     client.post('/settings/people/averyaaa/move', data={'direction': 'down'})
-    for chore in config['recurring']:
-        url = '/settings/recurring/' + chore['id']
+    for task in config['tasks']:
+        url = '/settings/recurring/' + task['id']
         html = client.get(url).get_data(as_text=True)
         posted_choices = Form(html).checked_people()
-        assert posted_choices == chore['choices']
-        data = MultiDict([('title', chore['title']), ('emoji', '🌱')]
+        assert posted_choices == task['assignment']['people']
+        data = MultiDict([('title', task['title']), ('emoji', '🌱')]
                          + [('choices', p) for p in posted_choices])
         assert client.post(url, data=data).status_code == 302
-    after = store.load_config()['recurring']
-    assert [c['choices'] for c in after] == [c['choices'] for c in config['recurring']]
-    assert [c['assigned_to'] for c in compute_chore_assignments(after, today)] == [c['assigned_to'] for c in before]
+    after = store.load_config()
+    assert [t['assignment'] for t in after['tasks']] == [t['assignment'] for t in config['tasks']]
+    assert [t['recurrence'] for t in after['tasks']] == [{'kind': 'daily'}] * 2
+    assert [t['assigned_to'] for t in tasks_for(after, today)] == [t['assigned_to'] for t in before]
+
+
+def ids_of(store, index):
+    return store.load_config()['tasks'][index]['assignment']['people']
 
 
 def test_reordering_a_draft_keeps_other_fields_and_only_save_persists(household):
     client, store, _ = household
     url = '/settings/recurring/tableaaa'
-    draft = MultiDict([('title', 'New title'), ('choices', 'Riley'), ('choices', 'Avery'),
-                      ('choices', 'Jordan'), ('move_choice', 'up:Jordan')])
+    draft = MultiDict([('title', 'New title'), ('choices', 'rileyaaa'), ('choices', 'averyaaa'),
+                      ('choices', 'jordanaa'), ('move_choice', 'up:jordanaa')])
     html = client.post(url, data=draft).get_data(as_text=True)
-    assert Form(html).checked_people() == ['Riley', 'Jordan', 'Avery']
+    assert Form(html).checked_people() == ['rileyaaa', 'jordanaa', 'averyaaa']
     assert Form(html).controls(name='title')[0]['value'] == 'New title'
-    assert store.load_config()['recurring'][0]['choices'] == ['Riley', 'Avery']
-    assert store.load_config()['recurring'][0]['title'] == 'Set the table'
+    assert ids_of(store, 0) == ['rileyaaa', 'averyaaa']
+    assert store.load_config()['tasks'][0]['title'] == 'Set the table'
     # Save the explicit new order while removing Riley.
-    data = MultiDict([('title', 'New title'), ('choices', 'Jordan'), ('choices', 'Avery')])
+    data = MultiDict([('title', 'New title'), ('choices', 'jordanaa'), ('choices', 'averyaaa')])
     assert client.post(url, data=data).status_code == 302
-    assert store.load_config()['recurring'][0]['choices'] == ['Jordan', 'Avery']
-    assert store.load_config()['recurring'][1]['choices'] == ['Avery', 'Riley']
+    assert ids_of(store, 0) == ['jordanaa', 'averyaaa']
+    assert ids_of(store, 1) == ['averyaaa', 'rileyaaa']
 
 
 def test_no_script_membership_update_is_not_a_save(household):
     client, store, _ = household
-    data = MultiDict([('title', 'New chore'), ('choices', 'Jordan'), ('action', 'update_choices')])
+    data = MultiDict([('title', 'New chore'), ('choices', 'jordanaa'), ('action', 'update_choices')])
     html = client.post('/settings/recurring/new', data=data).get_data(as_text=True)
-    assert Form(html).checked_people() == ['Jordan']
-    assert len(store.load_config()['recurring']) == 2
+    assert Form(html).checked_people() == ['jordanaa']
+    assert len(store.load_config()['tasks']) == 2
 
 
 def test_enter_defaults_to_save_not_a_rotation_action(household):
@@ -199,7 +206,7 @@ def test_empty_participants_and_bad_email_link_errors_to_controls(household):
     for field in Form(html).controls(name='choices'):
         assert field['aria-invalid'] == 'true'
         assert 'error-choices' in field['aria-describedby'].split()
-    assert store.load_config()['recurring'][0]['choices'] == ['Riley', 'Avery']
+    assert ids_of(store, 0) == ['rileyaaa', 'averyaaa']
     html = client.post('/settings/calendars/new', data={
         'label': 'Family', 'url': 'https://example.com/calendar.ics', 'shared_with': 'bad-address',
     }).get_data(as_text=True)

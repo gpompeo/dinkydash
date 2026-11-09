@@ -7,10 +7,10 @@ from tests.test_settings_improvements import household  # both stores and modes
 from web import setup
 
 
-def test_removal_needs_confirmation_and_names_dependent_chores(household):
+def test_removal_needs_confirmation_and_names_dependent_tasks(household):
     client, store, _ = household
     config = store.load_config()
-    config['recurring'][0]['choices'] = ['Avery']
+    config['tasks'][0]['assignment']['people'] = ['averyaaa']
     store.save_config(config)
     url = '/settings/people/averyaaa/delete'
     for data in ({}, {'confirmed': 'no'}):
@@ -18,19 +18,19 @@ def test_removal_needs_confirmation_and_names_dependent_chores(household):
         assert page.status_code == 200
         html = page.get_data(as_text=True)
         assert 'Remove Avery?' in html and 'Keep Avery' in html
-        assert 'removed from chore rotations' in html
-        assert 'These chores will have nobody assigned: Set the table.' in html
+        assert 'removed from task assignments' in html
+        assert 'These tasks will have nobody assigned: Set the table.' in html
         assert len(store.load_config()['people']) == 3
     assert client.post(url, data={'confirmed': 'yes'}).status_code == 302
     config = store.load_config()
     assert len(config['people']) == 2
-    assert config['recurring'][0]['choices'] == []
+    assert config['tasks'][0]['assignment']['people'] == []
 
 
 def test_removal_prompt_escapes_the_item_name(household):
     client, store, _ = household
     config = store.load_config()
-    config['recurring'][0]['title'] = '<script>example</script>'
+    config['tasks'][0]['title'] = '<script>example</script>'
     store.save_config(config)
     for url in ['/settings/recurring/tableaaa', '/settings/recurring/tableaaa/delete']:
         response = client.post(url) if url.endswith('/delete') else client.get(url)
@@ -136,10 +136,10 @@ def test_age_grammar(household, monkeypatch, age):
     assert '1 years old' not in html
 
 
-def test_current_user_labels_distinguish_chores_calendars_and_daily_message(household):
+def test_current_user_labels_distinguish_tasks_calendars_and_daily_message(household):
     client, _, _ = household
     html = client.get('/settings/recurring/new').get_data(as_text=True)
-    assert 'New chore' in html and '>Chore</label>' in html
+    assert 'New task' in html and '>Task</label>' in html
     home = client.get('/settings/').get_data(as_text=True)
     assert 'Rewrite daily headline' in home
     assert 'daily headline at' in home

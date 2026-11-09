@@ -21,12 +21,15 @@ while the family is still setting up: the invented household is what the
 settings home previews, and what a screen opened that early shows.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
-from .context import build_countdowns, compute_chore_assignments
+from .config import feature_on
+from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
+from . import shopping as shopping_module
+from .streaks import person_streak, task_streak
 
 # The agenda's row budget, not just today's cap. Today fills it first and
 # tomorrow tops up whatever is left, so a quiet day stops leaving the column
@@ -36,6 +39,9 @@ MAX_EVENTS = 5
 # reads as today's first.
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
+
+# The wall's shopping card names this many unbought items, then counts the rest.
+MAX_SHOPPING = 8
 
 # Nothing pushes to the dashboard, so it reloads itself on a timer. Five minutes is
 # the ceiling — it is a panel on a wall, not a page anyone is watching — and
@@ -114,8 +120,74 @@ def reload_seconds(config):
     return min(MAX_RELOAD_SECONDS, int(refresh_interval(config).total_seconds()))
 
 
-def build_view(config, payload, today, now=None):
+def _open_names(config, task, day, have):
+    """Who has not yet done `task` on `day`; empty when it is done."""
+    if task["mode"] == "anyone":
+        done = any(t == task["id"] and d == day.isoformat() for t, d, _ in have)
+        return [] if done else ["Anyone"]
+    names = {p.get("id"): p.get("name", "") for p in config.get("people") or []
+             if isinstance(p, dict)}
+    return [names.get(i, "") for i in task["person_ids"]
+            if (task["id"], day.isoformat(), i) not in have]
+
+
+def _completed_at(task, today, completions):
+    """When the whole task became done; unknown timestamps sort last."""
+    moments = []
+    for entry in completions:
+        if entry["task_id"] != task["id"] or entry["date"] != today.isoformat():
+            continue
+        if task["mode"] != "anyone" and entry["person_id"] not in task["person_ids"]:
+            continue
+        try:
+            moment = datetime.fromisoformat(entry.get("completed_at") or "")
+            if moment.tzinfo is None:
+                return None
+            moments.append(moment.astimezone(timezone.utc))
+        except (TypeError, ValueError):
+            return None
+    if not moments:
+        return None
+    return min(moments) if task["mode"] == "anyone" else max(moments)
+
+
+def add_checkins(view, config, tasks, today, completions):
+    """Done state, streaks and yesterday's open tasks, from the completions.
+
+    Worked out here on every render and stored nowhere. With `completions` of
+    None the store keeps none (cloud mode), so the card stays the plain list.
+    """
+    if completions is None:
+        return
+    have = {(c["task_id"], c["date"], c["person_id"]) for c in completions}
+    for task in tasks:
+        task["done"] = not _open_names(config, task, today, have)
+        if task["mode"] == "anyone":
+            task["streak"] = task_streak(config, task["id"], completions, today)
+    done = [(task, _completed_at(task, today, completions)) for task in tasks if task["done"]]
+    done.sort(key=lambda pair: (pair[1] is None, pair[1] or datetime.max.replace(tzinfo=timezone.utc)))
+    for rank, (task, _) in enumerate(done):
+        task["shed_rank"] = rank
+    view["streaks"] = [
+        {"name": p.get("name", ""), "days": days}
+        for p in config.get("people") or []
+        if isinstance(p, dict) and p.get("id")
+        and (days := person_streak(config, p["id"], completions, today)) > 0]
+    yesterday = today - timedelta(days=1)
+    view["yesterday"] = [
+        {"emoji": t["emoji"], "title": t["title"], "assigned_to": ", ".join(names)}
+        for t in tasks_for(config, yesterday)
+        if (names := _open_names(config, t, yesterday, have))]
+
+
+def build_view(config, payload, today, now=None, completions=None, shopping=None):
     """The complete view model for templates/board.html.
+
+    `completions` is the list the store holds for the last 400 days, or None
+    when it keeps none.
+
+    `shopping` is the stored shopping list, or None when the store keeps none.
+    The card needs `now` to know which bought items have expired.
 
     `now` is this moment on the family's clock, and only the banner reads it:
     without one every stale dashboard counts as late, which is what a caller
@@ -124,11 +196,14 @@ def build_view(config, payload, today, now=None):
     theme = config.get("theme", "light")
     theme = theme if theme in ("light", "dark") else "light"
 
-    chores = compute_chore_assignments(config.get("recurring"), today)
-    countdowns = build_countdowns(
+    # A switched-off feature is absent from the view, not hidden by the
+    # template, so no later card can show what it owns. Special dates owns the
+    # whole "Coming up" card, birthdays included.
+    tasks = tasks_for(config, today) if feature_on(config, "tasks") else []
+    countdowns = (build_countdowns(
         config.get("people"), config.get("special_dates"), today,
         limit=MAX_COUNTDOWNS,
-    )
+    ) if feature_on(config, "special_dates") else [])
 
     view = {
         "family_name": config.get("family_name", ""),
@@ -138,8 +213,12 @@ def build_view(config, payload, today, now=None):
         # "12:00" and the agenda's time column is a fixed width.
         "clock": clock_of(config),
         "date_display": today.strftime("%A, %-d %B"),
-        "chores": chores,
+        "tasks": tasks,
+        "streaks": [],
+        "yesterday": [],
         "countdowns": countdowns,
+        "shopping": [],
+        "shopping_more": 0,
         "events": [],
         "tomorrow": [],
         "headline": "",
@@ -155,6 +234,17 @@ def build_view(config, payload, today, now=None):
         "today": today.isoformat(),
         "timezone": config.get("timezone") or "UTC",
     }
+
+    if shopping and now is not None and feature_on(config, "shopping"):
+        # Bought items are for the phone; the wall asks what is still to get.
+        unbought = [i for i in shopping_module.current(shopping, now)
+                    if not i.get("bought_at")]
+        view["shopping"] = [{"text": i["text"], "quantity": i.get("quantity") or ""}
+                            for i in unbought[:MAX_SHOPPING]]
+        view["shopping_more"] = max(0, len(unbought) - MAX_SHOPPING)
+
+    if feature_on(config, "tasks"):
+        add_checkins(view, config, tasks, today, completions)
 
     fetched = (payload or {}).get("events") or []
     clock = view["clock"]

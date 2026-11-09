@@ -1,0 +1,64 @@
+{% extends "settings/base.html" %}
+{% block title %}Activity{% endblock %}
+{% set back_href = url_for('settings.home') %}
+{% set back_label = 'Settings' %}
+
+{% block head %}
+<style>
+    .grid { display: flex; flex-wrap: wrap; gap: 0.1875rem; }
+    .grid .cell { width: 0.5625rem; height: 0.5625rem; border-radius: 0.125rem; background: var(--border); }
+    .grid .cell.done { background: var(--green); }
+    .grid .cell.missed { background: var(--surface); border: 1.5px solid var(--faint); }
+    .grid .cell.open { background: var(--warm); border: 1px solid var(--border-strong); }
+    .legend { font-size: 0.75rem; color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% for entry in people %}
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;margin-bottom:1rem;">
+    <div class="row-main">
+        <div class="row-title">{{ entry.person.emoji or '' }} {{ entry.person.name }}</div>
+        <div class="row-sub">
+            {% if entry.now %}{{ entry.now }} day{{ '' if entry.now == 1 else 's' }} in a row{% else %}No run going{% endif %}
+            · best {{ entry.best }}
+        </div>
+    </div>
+    <div class="grid" role="img"
+         aria-label="{{ entry.person.name }}, last 30 days: {{ entry.cells | selectattr('state', 'equalto', 'done') | list | length }} done, {{ entry.cells | selectattr('state', 'equalto', 'missed') | list | length }} with something left">
+        {% for cell in entry.cells %}<span class="cell {{ cell.state }}" title="{{ cell.date }}"></span>{% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% if people %}
+<p class="legend" style="margin-bottom:1rem;">
+    Each square is a day, oldest first. Green is everything done, a ring is something left, and
+    grey is nothing due.
+</p>
+{% endif %}
+
+<div class="card-title" style="margin-bottom:0.5rem;">Not ticked, last 14 days</div>
+<div class="card">
+    {% for row in rows %}
+    <form class="row" method="post" action="{{ url_for('activity.tick') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="task_id" value="{{ row.task.id }}">
+        <input type="hidden" name="date" value="{{ row.date }}">
+        {% if row.person_id %}<input type="hidden" name="person" value="{{ row.person_id }}">{% endif %}
+        <div class="row-main">
+            <div class="row-title">{{ row.task.emoji or '' }} {{ row.task.title }}</div>
+            <div class="row-sub">{{ row.who }} · {{ row.day.strftime('%A %-d %B') }}</div>
+        </div>
+        {% if not row.person_id %}
+        <select name="person" required aria-label="Who did {{ row.task.title }}?">
+            <option value="" disabled selected>Who did it?</option>
+            {% for p in household %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}
+        </select>
+        {% endif %}
+        <button class="btn outline" type="submit" aria-label="Tick {{ row.task.title }} for {{ row.who }}, {{ row.day.strftime('%-d %B') }}">Tick</button>
+    </form>
+    {% else %}
+    <div class="row"><div class="row-main"><div class="row-sub">Everything due in the last 14 days is ticked.</div></div></div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -17,8 +17,10 @@ CONFIG = {
     "family_name": "The Wilsons",
     "timezone": "Europe/Berlin",  # set up: a real family's dashboard, not the starter
     "theme": "light",
-    "people": [{"name": "Mia", "date_of_birth": "2017-03-15"}],
-    "recurring": [{"title": "Set the table", "emoji": "🍽", "choices": ["Mia", "Theo"]}],
+    "people": [{"id": "mia", "name": "Mia", "date_of_birth": "2017-03-15"},
+               {"id": "theo", "name": "Theo", "date_of_birth": "2019-06-20"}],
+    "tasks": [{"id": "t1", "title": "Set the table", "emoji": "🍽", "recurrence": {"kind": "daily"},
+               "assignment": {"mode": "rotate", "people": ["mia", "theo"], "offset": 0}}],
     "special_dates": [{"title": "Christmas", "emoji": "🎄", "date": "12/25"}],
 }
 
@@ -78,10 +80,41 @@ class TestFreshBoard:
         view = build_view(CONFIG, data, TODAY)
         assert [e["title"] for e in view["events"]] == ["School run"]
 
-    def test_recomputes_chores_and_countdowns_from_config(self):
+    def test_recomputes_tasks_and_countdowns_from_config(self):
         view = build_view(CONFIG, payload("2026-09-03"), TODAY)
-        assert view["chores"][0]["assigned_to"] in {"Mia", "Theo"}
+        assert view["tasks"][0]["assigned_to"] in {"Mia", "Theo"}
         assert view["countdowns"][0]["title"] == "Christmas"
+
+    def test_completed_tasks_get_shedding_order_from_completion_time(self):
+        config = {**CONFIG, "tasks": [
+            {"id": "later", "title": "Later", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "fixed", "people": ["mia"]}},
+            {"id": "everyone", "title": "Together", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "everyone"}},
+            {"id": "earlier", "title": "Earlier", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "anyone"}},
+        ]}
+        completions = [
+            {"task_id": "later", "person_id": "mia", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T11:00:00+02:00"},
+            {"task_id": "everyone", "person_id": "mia", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T07:00:00+02:00"},
+            {"task_id": "everyone", "person_id": "theo", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T10:00:00+02:00"},
+            {"task_id": "earlier", "person_id": "theo", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T09:00:00+03:00"},
+        ]
+        tasks = build_view(config, None, TODAY, completions=completions)["tasks"]
+        assert [task["id"] for task in tasks] == ["later", "everyone", "earlier"]
+        assert {task["id"]: task["shed_rank"] for task in tasks} == {
+            "earlier": 0, "everyone": 1, "later": 2}
+
+        # A hand-edited completion without a timestamp is still done, but its
+        # age is unknown and must not outrank a known completion.
+        completions[3].pop("completed_at")
+        tasks = build_view(config, None, TODAY, completions=completions)["tasks"]
+        assert {task["id"]: task["shed_rank"] for task in tasks} == {
+            "everyone": 0, "later": 1, "earlier": 2}
 
 
 class TestStaleBoard:
@@ -103,10 +136,10 @@ class TestStaleBoard:
         view = build_view(CONFIG, self.data, TODAY)
         assert [e["title"] for e in view["events"]] == ["School run", "Swimming"]
 
-    def test_chores_are_todays_not_yesterdays(self):
+    def test_tasks_are_todays_not_yesterdays(self):
         view = build_view(CONFIG, self.data, TODAY)
         fresh = build_view(CONFIG, payload("2026-09-03"), TODAY)
-        assert view["chores"] == fresh["chores"]
+        assert view["tasks"] == fresh["tasks"]
 
     def test_countdowns_are_todays(self):
         view = build_view(CONFIG, self.data, TODAY)
@@ -253,7 +286,7 @@ class TestEmptyStates:
         assert view["events"] == []
         assert view["tomorrow"] == []
         # Chores and countdowns never needed the model.
-        assert view["chores"]
+        assert view["tasks"]
         assert view["countdowns"]
         assert view["headline"] == "Nothing booked in today."
         assert view["overdue"] is False
@@ -262,7 +295,7 @@ class TestEmptyStates:
         view = build_view(CONFIG, payload("2026-09-03"), TODAY)
         assert view["events"] == []
         assert view["state"] == "ready"
-        assert view["chores"]
+        assert view["tasks"]
 
     def test_an_agenda_with_no_brief_yet_shows_the_day_without_a_banner(self):
         # A `--tick` that refreshed the calendars before the brief leaves a
@@ -302,7 +335,7 @@ class TestStillSettingUp:
         starter = config_module.starter_config()
         view = build_view(starter, None, TODAY)
         assert view["state"] == "first"
-        assert [c["assigned_to"] for c in view["chores"]]
+        assert [c["assigned_to"] for c in view["tasks"]]
         assert view["countdowns"]
 
     def test_an_agenda_with_no_brief_shows_the_agenda(self):
@@ -531,3 +564,30 @@ class TestTheFactOfTheDayIsNotShown:
         assert 'class="note' not in page
         # The title is allowed to wrap; it is not clipped in the markup.
         assert "overflow-wrap: break-word" in page
+
+
+class TestShoppingCard:
+    NOW = datetime(2026, 9, 3, 12, 0, tzinfo=tzinfo_for(CONFIG))
+
+    def config(self, on=True):
+        return dict(CONFIG, features={"tasks": True, "special_dates": True, "shopping": on})
+
+    def item(self, n, bought_at=None, quantity=""):
+        return {"id": f"i{n}", "text": f"Thing {n}", "quantity": quantity,
+                "added_by": "mia", "added_at": "2026-09-03T08:00:00", "bought_at": bought_at}
+
+    def view(self, items, on=True):
+        return build_view(self.config(on), None, TODAY, now=self.NOW, shopping=items)
+
+    def test_eight_unbought_then_a_count(self):
+        v = self.view([self.item(n) for n in range(11)])
+        assert [i["text"] for i in v["shopping"]] == [f"Thing {n}" for n in range(8)]
+        assert v["shopping_more"] == 3
+
+    def test_bought_items_are_not_shown_and_old_ones_are_gone(self):
+        items = [self.item(1, bought_at="2026-09-03T09:00:00+02:00"), self.item(2)]
+        assert [i["text"] for i in self.view(items)["shopping"]] == ["Thing 2"]
+
+    def test_follows_the_switch(self):
+        assert self.view([self.item(1)], on=False)["shopping"] == []
+

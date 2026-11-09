@@ -59,7 +59,7 @@ def ids_for(config_path, key="people"):
 
 class TestBackfill:
     def test_opening_a_list_gives_the_file_ids(self, client, config_path):
-        assert "id" not in people(config_path)[0]
+        assert "id:" not in config_path.read_text()
         assert client.get("/settings/people").status_code == 200
         assert all(p["id"] for p in people(config_path))
 
@@ -185,20 +185,20 @@ class TestDeleting:
 
 
 class TestReordering:
-    """Moving a chore changes its display position, not its participant rotation."""
+    """Moving a task changes its display position, not its participant rotation."""
 
     def test_moving_down_swaps_with_the_next_one(self, client, config_path):
         client.get("/settings/recurring")
-        first = ids_for(config_path, "recurring")[0]
+        first = ids_for(config_path, "tasks")[0]
         client.post(f"/settings/recurring/{first}/move", data={"direction": "down"})
-        titles = [c["title"] for c in config_module.load_config(config_path)["recurring"]]
+        titles = [c["title"] for c in config_module.load_config(config_path)["tasks"]]
         assert titles == ["Feed the dog", "Set the table"]
 
     def test_moving_the_top_one_up_does_nothing(self, client, config_path):
         client.get("/settings/recurring")
-        first = ids_for(config_path, "recurring")[0]
+        first = ids_for(config_path, "tasks")[0]
         client.post(f"/settings/recurring/{first}/move", data={"direction": "up"})
-        titles = [c["title"] for c in config_module.load_config(config_path)["recurring"]]
+        titles = [c["title"] for c in config_module.load_config(config_path)["tasks"]]
         assert titles == ["Set the table", "Feed the dog"]
 
     def test_moving_a_stranger_is_a_404(self, client, config_path):
@@ -472,22 +472,23 @@ class TestTheSetUpChecklist:
         assert "Theo and Biscuit are invented" in self.home(client)
         assert "invented" not in self.loaded(config_path)["people"][0]
 
-    def test_and_their_chores_follow_the_new_name(self, client, config_path):
+    def test_and_their_tasks_follow_the_new_name(self, client, config_path):
         client.post("/settings/people/mia12345",
                     data={"name": "Anna", "date_of_birth": "2017-03-15"})
-        assert self.loaded(config_path)["recurring"][0]["choices"] == ["Anna", "Theo"]
+        assignment = self.loaded(config_path)["tasks"][0]["assignment"]
+        assert assignment["people"] == ["mia12345", "theo1234"]
 
     def test_removing_a_person_takes_them_out_of_the_rotation(self, client, config_path):
         client.post("/settings/people/theo1234/delete", data={"confirmed": "yes"})
-        assert self.loaded(config_path)["recurring"][0]["choices"] == ["Mia"]
+        assert self.loaded(config_path)["tasks"][0]["assignment"]["people"] == ["mia12345"]
 
-    def test_a_rotation_left_empty_is_said_on_the_chores_row(self, client, config_path):
+    def test_a_rotation_left_empty_is_said_on_the_tasks_row(self, client, config_path):
         client.post("/settings/people/mia12345/delete", data={"confirmed": "yes"})
         client.post("/settings/people/theo1234/delete", data={"confirmed": "yes"})
         assert "1 with nobody assigned" in self.home(client)
-        assert self.loaded(config_path)["recurring"][0]["choices"] == []
+        assert self.loaded(config_path)["tasks"][0]["assignment"]["people"] == []
 
-    def test_the_chores_row_names_the_jobs(self, client):
+    def test_the_tasks_row_names_the_jobs(self, client):
         # So a starter job left behind is visible from the home page.
         assert "Set the table" in self.home(client)
 
@@ -1158,3 +1159,150 @@ people:
         path.write_text('family_name: ""\ntimezone: "Europe/Berlin"\n')
         a_client = client_for(create_app(FileStore(path)))
         assert 'id="family-name-nudge"' in self.home(a_client)
+
+
+class TestTaskCaps:
+    """40 tasks, 80-character titles, refused in plain English."""
+
+    def add(self, client, title):
+        return client.post("/settings/recurring/new", data={"title": title, "choices": [self.mia]})
+
+    @pytest.fixture(autouse=True)
+    def _mia(self, client, config_path):
+        client.get("/settings/recurring")
+        self.mia = next(p["id"] for p in config_module.load_config(config_path)["people"]
+                        if p["name"] == "Mia")
+
+    def test_a_title_of_eighty_characters_saves(self, client, config_path):
+        assert self.add(client, "x" * 80).status_code == 302
+        assert len(config_module.load_config(config_path)["tasks"]) == 3
+
+    def test_a_longer_title_is_refused_and_nothing_is_stored(self, client, config_path):
+        client.get("/settings/recurring")
+        response = self.add(client, "x" * 81)
+        assert response.status_code == 200
+        assert "80 characters or fewer" in response.get_data(as_text=True)
+        assert len(config_module.load_config(config_path)["tasks"]) == 2
+
+    def test_the_forty_first_task_is_refused(self, client, config_path):
+        for n in range(38):
+            assert self.add(client, f"Task {n}").status_code == 302
+        assert len(config_module.load_config(config_path)["tasks"]) == 40
+        response = self.add(client, "One too many")
+        assert response.status_code == 200
+        assert "up to 40 tasks" in response.get_data(as_text=True)
+        assert len(config_module.load_config(config_path)["tasks"]) == 40
+
+
+class TestRotationPostsPersonIds:
+    """The form posts ids, labelled by name; nothing but a family member's id is stored."""
+
+    def ids(self, config_path):
+        return {p["name"]: p["id"] for p in config_module.load_config(config_path)["people"]}
+
+    def test_the_form_values_are_ids_and_the_labels_are_names(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = self.ids(config_path)
+        first = ids_for(config_path, "tasks")[0]
+        html = client.get(f"/settings/recurring/{first}").get_data(as_text=True)
+        assert f'value="{ids["Mia"]}"' in html and ">Mia</label>" in html
+
+    def test_unknown_and_empty_ids_are_never_stored(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = self.ids(config_path)
+        first = ids_for(config_path, "tasks")[0]
+        response = client.post(f"/settings/recurring/{first}", data={
+            "title": "Set the table",
+            "choices": [ids["Theo"], "", "nobody", ids["Theo"], ids["Mia"]]})
+        assert response.status_code == 302
+        stored = config_module.load_config(config_path)["tasks"][0]["assignment"]["people"]
+        assert stored == [ids["Theo"], ids["Mia"]]
+
+    def test_only_unknown_ids_is_the_choose_someone_error(self, client, config_path):
+        client.get("/settings/recurring")
+        first = ids_for(config_path, "tasks")[0]
+        response = client.post(f"/settings/recurring/{first}",
+                               data={"title": "Set the table", "choices": ["", "nobody"]})
+        assert response.status_code == 200
+        assert "Choose at least one person." in response.get_data(as_text=True)
+
+
+class TestTaskEditor:
+    """Every recurrence kind and assignment mode can be set, and refusals are in plain English."""
+
+    @pytest.fixture(autouse=True)
+    def _people(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = {p["name"]: p["id"] for p in config_module.load_config(config_path)["people"]}
+        self.mia, self.theo = ids["Mia"], ids["Theo"]
+        self.config_path = config_path
+
+    def add(self, client, **extra):
+        data = {"title": "Bins", "rec_kind": "daily", "mode": "rotate", "choices": [self.mia]}
+        data.update(extra)
+        return client.post("/settings/recurring/new", data=data)
+
+    def stored(self):
+        return config_module.load_config(self.config_path)["tasks"][-1]
+
+    @pytest.mark.parametrize("posted,expected", [
+        ({"rec_kind": "daily"}, {"kind": "daily"}),
+        ({"rec_kind": "weekdays"}, {"kind": "weekdays", "days": [0, 1, 2, 3, 4]}),
+        ({"rec_kind": "weekends"}, {"kind": "weekdays", "days": [5, 6]}),
+        ({"rec_kind": "days", "rec_days": ["1", "3"]}, {"kind": "weekdays", "days": [1, 3]}),
+        ({"rec_kind": "interval", "rec_every": "3", "rec_start": "2026-01-05"},
+         {"kind": "interval", "every": 3, "start": "2026-01-05"}),
+        ({"rec_kind": "monthly_day", "rec_day": "15"}, {"kind": "monthly_day", "day": 15}),
+        ({"rec_kind": "monthly_nth", "rec_nth": "-1", "rec_weekday": "4"},
+         {"kind": "monthly_nth", "nth": -1, "weekday": 4}),
+        ({"rec_kind": "once", "rec_date": "2026-12-24"}, {"kind": "once", "date": "2026-12-24"}),
+    ])
+    def test_every_recurrence_kind_is_stored(self, client, posted, expected):
+        assert self.add(client, **posted).status_code == 302
+        recurrence = self.stored()["recurrence"]
+        assert recurrence == expected
+
+    @pytest.mark.parametrize("mode", ["fixed", "rotate", "anyone", "everyone"])
+    def test_every_assignment_mode_is_stored(self, client, mode):
+        assert self.add(client, mode=mode, choices=[self.theo, self.mia]).status_code == 302
+        assignment = self.stored()["assignment"]
+        assert assignment["mode"] == mode and assignment["people"] == [self.theo, self.mia]
+
+    def test_anyone_and_everyone_need_no_names(self, client):
+        assert self.add(client, mode="anyone", choices=[]).status_code == 302
+        assert self.add(client, mode="everyone", choices=[]).status_code == 302
+
+    def test_one_person_and_turns_need_a_name(self, client):
+        for mode in ("fixed", "rotate"):
+            html = self.add(client, mode=mode, choices=[]).get_data(as_text=True)
+            assert "Choose at least one person." in html
+
+    def test_a_refused_recurrence_is_said_in_words_and_redisplayed(self, client):
+        response = self.add(client, rec_kind="once", rec_date="")
+        html = response.get_data(as_text=True)
+        assert response.status_code == 200
+        assert "Choose the day it happens" in html
+        assert 'value="once" checked' in html
+        assert len(config_module.load_config(self.config_path)["tasks"]) == 2
+
+    def test_the_form_shows_the_stored_rule(self, client):
+        self.add(client, rec_kind="weekends")
+        task_id = ids_for(self.config_path, "tasks")[-1]
+        html = client.get(f"/settings/recurring/{task_id}").get_data(as_text=True)
+        assert 'id="rec-weekends" name="rec_kind" value="weekends" checked' in html
+
+    def test_editing_without_the_controls_keeps_the_rule(self, client):
+        self.add(client, rec_kind="weekends", mode="fixed")
+        task_id = ids_for(self.config_path, "tasks")[-1]
+        client.post(f"/settings/recurring/{task_id}", data={"title": "Renamed", "choices": [self.mia]})
+        task = self.stored()
+        assert task["recurrence"] == {"kind": "weekdays", "days": [5, 6]}
+        assert task["assignment"]["mode"] == "fixed"
+
+    def test_an_unknown_mode_is_refused(self, client):
+        assert "Choose whose job it is." in self.add(client, mode="boss").get_data(as_text=True)
+
+    def test_the_list_says_when_and_who(self, client):
+        self.add(client, rec_kind="weekends", mode="anyone")
+        html = client.get("/settings/recurring").get_data(as_text=True)
+        assert "Weekends" in html and "Anyone" in html

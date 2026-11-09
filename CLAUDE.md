@@ -57,6 +57,17 @@ survives in every clone, so the fix is rotation, not a revert. Full rules in [`d
 - **A new dependency is a supply-chain decision.** Prefer the standard library; justify the rest in
   the PR. Requirements are pinned with `==`; `requirements.txt` is runtime only.
 
+## Household modules
+
+Tasks, Shopping and Activity sit behind `features` switches (`config.feature_on`); off hides a module
+and keeps its data. Plan: [`doc/prd-household-modules.md`](doc/prd-household-modules.md). The seams:
+
+- **Files, via `FileStore` only:** `auth.json` (`load_auth`/`update_auth`: screen token, PIN hashes),
+  `completions.json`, `shopping.json`. All gitignored. `change_token()` feeds the wall's poll.
+- **Routes:** `/h` phone page (`phone.py`), `/settings/activity`, `/settings/pins`, `/signin` (`parent.py`),
+  `/s/<token>` wall screen and `/settings/wall` (`wall.py`), `/changes` and `/h/changes`.
+- **Sign-in is optional** and only gates the settings UI, the phone page's parent powers and `/`.
+
 ## Architecture rules
 
 ### Single mode first

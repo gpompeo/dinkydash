@@ -12,12 +12,14 @@ dashboard is one piece of code reached two ways rather than two that drift.
 """
 
 import os
+from datetime import timedelta
 
-from flask import (Blueprint, current_app, redirect, render_template, request,
-                   url_for)
+from flask import (Blueprint, abort, current_app, redirect, render_template,
+                   request, url_for)
 
 from dinkydash import board as board_view
 from dinkydash import config as config_module
+from dinkydash import streaks
 from web import CLOUD
 from web import manifest as manifest_module
 from web.family import current_store
@@ -49,7 +51,23 @@ def _needs_a_family():
     """
     if request.endpoint in OPEN_IN_CLOUD_MODE:
         return None
-    return guard()
+    # Single mode with sign-in on: the wall uses `/s/<token>` (web/routes/wall.py).
+    from web import parent
+    return guard() or parent.guard()
+
+
+def change_counter(store):
+    """The store's change token as a bare number, `no-store`, or a 404.
+
+    Shared by the wall and the phone page, each behind its own access rule. A
+    store with no `change_token` (cloud mode) has nothing to count, and the
+    page then never polls.
+    """
+    token = getattr(store, "change_token", None)
+    if token is None:
+        abort(404)
+    return str(token()), 200, {"Cache-Control": "no-store", "X-Robots-Tag": "noindex",
+                               "Content-Type": "text/plain; charset=utf-8"}
 
 
 def current_config():
@@ -71,7 +89,13 @@ def index():
     return render_board(current_store())
 
 
-def render_board(store, manifest_url=None, access=None):
+@bp.route("/changes")
+def changes():
+    """The wall's change counter: a number and nothing else, same access as `/`."""
+    return change_counter(current_store())
+
+
+def render_board(store, manifest_url=None, access=None, changes_url=None):
     """The dashboard page for whichever family that store is for.
 
     Shared with `web/routes/screen.py`, so the signed-in view and the wall
@@ -80,7 +104,8 @@ def render_board(store, manifest_url=None, access=None):
     manifest has to be reachable without a session, or "save to home screen"
     gets a redirect to `/login` instead of a name and an icon.
     Hosted callers also pass access state, so a lapsed panel cannot keep
-    recomputing the day. Active cloud dashboards retain parity with single mode.
+    recomputing the day. Stores without check-ins render the shared task list
+    without completion state.
     """
     config = store.load_config()
     payload = store.load_payload(config)
@@ -91,8 +116,15 @@ def render_board(store, manifest_url=None, access=None):
         # dashboard that is not today's is actually late, and a date taken
         # separately could land the other side of midnight from it.
         now = config_module.now_for(config)
-        view = board_view.build_view(config, payload, now.date(), now=now)
-    return render_template("board.html", view=view,
+        load = getattr(store, "load_completions", None)
+        completions = load(now.date() - timedelta(days=streaks.MAX_DAYS)) if load else None
+        load_list = getattr(store, "load_shopping", None)
+        view = board_view.build_view(config, payload, now.date(), now=now,
+                                     completions=completions,
+                                     shopping=load_list() if load_list else None)
+    if changes_url is None and hasattr(store, "change_token"):
+        changes_url = url_for("board.changes")
+    return render_template("board.html", view=view, changes_url=changes_url,
                            manifest_url=manifest_url or url_for("board.manifest"))
 
 

@@ -16,7 +16,8 @@ import logging
 from datetime import datetime, timezone
 
 from .claude_client import call_claude
-from .context import build_countdowns, compute_chore_assignments
+from .config import feature_on
+from .context import build_countdowns, tasks_for
 from .calendars import events_on
 from .prompt import build_user_prompt
 
@@ -39,13 +40,13 @@ def generate(config, today, events, client=None):
         if today.toordinal() < datetime.fromisoformat(e["start"]).date().toordinal() <= horizon
     ]
 
-    chores = compute_chore_assignments(config.get("recurring"), today)
-    countdowns = build_countdowns(
+    tasks = tasks_for(config, today) if feature_on(config, "tasks") else []
+    countdowns = [] if not feature_on(config, "special_dates") else build_countdowns(
         config.get("people"), config.get("special_dates"), today
     )
 
     user_prompt = build_user_prompt(
-        config, today, events_today, events_soon, chores, countdowns,
+        config, today, events_today, events_soon, tasks, countdowns,
     )
     log.info("Prompt built (%d characters)", len(user_prompt))
 

@@ -1,4 +1,4 @@
-"""Ages, birthdays, countdowns and chore rotation.
+"""Ages, birthdays, countdowns and task assignment.
 
 Every test injects the date. Nothing here is allowed to depend on when it runs —
 that was the bug class this suite exists to catch.
@@ -9,8 +9,8 @@ from datetime import date
 import pytest
 
 from dinkydash.context import (anniversary, build_countdowns, compute_age,
-                               compute_birthday_info, compute_chore_assignments,
-                               compute_special_date_info, upcoming_for)
+                               compute_birthday_info, compute_special_date_info,
+                               tasks_for)
 
 
 class TestAnniversary:
@@ -88,37 +88,83 @@ class TestSpecialDates:
         assert info["days_until"] == (date(2028, 2, 29) - date(2027, 6, 1)).days
 
 
-class TestChoreRotation:
-    chore = {"title": "Set the table", "emoji": "🍽", "choices": ["Mia", "Theo", "Ines"]}
+PEOPLE = [{"id": "mia", "name": "Mia"}, {"id": "theo", "name": "Theo"}, {"id": "ines", "name": "Ines"}]
 
-    def test_rotates_by_day_of_year(self):
-        first = compute_chore_assignments([self.chore], date(2026, 1, 1))
-        second = compute_chore_assignments([self.chore], date(2026, 1, 2))
-        assert first[0]["assigned_to"] != second[0]["assigned_to"]
 
-    def test_is_stable_for_a_given_day(self):
-        twice = [compute_chore_assignments([self.chore], date(2026, 9, 3))[0] for _ in range(2)]
-        assert twice[0] == twice[1]
+def config_with(*tasks):
+    return {"people": PEOPLE, "tasks": list(tasks)}
 
-    def test_cycles_through_everyone(self):
-        names = {
-            compute_chore_assignments([self.chore], date(2026, 9, 3 + offset))[0]["assigned_to"]
-            for offset in range(3)
-        }
-        assert names == {"Mia", "Theo", "Ines"}
 
-    def test_skips_a_job_with_nobody_assigned(self):
-        assert compute_chore_assignments([{"title": "Bins", "choices": []}], date(2026, 9, 3)) == []
+def task(mode, people=(), offset=0, recurrence=None, title="Set the table"):
+    return {"id": "t1", "title": title, "emoji": "🍽", "recurrence": recurrence or {"kind": "daily"},
+            "assignment": {"mode": mode, "people": list(people), "offset": offset}}
 
-    def test_handles_no_jobs_at_all(self):
-        assert compute_chore_assignments(None, date(2026, 9, 3)) == []
 
-    def test_upcoming_preview_matches_what_each_day_computes(self):
-        preview = upcoming_for(self.chore, date(2026, 9, 3), days=7)
-        assert len(preview) == 7
-        for entry in preview:
-            live = compute_chore_assignments([self.chore], entry["date"])[0]
-            assert entry["assigned_to"] == live["assigned_to"]
+def names(config, day):
+    return [t["assigned_to"] for t in tasks_for(config, day)]
+
+
+class TestTaskAssignment:
+    rotation = ["mia", "theo", "ines"]
+
+    def test_rotate_hands_over_each_day_and_cycles_through_everyone(self):
+        config = config_with(task("rotate", self.rotation))
+        seen = [names(config, date(2026, 9, 3 + n))[0] for n in range(3)]
+        assert sorted(seen) == ["Ines", "Mia", "Theo"]
+
+    def test_rotate_is_stable_for_a_given_day(self):
+        config = config_with(task("rotate", self.rotation))
+        assert tasks_for(config, date(2026, 9, 3)) == tasks_for(config, date(2026, 9, 3))
+
+    def test_rotation_counts_occurrences_not_days(self):
+        weekdays = {"kind": "weekdays", "days": [0]}
+        config = config_with(task("rotate", ["mia", "theo"], recurrence=weekdays))
+        # Consecutive Mondays alternate; the days between are not occurrences.
+        assert names(config, date(2026, 9, 7)) != names(config, date(2026, 9, 14))
+        assert names(config, date(2026, 9, 7)) == names(config, date(2026, 9, 21))
+        assert names(config, date(2026, 9, 8)) == []
+
+    def test_offset_moves_where_the_rotation_starts(self):
+        day = date(2026, 9, 3)
+        first = names(config_with(task("rotate", self.rotation, offset=0)), day)
+        shifted = names(config_with(task("rotate", self.rotation, offset=1)), day)
+        assert first != shifted
+
+    def test_fixed_is_one_person_every_time(self):
+        config = config_with(task("fixed", ["theo"]))
+        assert {names(config, date(2026, 9, 3 + n))[0] for n in range(5)} == {"Theo"}
+
+    def test_everyone_is_every_person_in_the_family(self):
+        due = tasks_for(config_with(task("everyone")), date(2026, 9, 3))
+        assert due[0]["assigned_to"] == "Everyone"
+        assert due[0]["person_ids"] == ["mia", "theo", "ines"]
+
+    def test_anyone_is_nobody_in_particular(self):
+        due = tasks_for(config_with(task("anyone")), date(2026, 9, 3))
+        assert due[0]["assigned_to"] == "Anyone"
+        assert due[0]["person_ids"] == []
+
+    def test_a_task_not_due_today_is_left_out(self):
+        once = task("anyone", recurrence={"kind": "once", "date": "2026-12-24"})
+        assert tasks_for(config_with(once), date(2026, 9, 3)) == []
+        assert len(tasks_for(config_with(once), date(2026, 12, 24))) == 1
+
+    def test_a_rotation_with_nobody_in_it_is_skipped(self):
+        assert tasks_for(config_with(task("rotate", [])), date(2026, 9, 3)) == []
+
+    def test_handles_no_tasks_at_all(self):
+        assert tasks_for({}, date(2026, 9, 3)) == []
+
+    def test_assignment_follows_the_id_so_a_rename_changes_nothing(self):
+        config = config_with(task("fixed", ["theo"]))
+        before = tasks_for(config, date(2026, 9, 3))[0]
+        config["people"] = [dict(p, name="Thea") if p["id"] == "theo" else p for p in PEOPLE]
+        after = tasks_for(config, date(2026, 9, 3))[0]
+        assert (before["person_ids"], after["assigned_to"]) == (["theo"], "Thea")
+
+    def test_an_id_with_no_person_is_skipped_before_the_rotation_is_counted(self):
+        config = config_with(task("rotate", ["gone", "mia", "theo"]))
+        assert {names(config, date(2026, 9, 3 + n))[0] for n in range(2)} == {"Mia", "Theo"}
 
 
 class TestCountdowns:
@@ -147,5 +193,5 @@ class TestCountdowns:
 
 @pytest.mark.parametrize("day", [date(2026, 1, 1), date(2026, 2, 28), date(2026, 12, 31)])
 def test_rotation_never_indexes_out_of_range(day):
-    chore = {"title": "Bins", "choices": ["A", "B"]}
-    assert compute_chore_assignments([chore], day)[0]["assigned_to"] in {"A", "B"}
+    config = config_with(task("rotate", ["mia", "theo"], offset=5))
+    assert names(config, day)[0] in {"Mia", "Theo"}

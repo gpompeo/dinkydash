@@ -33,11 +33,13 @@ This module and `config.py` are the only places under `dinkydash/` that touch
 a file.
 """
 
+import hashlib
 import json
 import logging
 import os
 import tempfile
 from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -56,6 +58,18 @@ log = logging.getLogger(__name__)
 # the runner because it is the storage contract's own vocabulary: both
 # implementations enforce it, and no caller can talk its way past it.
 AGENDA_KEYS = ("events", "calendar_statuses", "calendars_fetched_at")
+
+# Beside the config, never in it. Holds secrets, so it stays out of git.
+AUTH_FILE = "auth.json"
+
+# Completions older than this many days are dropped whenever one is written.
+COMPLETIONS_FILE = "completions.json"
+KEEP_COMPLETIONS_DAYS = 400
+
+SHOPPING_FILE = "shopping.json"
+
+# Files beside the config whose change moves `change_token()`.
+CHANGE_FILES = ("completions.json", "shopping.json")
 
 
 class FileStore:
@@ -131,6 +145,104 @@ class FileStore:
         payload.update(updates)
         _write_json(path, payload)
 
+    # -- noticing a change from another device -------------------------------
+
+    def change_token(self):
+        """A number that moves whenever the config, completions, shopping list or payload do.
+
+        Built from each file's modification time and size, never its content, so
+        the number can be served to a wall screen without carrying anything of
+        the family's. A missing file counts as a value of its own, so creating
+        or deleting one moves the number too. Only a change in the number means
+        anything; it is not ordered.
+        """
+        paths = [self.config_path, self._data_path(self.load_config())]
+        paths += [self.base / name for name in CHANGE_FILES]
+        marks = []
+        for path in paths:
+            try:
+                info = path.stat()
+                marks.append(f"{info.st_mtime_ns}:{info.st_size}")
+            except OSError:
+                marks.append("-")
+        digest = hashlib.sha256("|".join(marks).encode()).digest()
+        return int.from_bytes(digest[:6], "big")
+
+    # -- tasks ticked off ----------------------------------------------------
+
+    def load_completions(self, since=None):
+        """Completions as `{task_id, date, person_id, completed_at}`, from `since` on.
+
+        `since` is a date; `date` in each entry is an ISO date string, which
+        sorts as dates do. A missing or damaged file reads as no completions.
+        """
+        found = _read_json(self.base / COMPLETIONS_FILE, "the completions")
+        found = [c for c in found if _is_completion(c)] if isinstance(found, list) else []
+        if since is not None:
+            found = [c for c in found if c["date"] >= since.isoformat()]
+        return found
+
+    def record_completion(self, entry, today):
+        """Add one completion (once per task, date and person), then trim old ones."""
+        self._change_completions(
+            lambda found: found if _same_completion(entry, found) else found + [entry], today)
+
+    def remove_completion(self, entry, today):
+        self._change_completions(
+            lambda found: [c for c in found if not _same_completion(entry, [c])], today)
+
+    def drop_person_completions(self, person_id):
+        """A person who is deleted takes their completions with them."""
+        with _locked(self.base):
+            found = self.load_completions()
+            kept = [c for c in found if c["person_id"] != person_id]
+            if len(kept) != len(found):
+                _write_json(self.base / COMPLETIONS_FILE, kept)
+
+    def _change_completions(self, change, today):
+        """Read, change, trim to the last 400 days and replace, all under the lock."""
+        with _locked(self.base):
+            oldest = (today - timedelta(days=KEEP_COMPLETIONS_DAYS)).isoformat()
+            kept = [c for c in change(self.load_completions()) if c["date"] >= oldest]
+            _write_json(self.base / COMPLETIONS_FILE, kept)
+
+    # -- the shopping list ---------------------------------------------------
+
+    def load_shopping(self):
+        """The shopping items as stored. A missing or damaged file reads as empty."""
+        found = _read_json(self.base / SHOPPING_FILE, "the shopping list")
+        return [i for i in found if _is_shopping_item(i)] if isinstance(found, list) else []
+
+    def update_shopping(self, change):
+        """Apply `change(items)` to a fresh read, under the lock, and save what it returns."""
+        with _locked(self.base):
+            items = change(self.load_shopping())
+            _write_json(self.base / SHOPPING_FILE, items)
+            return items
+
+    # -- who may sign in ---------------------------------------------------
+
+    def load_auth(self):
+        """Member PIN hashes and the like, from `auth.json` beside the config.
+
+        Kept out of `config.yaml`, which is exported and edited by hand. The file
+        is created owner-only (mode 0600) and is gitignored.
+        """
+        auth = _read_json(self.base / AUTH_FILE, "the sign-in file")
+        return auth if isinstance(auth, dict) else {}
+
+    def update_auth(self, change):
+        """Apply `change(auth)` to a fresh read, under the lock, and save it.
+
+        A function rather than a whole-dict save, so two features that each own
+        a key in this file cannot overwrite one another.
+        """
+        with _locked(self.base):
+            auth = self.load_auth()
+            change(auth)
+            _write_json(self.base / AUTH_FILE, auth)
+            return auth
+
     # -- what was written recently ------------------------------------------
 
     def recent_notes(self, config, days):
@@ -170,6 +282,22 @@ class FileStore:
     def _resolve(self, value):
         path = Path(value).expanduser()
         return path if path.is_absolute() else self.base / path
+
+
+def _is_completion(entry):
+    return isinstance(entry, dict) and all(
+        isinstance(entry.get(k), str) and entry[k]
+        for k in ("task_id", "date", "person_id"))
+
+
+def _is_shopping_item(item):
+    return isinstance(item, dict) and isinstance(item.get("id"), str) and bool(item["id"]) \
+        and isinstance(item.get("text"), str)
+
+
+def _same_completion(entry, found):
+    return any((c["task_id"], c["date"], c["person_id"])
+               == (entry["task_id"], entry["date"], entry["person_id"]) for c in found)
 
 
 def _is_agenda_key(key):

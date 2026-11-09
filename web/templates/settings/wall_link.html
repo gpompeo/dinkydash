@@ -1,0 +1,24 @@
+{% extends "settings/base.html" %}
+{% block title %}Wall screen link{% endblock %}
+{% set back_href = url_for('settings.home') %}
+{% set back_label = 'Settings' %}
+
+{% block content %}
+<div class="note-box">
+    With sign-in on, a wall screen can't type a password. Open this link on it
+    instead. Anybody who has the link can see the dashboard, so keep it to the screens in your home.
+</div>
+<div class="card">
+    <div class="row">
+        <div class="row-main">
+            <div class="row-title">Screen link</div>
+            <div class="row-sub" style="word-break:break-all;user-select:all;">{{ link }}</div>
+        </div>
+    </div>
+</div>
+<form method="post" action="{{ url_for('wall_admin.rotate') }}" style="margin-top:1rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn outline" type="submit">Make a new link</button>
+    <div class="row-sub">The old link stops working straight away.</div>
+</form>
+{% endblock %}

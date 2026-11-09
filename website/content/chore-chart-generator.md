@@ -17,7 +17,7 @@ faq:
   - q: Where are the names saved?
     a: In the link, and only there. We don't store the chart. Anyone with the link can see the names, so send it the way you'd hand over a paper chart.
   - q: How is this different from the DinkyDash dashboard?
-    a: This page makes a chart you tick, on paper or on a phone, for one week. The dashboard hangs on a wall screen. It shows whose turn each chore is, the turn changes every day, and there's nothing to tick.
+    a: This page makes a chart you tick, on paper or on a phone, for one week. The dashboard hangs on a wall screen. It shows whose turn each chore is, the turn changes every day, and nobody has to tick anything for it to work.
 ---
 
 ## Filling in the week
@@ -52,7 +52,7 @@ Nothing here is uploaded. The names sit in the link, and anyone you send that li
 
 A printed chart is the right tool for a week you can hold. It goes quiet the week nobody prints the next one.
 
-[DinkyDash](/) is a dashboard for a screen you already have — an old tablet, a spare monitor, the TV. You name the people and the chores, and whose turn they are, in order. Each day the dashboard moves every chore on to the next person. There's nothing to tick. The wall says the name, next to today's calendar and the countdowns.
+[DinkyDash](/) is a dashboard for a screen you already have — an old tablet, a spare monitor, the TV. You name the people and the chores, and whose turn they are, in order. Each day the dashboard moves every chore on to the next person. Nobody has to tick anything. The wall says the name, next to today's calendar and the countdowns.
 
 That's a different job from this page. Here you make a grid and print it. A [digital calendar and chore chart](/digital-calendar-and-chore-chart/) is the screen that holds the week and the chores together, and keeps the turns moving after you've stopped reprinting.
 
@@ -80,4 +80,4 @@ Each chore moves to the next child when the week changes. The week follows the M
 In the link, and only there. We don't store the chart. Anyone with the link can see the names, so send it the way you'd hand over a paper chart.
 
 **How is this different from the DinkyDash dashboard?**
-This page makes a chart you tick, on paper or on a phone, for one week. The dashboard hangs on a wall screen. It shows whose turn each chore is, the turn changes every day, and there's nothing to tick.
+This page makes a chart you tick, on paper or on a phone, for one week. The dashboard hangs on a wall screen. It shows whose turn each chore is, the turn changes every day, and nobody has to tick anything for it to work.

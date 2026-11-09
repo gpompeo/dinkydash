@@ -30,7 +30,7 @@ DEFAULTS = {
     "calendars": [],
     "people": [],
     "pets": [],
-    "recurring": [],
+    "tasks": [],
     "special_dates": [],
     "claude_model": "claude-haiku-4-5",
     "max_tokens": 1024,
@@ -48,12 +48,24 @@ DEFAULTS = {
 
 THEMES = ("light", "dark")
 
+# The modules a family can switch off. Switching one off hides what it owns and
+# keeps its data, so the data keys stay in the config whatever these say.
+FEATURE_DEFAULTS = {"tasks": True, "special_dates": True, "shopping": False}
+
 # Avatar colours the dashboard and the settings UI both understand. Names rather
 # than hex so a theme change doesn't strand a colour nobody can read.
 AVATAR_COLORS = ("purple", "blue", "green", "pink", "orange", "amber", "teal")
 
 # The lists the settings UI edits. Every item in them carries a stable `id`.
-LIST_KEYS = ("people", "pets", "recurring", "special_dates", "calendars")
+LIST_KEYS = ("people", "pets", "tasks", "special_dates", "calendars")
+
+# Set on a config whose legacy shape was migrated in memory and not yet written back.
+MIGRATED = "_migrated"
+
+# Limits on what a family can add. Enforced where a task is saved, so a hand-edited file can
+# exceed them without breaking the dashboard.
+MAX_TASKS = 40
+MAX_TITLE_LENGTH = 80
 
 # The mark on a person or pet the app invented rather than a family typed
 # (see `starter_config`). The settings form drops it the first time that item
@@ -110,6 +122,7 @@ def load_config(path=None):
 def save_config(config, path=None):
     """Write config.yaml atomically, preserving comments and key order."""
     path = Path(path) if path else config_path()
+    config.pop(MIGRATED, None)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
         with os.fdopen(fd, "w") as f:
@@ -122,12 +135,23 @@ def save_config(config, path=None):
     log.info("Wrote %s", path)
 
 
-def with_defaults(raw):
-    """Fill in defaults and migrate pre-multi-calendar config in place."""
+def with_defaults(raw, today=None):
+    """Fill in defaults and migrate older shapes in place.
+
+    `today` is the day a legacy `recurring` list is migrated on; it defaults to today on the
+    family's own clock. It only matters while `recurring` is still present.
+    """
     config = raw
+    legacy_chores = config.pop("recurring", None)
     for key, value in DEFAULTS.items():
         if config.get(key) is None:
             config[key] = [] if isinstance(value, list) else value
+    if legacy_chores and not config["tasks"]:
+        config["tasks"] = migrate_chores(config, legacy_chores, today or today_for(config))
+        # Not yet on disk, and the people's new ids exist only in this copy: `ensure_ids` reports
+        # it so the settings UI saves the result once, and the ids stay the same from then on.
+        config[MIGRATED] = True
+        log.info("Migrated recurring into tasks[]")
 
     # A single calendar_url becomes the first entry in `calendars`, and the
     # global calendar_filter_emails that went with it becomes that entry's
@@ -150,6 +174,16 @@ def with_defaults(raw):
 
     if config.get("theme") not in THEMES:
         config["theme"] = "light"
+
+    # Each switch is coerced to a real boolean for the same reason as the
+    # theme: a hand-edited file can hold anything, and a missing switch takes
+    # its default so an install that predates the block looks as it did.
+    features = config.get("features")
+    features = features if isinstance(features, dict) else {}
+    config["features"] = {
+        name: features[name] if isinstance(features.get(name), bool) else default
+        for name, default in FEATURE_DEFAULTS.items()
+    }
     # Coerced rather than trusted for the same reason as the theme: this value
     # arrives from a hand-edited file or a jsonb column, and an unrecognised
     # one should fall back to the default rather than reach a formatter.
@@ -157,6 +191,56 @@ def with_defaults(raw):
         config["clock"] = DEFAULT_CLOCK
 
     return config
+
+
+def migrate_chores(config, chores, today):
+    """Daily rotating tasks from the old `recurring` list, with `today`'s turn unchanged.
+
+    The old rule picked `choices[day of year % len(choices)]`. A task rotates on its occurrence
+    index instead, so each task carries an `offset` chosen to put the same person on duty today.
+    From then on the two rules differ only where the old one restarted, at the year boundary.
+    People are referred to by id from here on, so people get ids first; a name that matches nobody
+    is dropped from the rotation.
+    """
+    from .recurrence import occurrence_index
+
+    people = [p for p in config.get("people") or [] if isinstance(p, dict)]
+    taken = {p.get("id") for p in people}
+    for person in people:
+        if not person.get("id"):
+            _add_id(person, new_id(taken))
+            taken.add(person["id"])
+    ids = {}
+    for person in people:
+        ids.setdefault(person.get("name"), person["id"])
+
+    tasks, task_ids = [], set()
+    for chore in chores:
+        if len(tasks) >= MAX_TASKS:
+            break
+        if not isinstance(chore, dict) or not chore.get("title"):
+            continue
+        choices = [c for c in chore.get("choices") or [] if isinstance(c, str)]
+        on_duty = choices[today.timetuple().tm_yday % len(choices)] if choices else None
+        rotation = [ids[name] for name in choices if name in ids]
+        task = {
+            "id": chore.get("id") or new_id(task_ids),
+            "title": str(chore["title"])[:MAX_TITLE_LENGTH],
+            "emoji": chore.get("emoji", ""),
+            "recurrence": {"kind": "daily"},
+            "assignment": {"mode": "rotate", "people": rotation, "offset": 0},
+        }
+        if rotation and on_duty in ids:
+            here = occurrence_index(task, today)
+            task["assignment"]["offset"] = (rotation.index(ids[on_duty]) - here) % len(rotation)
+        task_ids.add(task["id"])
+        tasks.append(task)
+    return tasks
+
+
+def feature_on(config, name):
+    """Whether the family has this module switched on."""
+    return bool((config.get("features") or FEATURE_DEFAULTS).get(name, FEATURE_DEFAULTS[name]))
 
 
 def new_id(taken=()):
@@ -227,17 +311,19 @@ def starter_config():
             {"name": "Biscuit", "type": "dog", "avatar_emoji": "\U0001f415",
              INVENTED: True},
         ],
-        "recurring": [
-            {"title": "Set the table", "emoji": "\U0001f37d",
-             "choices": ["Mia", "Theo"]},
-            {"title": "Feed Biscuit", "emoji": "\U0001f9b4",
-             "choices": ["Theo", "Mia"]},
-        ],
         "special_dates": [
             {"title": "Christmas", "emoji": "\U0001f384", "date": "12/25"},
             {"title": "Summer holidays", "emoji": "\u2600\ufe0f", "date": "07/01"},
         ],
     })
+    ensure_ids(config)
+    mia, theo = (p["id"] for p in config["people"])
+    for title, emoji, rotation in (("Set the table", "\U0001f37d", [mia, theo]),
+                                   ("Feed Biscuit", "\U0001f9b4", [theo, mia])):
+        config["tasks"].append({
+            "title": title, "emoji": emoji, "recurrence": {"kind": "daily"},
+            "assignment": {"mode": "rotate", "people": rotation, "offset": 0},
+        })
     ensure_ids(config)
     # Storage-layer keys: they say where a self-hoster's generated files go and
     # mean nothing as a jsonb column. `with_defaults` puts them in; a hosted
@@ -258,7 +344,7 @@ def ensure_ids(config):
     Deliberately not part of load_config — loading must not rewrite the file,
     and the engine never looks at ids. The settings UI calls this and saves.
     """
-    added = False
+    added = bool(config.pop(MIGRATED, False))
     for key in LIST_KEYS:
         items = config.get(key) or []
         taken = {item.get("id") for item in items if isinstance(item, dict)}
@@ -368,25 +454,14 @@ def is_set_up(config):
     return not invented_names(config) and timezone_is_set(config)
 
 
-def rename_in_chores(config, old, new):
-    """A person renamed in the settings keeps their place in every rotation.
+def drop_from_tasks(config, person_id):
+    """A person removed from the settings leaves every assignment too.
 
-    Chores hold names as plain text, so without this a family who replaced
-    the invented Mia by editing her would have a dashboard announcing Mia's turn
-    for the rest of time. Edited in place: a flow-style list in config.yaml
-    stays a flow-style list.
+    Their completions go with them (the store's concern); here only the config is touched.
+    Edited in place so a flow-style list in config.yaml stays flow-style.
     """
-    for chore in config.get("recurring") or []:
-        choices = chore.get("choices") or []
-        for index, name in enumerate(choices):
-            if name == old:
-                choices[index] = new
-
-
-def drop_from_chores(config, name):
-    """A person removed from the settings leaves every rotation too."""
-    for chore in config.get("recurring") or []:
-        choices = chore.get("choices") or []
-        for index in range(len(choices) - 1, -1, -1):
-            if choices[index] == name:
-                del choices[index]
+    for task in config.get("tasks") or []:
+        people = (task.get("assignment") or {}).get("people") or []
+        for index in range(len(people) - 1, -1, -1):
+            if people[index] == person_id:
+                del people[index]
