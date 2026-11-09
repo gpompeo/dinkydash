@@ -19,9 +19,37 @@
        {% if key == current %}aria-current="page"{% endif %}>{{ label }}</a>
     {% endfor %}
 </nav>
+{% if current == "tasks" %}
+{% for day in days %}
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
+    <div class="card-title">{{ day.label }}</div>
+    {% for row in day.rows %}
+    <form method="post" action="{{ url_for('phone.tick') }}"
+          style="display:flex;align-items:center;gap:0.75rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="task_id" value="{{ row.id }}">
+        <input type="hidden" name="date" value="{{ day.date }}">
+        <input type="hidden" name="person" value="{{ row.person_id }}">
+        <input type="hidden" name="done" value="{{ '0' if row.done else '1' }}">
+        <button class="btn {{ '' if row.done else 'outline' }}" type="submit"
+                {% if not row.can %}disabled{% endif %}
+                aria-pressed="{{ 'true' if row.done else 'false' }}"
+                aria-label="{{ row.title }}, {{ row.who }}: {{ 'done. Untick' if row.done else 'not done. Tick' }}">
+            {{ "✓" if row.done else "○" }}
+        </button>
+        <span>{{ row.emoji }} {{ row.title }}
+            <span class="hint">{{ row.who }}</span></span>
+    </form>
+    {% else %}
+    <div class="hint">Nothing {{ "is due" if day.label == "Today" else "was due" }}.</div>
+    {% endfor %}
+</div>
+{% endfor %}
+{% else %}
 <div class="card pad">
     <div class="hint">Nothing to show here yet.</div>
 </div>
+{% endif %}
 {% else %}
 <div class="card pad">
     <div class="hint">Hi {{ person.name }}. Tasks and Shopping are both switched off, so there's nothing to do here yet.</div>

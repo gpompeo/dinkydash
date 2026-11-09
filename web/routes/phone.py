@@ -14,11 +14,14 @@ means. The name picked is the only thing the session holds about the phone.
 Nothing here logs a PIN, and no template echoes one.
 """
 
+from datetime import date, timedelta
+
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    session, url_for)
 
 from dinkydash import config as config_module
-from dinkydash import pins
+from dinkydash import checkin, pins
+from dinkydash.context import tasks_for
 from web import manifest as manifest_module
 from web import parent, ratelimit
 from web.family import current_store
@@ -130,8 +133,81 @@ def _tab(name):
     keys = [key for key, _ in tabs]
     if name is not None and name not in keys:
         abort(404)
-    return _render("phone/home.html", person=person, tabs=tabs,
-                   current=name or (keys[0] if keys else None))
+    current = name or (keys[0] if keys else None)
+    days = _task_days(config, person) if current == "tasks" else []
+    return _render("phone/home.html", person=person, tabs=tabs, current=current, days=days)
+
+
+def _restricted():
+    """Sign-in is on and this phone is not a parent's: ticks are for oneself only."""
+    return parent.enabled() and not parent.is_parent()
+
+
+def _task_days(config, person):
+    """Yesterday's and today's tasks as rows a phone can tick, today first.
+
+    A row is one person's share of a task, so an "Everyone" task has a row each
+    and an "Anyone" task has one, credited to whoever ticks it. A member sees
+    only the rows they may tick.
+    """
+    store = current_store()
+    today = config_module.today_for(config)
+    yesterday = today - timedelta(days=1)
+    done = {(c["task_id"], c["date"], c["person_id"]): c for c in store.load_completions(yesterday)}
+    named = {p["id"]: p.get("name", "") for p in _people(config)}
+    days = []
+    for day, label in ((today, "Today"), (yesterday, "Yesterday")):
+        rows = []
+        for task in tasks_for(config, day):
+            if task["mode"] == "anyone":
+                doers = [c["person_id"] for c in done.values()
+                         if c["task_id"] == task["id"] and c["date"] == day.isoformat()]
+                # Credited to the phone's owner on a tick; a finished one shows who did it.
+                who = doers[0] if doers else person["id"]
+                rows.append(dict(task, person_id=who, who="Anyone", done=bool(doers),
+                                 can=not doers or not _restricted() or who == person["id"]))
+                continue
+            for person_id in task["person_ids"]:
+                if _restricted() and person_id != person["id"]:
+                    continue
+                rows.append(dict(task, person_id=person_id, who=named.get(person_id, ""),
+                                 done=(task["id"], day.isoformat(), person_id) in done, can=True))
+        days.append({"label": label, "date": day.isoformat(), "rows": rows})
+    return days
+
+
+@bp.route("/h/tick", methods=["POST"])
+def tick():
+    """Tick or untick one task for one person on one day.
+
+    The access rule runs on the session and the config before anything in the
+    body is read for meaning: CSRF is checked app-wide ahead of this function,
+    and the date, task and person are only claims until `checkin.may_tick`
+    says so.
+    """
+    config = _config()
+    actor = _person(config, session.get(PERSON))
+    if actor is None:
+        return "", 401, NO_STORE
+    try:
+        day = date.fromisoformat(request.form.get("date", ""))
+    except ValueError:
+        abort(400)
+    task_id = request.form.get("task_id", "")
+    person_id = request.form.get("person") or actor["id"]
+    today = config_module.today_for(config)
+    if not checkin.may_tick(config, task_id=task_id, day=day, person_id=person_id, today=today,
+                            actor_id=actor["id"], restricted=_restricted(),
+                            is_parent=parent.enabled() and parent.is_parent()):
+        abort(403)
+    entry = {"task_id": task_id, "date": day.isoformat(), "person_id": person_id,
+             "completed_at": config_module.now_for(config).isoformat(timespec="seconds")}
+    store = current_store()
+    if request.form.get("done") == "0":
+        store.remove_completion(entry, today)
+    else:
+        store.record_completion(entry, today)
+    return redirect(url_for("phone.tab", tab="tasks"))
 
 
 def _pinned(people):

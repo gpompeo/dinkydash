@@ -855,6 +855,8 @@ def section_delete(section_name, item_id):
     if section_name == "people":
         # Deleting Mia means Mia is gone from the dashboard, turns included.
         config_module.drop_from_tasks(config, removed.get("id"))
+        if hasattr(current_store(), "drop_person_completions"):
+            current_store().drop_person_completions(removed.get("id"))
     save(config)
     flash(f"Removed {removed.get('name') or removed.get('title') or removed.get('label') or 'it'}.", "ok")
     return redirect(url_for("settings.section_list", section_name=section_name))

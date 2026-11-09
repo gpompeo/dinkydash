@@ -21,3 +21,5 @@ config.yaml
 
 # Ralph loop working notes
 .ralph/
+completions.json
+shopping.json

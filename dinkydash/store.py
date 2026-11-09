@@ -39,6 +39,7 @@ import logging
 import os
 import tempfile
 from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
 
 try:
@@ -60,6 +61,10 @@ AGENDA_KEYS = ("events", "calendar_statuses", "calendars_fetched_at")
 
 # Beside the config, never in it. Holds secrets, so it stays out of git.
 AUTH_FILE = "auth.json"
+
+# Completions older than this many days are dropped whenever one is written.
+COMPLETIONS_FILE = "completions.json"
+KEEP_COMPLETIONS_DAYS = 400
 
 # Files beside the config whose change moves `change_token()`.
 CHANGE_FILES = ("completions.json", "shopping.json")
@@ -161,6 +166,44 @@ class FileStore:
         digest = hashlib.sha256("|".join(marks).encode()).digest()
         return int.from_bytes(digest[:6], "big")
 
+    # -- tasks ticked off ----------------------------------------------------
+
+    def load_completions(self, since=None):
+        """Completions as `{task_id, date, person_id, completed_at}`, from `since` on.
+
+        `since` is a date; `date` in each entry is an ISO date string, which
+        sorts as dates do. A missing or damaged file reads as no completions.
+        """
+        found = _read_json(self.base / COMPLETIONS_FILE, "the completions")
+        found = [c for c in found if _is_completion(c)] if isinstance(found, list) else []
+        if since is not None:
+            found = [c for c in found if c["date"] >= since.isoformat()]
+        return found
+
+    def record_completion(self, entry, today):
+        """Add one completion (once per task, date and person), then trim old ones."""
+        self._change_completions(
+            lambda found: found if _same_completion(entry, found) else found + [entry], today)
+
+    def remove_completion(self, entry, today):
+        self._change_completions(
+            lambda found: [c for c in found if not _same_completion(entry, [c])], today)
+
+    def drop_person_completions(self, person_id):
+        """A person who is deleted takes their completions with them."""
+        with _locked(self.base):
+            found = self.load_completions()
+            kept = [c for c in found if c["person_id"] != person_id]
+            if len(kept) != len(found):
+                _write_json(self.base / COMPLETIONS_FILE, kept)
+
+    def _change_completions(self, change, today):
+        """Read, change, trim to the last 400 days and replace, all under the lock."""
+        with _locked(self.base):
+            oldest = (today - timedelta(days=KEEP_COMPLETIONS_DAYS)).isoformat()
+            kept = [c for c in change(self.load_completions()) if c["date"] >= oldest]
+            _write_json(self.base / COMPLETIONS_FILE, kept)
+
     # -- who may sign in ---------------------------------------------------
 
     def load_auth(self):
@@ -223,6 +266,17 @@ class FileStore:
     def _resolve(self, value):
         path = Path(value).expanduser()
         return path if path.is_absolute() else self.base / path
+
+
+def _is_completion(entry):
+    return isinstance(entry, dict) and all(
+        isinstance(entry.get(k), str) and entry[k]
+        for k in ("task_id", "date", "person_id"))
+
+
+def _same_completion(entry, found):
+    return any((c["task_id"], c["date"], c["person_id"])
+               == (entry["task_id"], entry["date"], entry["person_id"]) for c in found)
 
 
 def _is_agenda_key(key):

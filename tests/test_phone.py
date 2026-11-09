@@ -3,6 +3,7 @@
 import json
 import logging
 import stat
+from datetime import timedelta
 
 import pytest
 
@@ -281,3 +282,141 @@ class TestSignInOn:
     def test_a_member_session_does_not_open_the_settings(self, with_pin):
         pick(with_pin, "mia1", "4821")
         assert with_pin.get("/settings/").status_code == 302
+
+
+# -- ticking tasks off -------------------------------------------------------
+
+TASK_CONFIG = CONFIG + """\
+tasks:
+  - id: tk-mia
+    title: "Feed the fish"
+    emoji: "🐟"
+    recurrence: {kind: daily}
+    assignment: {mode: fixed, people: [mia1]}
+  - id: tk-sam
+    title: "Lay the table"
+    emoji: "🍽️"
+    recurrence: {kind: daily}
+    assignment: {mode: fixed, people: [sam1]}
+  - id: tk-any
+    title: "Empty the bins"
+    emoji: "🗑️"
+    recurrence: {kind: daily}
+    assignment: {mode: anyone, people: [mia1, sam1]}
+  - id: tk-all
+    title: "Tidy up"
+    emoji: "🧹"
+    recurrence: {kind: daily}
+    assignment: {mode: everyone, people: [mia1, sam1]}
+"""
+
+
+def today_of(store):
+    from dinkydash import config as config_module
+    return config_module.today_for(store.load_config())
+
+
+def tick(client, task, day, person=None, done="1"):
+    client.get("/h")
+    data = {"task_id": task, "date": day.isoformat(), "done": done}
+    if person:
+        data["person"] = person
+    return client.post("/h/tick", data=data)
+
+
+def ticked(store):
+    return {(c["task_id"], c["date"], c["person_id"]) for c in store.load_completions()}
+
+
+class TestTicking:
+    @pytest.fixture
+    def today(self, store):
+        store.config_path.write_text(TASK_CONFIG)
+        return today_of(store)
+
+    def test_without_sign_in_anyone_ticks_anything(self, open_client, store, today):
+        pick(open_client, "mia1")
+        assert tick(open_client, "tk-sam", today, "sam1").status_code == 302
+        assert ("tk-sam", today.isoformat(), "sam1") in ticked(store)
+
+    def test_a_tick_can_be_undone(self, open_client, store, today):
+        pick(open_client, "mia1")
+        tick(open_client, "tk-mia", today, "mia1")
+        tick(open_client, "tk-mia", today, "mia1", done="0")
+        assert ticked(store) == set()
+
+    def test_yesterday_but_not_the_day_before(self, open_client, store, today):
+        pick(open_client, "mia1")
+        assert tick(open_client, "tk-mia", today - timedelta(days=1), "mia1").status_code == 302
+        assert tick(open_client, "tk-mia", today - timedelta(days=2), "mia1").status_code == 403
+        assert tick(open_client, "tk-mia", today + timedelta(days=1), "mia1").status_code == 403
+
+    def test_a_task_not_due_or_unknown_is_refused(self, open_client, today):
+        pick(open_client, "mia1")
+        assert tick(open_client, "nope", today, "mia1").status_code == 403
+        assert tick(open_client, "tk-mia", today, "sam1").status_code == 403
+
+    def test_a_member_ticks_their_own_and_anyone_tasks(self, locked, store, today):
+        pick(locked, "mia1")
+        assert tick(locked, "tk-mia", today).status_code == 302
+        assert tick(locked, "tk-any", today).status_code == 302
+        assert tick(locked, "tk-all", today).status_code == 302
+        assert ticked(store) == {("tk-mia", today.isoformat(), "mia1"),
+                                 ("tk-any", today.isoformat(), "mia1"),
+                                 ("tk-all", today.isoformat(), "mia1")}
+
+    def test_a_member_cannot_tick_somebody_elses(self, locked, store, today):
+        pick(locked, "mia1")
+        assert tick(locked, "tk-sam", today, "sam1").status_code == 403
+        assert tick(locked, "tk-sam", today).status_code == 403
+        assert tick(locked, "tk-any", today, "sam1").status_code == 403
+        assert ticked(store) == set()
+
+    def test_a_member_is_limited_to_two_days(self, locked, today):
+        pick(locked, "mia1")
+        assert tick(locked, "tk-mia", today - timedelta(days=2)).status_code == 403
+
+    def test_a_parent_ticks_any_date_in_fourteen_days_and_no_older(self, locked_app, store, today):
+        client = parent_client(locked_app)
+        pick(client, "mia1")
+        assert tick(client, "tk-sam", today - timedelta(days=14), "sam1").status_code == 302
+        assert tick(client, "tk-sam", today - timedelta(days=15), "sam1").status_code == 403
+        assert tick(client, "tk-sam", today + timedelta(days=1), "sam1").status_code == 403
+
+    def test_a_phone_with_no_name_cannot_tick(self, open_client, today):
+        open_client.get("/h/who")
+        assert open_client.post("/h/tick", data={"task_id": "tk-mia",
+                                                 "date": today.isoformat()}).status_code == 401
+
+    def test_a_tick_without_the_csrf_token_is_refused(self, open_client, today):
+        pick(open_client, "mia1")
+        assert open_client.post("/h/tick", data={"task_id": "tk-mia", "csrf_token": "wrong",
+                                                 "date": today.isoformat()}).status_code == 400
+
+    def test_a_bad_date_is_a_400(self, open_client):
+        pick(open_client, "mia1")
+        assert open_client.post("/h/tick", data={"task_id": "tk-mia", "date": "x"}).status_code == 400
+
+    def test_the_tab_shows_a_member_only_their_rows(self, locked, today):
+        pick(locked, "mia1")
+        page = locked.get("/h/tasks").get_data(as_text=True)
+        assert "Feed the fish" in page and "Empty the bins" in page
+        assert "Lay the table" not in page
+
+    def test_a_rename_keeps_completions(self, open_client, store, today):
+        pick(open_client, "mia1")
+        tick(open_client, "tk-mia", today, "mia1")
+        config = store.load_config()
+        config["people"][0]["name"] = "Mia-Rose"
+        store.save_config(config)
+        assert ("tk-mia", today.isoformat(), "mia1") in ticked(store)
+        assert "Mia-Rose" in open_client.get("/h/tasks").get_data(as_text=True)
+
+    def test_deleting_a_person_deletes_their_completions(self, store, today, monkeypatch):
+        monkeypatch.delenv(parent.PASSWORD_VARIABLE, raising=False)
+        client = client_for(create_app(store))
+        pick(client, "mia1")
+        tick(client, "tk-mia", today, "mia1")
+        tick(client, "tk-sam", today, "sam1")
+        client.post("/settings/people/mia1/delete", data={"confirmed": "yes"})
+        assert ticked(store) == {("tk-sam", today.isoformat(), "sam1")}

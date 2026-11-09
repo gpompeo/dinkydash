@@ -14,7 +14,7 @@ load_payload(config)         save_agenda(config, agenda)
 recent_notes(config, days)   record_note(config, entry, keep)
 ```
 
-`FileStore` also has `change_token()` (a number from the modification time and size of the config, payload, `completions.json` and `shopping.json`; never their content, so `/changes` can serve it) and `load_auth()` and `update_auth(change)` for `auth.json` (member PIN hashes, and the screen token under `screen_token`); `PostgresStore` has neither, and the phone page is not registered in cloud mode.
+`FileStore` also has `load_completions(since)`, `record_completion(entry, today)`, `remove_completion(entry, today)` and `drop_person_completions(person_id)` for `completions.json` (entries `{task_id, date, person_id, completed_at}`, keyed on person ids, trimmed to 400 days on every write, replaced atomically; the date rules live in `checkin.py`), and `change_token()` (a number from the modification time and size of the config, payload, `completions.json` and `shopping.json`; never their content, so `/changes` can serve it) and `load_auth()` and `update_auth(change)` for `auth.json` (member PIN hashes, and the screen token under `screen_token`); `PostgresStore` has neither, and the phone page is not registered in cloud mode.
 
 Both implementations exist. `FileStore(config_path)` is `config.yaml` and two JSON files in one
 directory. `PostgresStore(pool, family_id)` is the same seven operations against rows, with the
