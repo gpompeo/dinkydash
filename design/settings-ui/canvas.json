@@ -30,7 +30,7 @@
       "y": 0,
       "w": 390,
       "h": 844,
-      "title": "Pets \u2014 adding one"
+      "title": "Pets — adding one"
     },
     {
       "file": "Chores.dc.html",
@@ -95,6 +95,14 @@
       "w": 390,
       "h": 844,
       "title": "Activity"
+    },
+    {
+      "file": "TaskEdit.dc.html",
+      "x": 1880,
+      "y": 964,
+      "w": 390,
+      "h": 844,
+      "title": "Edit a task"
     }
   ],
   "annotations": [
@@ -103,14 +111,14 @@
       "x": 0,
       "y": -190,
       "w": 860,
-      "text": "DinkyDash \u2014 ongoing settings, mobile (390\u00d7844)\n\nThe hub at top-left is the whole map: every row is one settings section, and each row's subtitle carries live state so problems surface before you tap in. Static mockups; nothing is clickable."
+      "text": "DinkyDash — ongoing settings, mobile (390×844)\n\nThe hub at top-left is the whole map: every row is one settings section, and each row's subtitle carries live state so problems surface before you tap in. Static mockups; nothing is clickable."
     },
     {
       "id": "rotation-note",
       "x": 470,
       "y": 1852,
       "w": 390,
-      "text": "Chore rotation was undefined when these were drawn. Proposal: an explicit ordered list plus a next-week preview, so the day-of-year modulo is visible rather than mysterious. Reordering takes effect tomorrow \u2014 today's dashboard is already written."
+      "text": "Chore rotation was undefined when these were drawn. Proposal: an explicit ordered list plus a next-week preview, so the day-of-year modulo is visible rather than mysterious. Reordering takes effect tomorrow — today's dashboard is already written."
     },
     {
       "id": "calendar-note",
@@ -124,14 +132,14 @@
       "x": 1410,
       "y": 2820,
       "w": 390,
-      "text": "Still open: no drag-reorder interaction is drawn (the Reorder affordance is a placeholder), and lapse behaviour after trial isn't shown \u2014 it was an open question when these were drawn."
+      "text": "Still open: no drag-reorder interaction is drawn (the Reorder affordance is a placeholder), and lapse behaviour after trial isn't shown — it was an open question when these were drawn."
     },
     {
       "id": "theme-note",
       "x": 470,
       "y": 2820,
       "w": 390,
-      "text": "Light/Dark lives here rather than in Account: it is a property of the screen on the wall, not of the person editing. An Auto option (dark after sunset, using the family timezone) would suit a kitchen dashboard \u2014 not drawn, say the word."
+      "text": "Light/Dark lives here rather than in Account: it is a property of the screen on the wall, not of the person editing. An Auto option (dark after sunset, using the family timezone) would suit a kitchen dashboard — not drawn, say the word."
     },
     {
       "id": "activity-note",
@@ -139,6 +147,13 @@
       "y": 1928,
       "w": 390,
       "text": "Activity is for a parent. Streaks and a thirty-day grid per person sit above the one list that needs action: every due task left unticked in the last fourteen days, newest first, each with a single Tick button. The grid is a square per day (green done, ring something left, grey nothing due) with no red and no scolding, matching the wall's neutral treatment of missed tasks. Nothing older than fourteen days can be ticked, and nothing later than today."
+    },
+    {
+      "id": "task-editor-note",
+      "x": 1880,
+      "y": 1852,
+      "w": 390,
+      "text": "The task editor replaces the chore rotation form. Two plain questions, each a list of radios, because a family reads them as sentences: how often, and whose job. Weekdays and Weekends sit beside Every day as ready-made choices (D6); Chosen days opens seven day buttons for anything else. Each kind's own fields sit directly under it, so there is nothing hidden behind a dropdown and no script is needed. Who, in order is the existing ordered list: One person uses the first name in it, Taking turns uses the order, Anyone and Everyone ignore it. Save refuses a missing date or a title over 80 characters in plain words, as the other forms do."
     }
   ],
   "launch": {

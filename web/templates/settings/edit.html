@@ -13,7 +13,7 @@
 {% if problems %}
 <div class="problems" id="form-errors" role="alert" tabindex="-1">
     <h2>Check these fields</h2>
-    <ul>{% for name, problem in problems.items() %}<li><a href="#f-{{ name }}{{ '-day' if name == 'date' }}">{{ problem }}</a></li>{% endfor %}</ul>
+    <ul>{% for name, problem in problems.items() %}<li><a href="#{{ 'f-recurrence' if name.startswith('rec_') else 'f-' ~ name ~ ('-day' if name == 'date' else '') }}">{{ problem }}</a></li>{% endfor %}</ul>
 </div>
 {% endif %}
 
@@ -28,7 +28,7 @@
     <button type="submit" name="action" value="save" hidden tabindex="-1"></button>
     {% endif %}
     {% for name, label, kind, required, help in section.fields %}
-    {% set grouped = kind in ('monthday', 'color', 'emoji', 'people') %}
+    {% set grouped = kind in ('monthday', 'color', 'emoji', 'people', 'recurrence', 'assignment') %}
     <{{ 'fieldset' if grouped else 'div' }} class="field" {% if grouped %}id="f-{{ name }}" tabindex="-1" {{ field_access(name, help) }}{% endif %}>
         {% if grouped %}<legend>{{ label }}</legend>
         {% elif kind != 'checkbox' %}<label for="f-{{ name }}">{{ label }}</label>{% endif %}
@@ -120,6 +120,9 @@
                 <label for="c-{{ choice }}"><span class="swatch avatar {{ choice }}" aria-hidden="true"></span><span class="sr-only">{{ choice | capitalize }}</span></label>
                 {% endfor %}
             </div>
+
+        {% elif kind in ('recurrence', 'assignment') %}
+            {% include "settings/_task_rules.html" %}
 
         {% elif kind == 'people' %}
             {% include "settings/_rotation.html" %}

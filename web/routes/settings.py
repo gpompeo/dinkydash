@@ -19,7 +19,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect,
 
 from dinkydash import accounts
 from dinkydash import config as config_module
-from dinkydash import lifecycle, schedule, screens
+from dinkydash import lifecycle, schedule, screens, taskform
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
 from dinkydash.clock import CLOCKS, DEFAULT_CLOCK, clock_of, format_time
@@ -122,18 +122,22 @@ SECTIONS = {
             ("avatar_emoji", "Emoji", "emoji", False, ""),
         ],
     },
-    # The section keeps its URL name while the task editor is built; what it edits is `tasks`.
+    # The URL stays `recurring`; what the section edits is `tasks`.
     "recurring": {
         "key": "tasks",
         "title": "Tasks",
         "singular": "task",
         "add_label": "Add a task",
-        "blurb": "Tasks come up every day and hand over at midnight, in the order you set.",
+        "blurb": "Things that need doing, on the days they come up. Each one can be one person's, "
+                 "shared out in turns, for anyone, or for everyone.",
         "fields": [
             ("title", "Task", "text", True, ""),
             ("emoji", "Emoji", "emoji", False, ""),
-            ("choices", "Whose turn, in order", "people", True,
-             "Rotates one person each time the task comes up."),
+            ("recurrence", "How often", "recurrence", False, ""),
+            ("mode", "Whose job", "assignment", False, ""),
+            ("choices", "Who, in order", "people", False,
+             "One person uses the first name; Taking turns uses the order. Anyone and Everyone "
+             "ignore this list."),
         ],
     },
     "special_dates": {
@@ -215,14 +219,20 @@ SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
 def task_form(config, task):
     """A task as the Tasks form shows it: who is in the rotation, by person id.
 
-    `names` is the same list as words, for the list page.
+    `names` is the same list as words, for the list page; `rec` and `mode` are the recurrence
+    and assignment controls' starting values.
     """
     by_id = {p.get("id"): p.get("name", "") for p in config.get("people") or []
              if isinstance(p, dict) and p.get("id")}
     people = (task.get("assignment") or {}).get("people") or []
     chosen = [i for i in people if i in by_id]
+    mode = (task.get("assignment") or {}).get("mode")
+    today = config_module.today_for(config)
     return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
-            "choices": chosen, "names": [by_id[i] for i in chosen]}
+            "choices": chosen, "names": [by_id[i] for i in chosen],
+            "rec": taskform.recurrence_state(task.get("recurrence"), today),
+            "when": taskform.describe(task.get("recurrence"), today),
+            "mode": mode if mode in taskform.MODES else "rotate"}
 
 
 def known_person_ids(config, ids):
@@ -234,17 +244,39 @@ def known_person_ids(config, ids):
 def task_from_form(config, existing, submitted):
     """The task to store for a submitted Tasks form.
 
-    Whatever the form does not edit (the recurrence, the rotation offset) is kept from `existing`.
+    `submitted` carries the checked `recurrence` and `mode`; the rotation offset is kept from
+    `existing`.
     The form posts person ids and only ids of people in the family are kept, so a later rename
     changes nothing and no empty id reaches an assignment.
     """
     task = dict(existing or {})
-    assignment = dict(task.get("assignment") or {"mode": "rotate", "offset": 0})
+    assignment = dict(task.get("assignment") or {"offset": 0})
+    assignment["mode"] = submitted["mode"]
     assignment["people"] = known_person_ids(config, submitted.get("choices"))
     task.update({"title": submitted["title"], "emoji": submitted.get("emoji", ""),
-                 "recurrence": task.get("recurrence") or {"kind": "daily"},
-                 "assignment": assignment})
+                 "recurrence": submitted["recurrence"], "assignment": assignment})
     return task
+
+
+def read_rules(form, submitted, item, stored, today):
+    """Put the posted recurrence and assignment on `submitted`; return the problems with them.
+
+    A post with no `rec_kind` is not from the editor's controls, so the task keeps what it has.
+    `submitted["rec"]` is what the form redisplays; `submitted["recurrence"]` is what is stored.
+    """
+    if "rec_kind" not in form:
+        stored = stored or {}
+        submitted["recurrence"] = stored.get("recurrence") or {"kind": "daily"}
+        submitted["mode"] = item.get("mode") or "rotate"
+        submitted["rec"] = item.get("rec")
+        return {}
+    submitted["rec"] = taskform.draft_state(form, today)
+    submitted["recurrence"], problems = taskform.recurrence_from_form(form, today)
+    mode = form.get("mode", "")
+    if mode not in taskform.MODES:
+        problems["mode"] = "Choose whose job it is."
+    submitted["mode"] = mode if mode in taskform.MODES else "rotate"
+    return problems
 
 
 def section_or_404(name):
@@ -622,6 +654,8 @@ def section_edit(section_name, item_id):
     is_new = item_id == "new"
     if is_new:
         item = {}
+        if section_name == "recurring":
+            item = task_form(config, {})
         if section_name == "calendars":
             item = {"enabled": True, "show_locations": True,
                     "label": suggested_calendar_label(config)}
@@ -644,8 +678,11 @@ def section_edit(section_name, item_id):
         submitted = dict(item)
         for field in section["fields"]:
             submitted[field[0]] = parse_field(field, request.form, item)
+        task_problems = {}
         if section_name == "recurring":
             submitted["choices"] = known_person_ids(config, submitted["choices"])
+            task_problems = read_rules(request.form, submitted, item,
+                                       None if is_new else stored_task, today)
 
         if section_name == "recurring" and (request.form.get("move_choice")
                                             or request.form.get("action") == "update_choices"):
@@ -664,6 +701,9 @@ def section_edit(section_name, item_id):
         else:
             problems = validate(section, submitted, today)
             if section_name == "recurring":
+                problems.update(task_problems)
+                if submitted["mode"] in ("fixed", "rotate") and not submitted["choices"]:
+                    problems["choices"] = "Choose at least one person."
                 too_long = len(submitted.get("title") or "") > config_module.MAX_TITLE_LENGTH
                 if too_long:
                     problems["title"] = (f"Keep the task to {config_module.MAX_TITLE_LENGTH} "
@@ -716,6 +756,8 @@ def section_edit(section_name, item_id):
         item=item, item_id=item_id, is_new=is_new, problems=problems,
         checked=checked, config=config, months=MONTHS,
         email_steps=section_name == "calendars" and steps_by_email(),
+        task_choices={"recurrence": taskform.RECURRENCE_CHOICES, "modes": taskform.MODE_CHOICES,
+                      "nth": taskform.NTH_CHOICES, "days": taskform.DAY_NAMES},
         date_min=f"{EARLIEST_BIRTH_YEAR}-01-01", date_max=today.isoformat(),
         emoji=EMOJI_SUGGESTIONS.get(section_name, []),
         # The picker's dialog is drawn once, after the form, and only where there is an

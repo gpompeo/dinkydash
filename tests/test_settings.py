@@ -1225,3 +1225,84 @@ class TestRotationPostsPersonIds:
                                data={"title": "Set the table", "choices": ["", "nobody"]})
         assert response.status_code == 200
         assert "Choose at least one person." in response.get_data(as_text=True)
+
+
+class TestTaskEditor:
+    """Every recurrence kind and assignment mode can be set, and refusals are in plain English."""
+
+    @pytest.fixture(autouse=True)
+    def _people(self, client, config_path):
+        client.get("/settings/recurring")
+        ids = {p["name"]: p["id"] for p in config_module.load_config(config_path)["people"]}
+        self.mia, self.theo = ids["Mia"], ids["Theo"]
+        self.config_path = config_path
+
+    def add(self, client, **extra):
+        data = {"title": "Bins", "rec_kind": "daily", "mode": "rotate", "choices": [self.mia]}
+        data.update(extra)
+        return client.post("/settings/recurring/new", data=data)
+
+    def stored(self):
+        return config_module.load_config(self.config_path)["tasks"][-1]
+
+    @pytest.mark.parametrize("posted,expected", [
+        ({"rec_kind": "daily"}, {"kind": "daily"}),
+        ({"rec_kind": "weekdays"}, {"kind": "weekdays", "days": [0, 1, 2, 3, 4]}),
+        ({"rec_kind": "weekends"}, {"kind": "weekdays", "days": [5, 6]}),
+        ({"rec_kind": "days", "rec_days": ["1", "3"]}, {"kind": "weekdays", "days": [1, 3]}),
+        ({"rec_kind": "interval", "rec_every": "3", "rec_start": "2026-01-05"},
+         {"kind": "interval", "every": 3, "start": "2026-01-05"}),
+        ({"rec_kind": "monthly_day", "rec_day": "15"}, {"kind": "monthly_day", "day": 15}),
+        ({"rec_kind": "monthly_nth", "rec_nth": "-1", "rec_weekday": "4"},
+         {"kind": "monthly_nth", "nth": -1, "weekday": 4}),
+        ({"rec_kind": "once", "rec_date": "2026-12-24"}, {"kind": "once", "date": "2026-12-24"}),
+    ])
+    def test_every_recurrence_kind_is_stored(self, client, posted, expected):
+        assert self.add(client, **posted).status_code == 302
+        recurrence = self.stored()["recurrence"]
+        assert recurrence == expected
+
+    @pytest.mark.parametrize("mode", ["fixed", "rotate", "anyone", "everyone"])
+    def test_every_assignment_mode_is_stored(self, client, mode):
+        assert self.add(client, mode=mode, choices=[self.theo, self.mia]).status_code == 302
+        assignment = self.stored()["assignment"]
+        assert assignment["mode"] == mode and assignment["people"] == [self.theo, self.mia]
+
+    def test_anyone_and_everyone_need_no_names(self, client):
+        assert self.add(client, mode="anyone", choices=[]).status_code == 302
+        assert self.add(client, mode="everyone", choices=[]).status_code == 302
+
+    def test_one_person_and_turns_need_a_name(self, client):
+        for mode in ("fixed", "rotate"):
+            html = self.add(client, mode=mode, choices=[]).get_data(as_text=True)
+            assert "Choose at least one person." in html
+
+    def test_a_refused_recurrence_is_said_in_words_and_redisplayed(self, client):
+        response = self.add(client, rec_kind="once", rec_date="")
+        html = response.get_data(as_text=True)
+        assert response.status_code == 200
+        assert "Choose the day it happens" in html
+        assert 'value="once" checked' in html
+        assert len(config_module.load_config(self.config_path)["tasks"]) == 2
+
+    def test_the_form_shows_the_stored_rule(self, client):
+        self.add(client, rec_kind="weekends")
+        task_id = ids_for(self.config_path, "tasks")[-1]
+        html = client.get(f"/settings/recurring/{task_id}").get_data(as_text=True)
+        assert 'id="rec-weekends" name="rec_kind" value="weekends" checked' in html
+
+    def test_editing_without_the_controls_keeps_the_rule(self, client):
+        self.add(client, rec_kind="weekends", mode="fixed")
+        task_id = ids_for(self.config_path, "tasks")[-1]
+        client.post(f"/settings/recurring/{task_id}", data={"title": "Renamed", "choices": [self.mia]})
+        task = self.stored()
+        assert task["recurrence"] == {"kind": "weekdays", "days": [5, 6]}
+        assert task["assignment"]["mode"] == "fixed"
+
+    def test_an_unknown_mode_is_refused(self, client):
+        assert "Choose whose job it is." in self.add(client, mode="boss").get_data(as_text=True)
+
+    def test_the_list_says_when_and_who(self, client):
+        self.add(client, rec_kind="weekends", mode="anyone")
+        html = client.get("/settings/recurring").get_data(as_text=True)
+        assert "Weekends" in html and "Anyone" in html

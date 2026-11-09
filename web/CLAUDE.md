@@ -9,7 +9,7 @@ file holds the ones that only bite here. Sizing conventions are in the root unde
 **Adding a field to a settings section.** Add a tuple to the section's `fields` list in
 `web/routes/settings.py` — `(name, label, kind, required, help)`. The list template and the edit
 form both render from it, and `parse_field` reads it back. `kind` is one of `text`, `url`, `date`,
-`monthday`, `textarea`, `checkbox`, `emoji`, `color`, `people`, `emails`. A new `kind` needs a
+`monthday`, `textarea`, `checkbox`, `emoji`, `color`, `people`, `emails`, `recurrence`, `assignment` (the last two are the task editor's radios, in `settings/_task_rules.html`, read back by `dinkydash/taskform.py`). A new `kind` needs a
 branch in `parse_field` and a branch in `web/templates/settings/edit.html`; nothing else.
 
 **Validation errors belong to fields.** `validate` maps field names to messages. The editor links
