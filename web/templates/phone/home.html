@@ -20,6 +20,9 @@
     {% endfor %}
 </nav>
 {% if current == "tasks" %}
+{% if streak and streak.best %}
+<div class="card pad hint">Streak: {{ streak.now }} {{ 'day' if streak.now == 1 else 'days' }}. Best: {{ streak.best }} {{ 'day' if streak.best == 1 else 'days' }}.</div>
+{% endif %}
 {% for day in days %}
 <div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
     <div class="card-title">{{ day.label }}</div>

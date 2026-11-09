@@ -3,6 +3,8 @@
 Guidance for `dinkydash/` and `migrations/`. The root `CLAUDE.md` holds the rules that apply
 to every change; this file holds the ones that only bite here.
 
+`streaks.py` (`person_streak`, `best_person_streak`, `task_streak`) works out streaks from config and completions on every call; nothing stores them, and the prompt never sees them. `board.build_view(..., completions=)` adds done state, streaks and the yesterday group, and `None` (cloud) leaves the plain list.
+
 ## The storage seam
 
 Seven operations, on one object, and nothing above them knows what is behind it:

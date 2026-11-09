@@ -28,3 +28,10 @@ def test_a_completion_never_appears_in_the_prompt():
     assert "Feed the fish" in text
     for value in completion.values():
         assert value not in text
+
+
+def test_no_streak_wording_reaches_the_prompt():
+    day = date(2026, 6, 1)
+    text = prompt.build_user_prompt(CONFIG, day, [], [], tasks_for(CONFIG, day), [])
+    assert "streak" not in text.lower()
+    assert "in a row" not in text

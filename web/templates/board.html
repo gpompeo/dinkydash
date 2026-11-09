@@ -383,6 +383,16 @@
             box-shadow: var(--chore-2-edge);
             color: var(--chore-2-fg);
         }
+        .chore.done { opacity: 0.55; }
+        .chore.done .chore-title { text-decoration: line-through; }
+        .chore-tick { width: 1.1em; height: 1.1em; flex-shrink: 0; margin-right: 0.5rem; }
+        .chore-streak { font-size: 0.85em; font-weight: 700; margin-left: 0.6rem; white-space: nowrap; }
+        .chore.shed, .yesterday.shed { display: none; }
+        .streaks { margin-top: 0.7rem; font-size: 1.05rem; font-weight: 700; color: var(--text-muted); }
+        .streaks > span + span { margin-left: 1rem; }
+        .yesterday { margin-top: 1.1rem; }
+        .yesterday-row { font-size: 1.15rem; line-height: 1.25; color: var(--text-muted); }
+        .yesterday-row + .yesterday-row { margin-top: 0.35rem; }
         .chore-emoji { font-size: 1.6rem; flex-shrink: 0; margin-right: 0.6rem; }
 
         .countdowns { display: flex; flex-direction: column; }
@@ -560,12 +570,27 @@
                 <div class="label">Whose turn</div>
                 <div class="chores">
                     {% for chore in view.tasks %}
-                    <span class="chore">
+                    <span class="chore{{ ' done' if chore.done }}">
+                        {% if chore.done %}<svg class="chore-tick" viewBox="0 0 16 16" aria-label="Done" role="img"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endif %}
                         {% if chore.emoji %}<span class="chore-emoji">{{ chore.emoji }}</span>{% endif %}
-                        {{ chore.title }} &mdash; {{ chore.assigned_to }}
+                        <span class="chore-title">{{ chore.title }} &mdash; {{ chore.assigned_to }}</span>
+                        {% if chore.streak %}<span class="chore-streak">{{ chore.streak }} in a row</span>{% endif %}
                     </span>
                     {% endfor %}
                 </div>
+                {% if view.streaks %}
+                <div class="streaks">
+                    {% for s in view.streaks %}<span>{{ s.name }}: {{ s.days }} {{ 'day' if s.days == 1 else 'days' }}</span>{% endfor %}
+                </div>
+                {% endif %}
+                {% if view.yesterday %}
+                <div class="yesterday">
+                    <div class="label">Yesterday, still open</div>
+                    {% for row in view.yesterday %}
+                    <div class="yesterday-row">{{ row.emoji }} {{ row.title }} &mdash; {{ row.assigned_to }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endif %}
 
@@ -682,6 +707,18 @@
     // one to hide it and one to put it back.
     function candidates(board) {
         var list = [];
+        // The yesterday group goes first, then done tasks from the top of the
+        // list (the oldest ticked), then the rest in the order below.
+        var yesterday = board.querySelector(".yesterday:not(.shed)");
+        if (yesterday) {
+            list.push([function () { yesterday.classList.add("shed"); },
+                       function () { yesterday.classList.remove("shed"); }]);
+        }
+        var finished = board.querySelector(".chore.done:not(.shed)");
+        if (finished) {
+            list.push([function () { finished.classList.add("shed"); },
+                       function () { finished.classList.remove("shed"); }]);
+        }
         if (!board.classList.contains("tight")) {
             list.push([function () { board.classList.add("tight"); },
                        function () { board.classList.remove("tight"); }]);

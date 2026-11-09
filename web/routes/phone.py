@@ -20,7 +20,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
                    session, url_for)
 
 from dinkydash import config as config_module
-from dinkydash import checkin, pins
+from dinkydash import checkin, pins, streaks
 from dinkydash.context import tasks_for
 from web import manifest as manifest_module
 from web import parent, ratelimit
@@ -32,6 +32,8 @@ pins_bp = Blueprint("pins", __name__)
 
 # The session key that says whose phone this is.
 PERSON = "phone_person"
+# The day this phone last celebrated, so a finished day is celebrated once.
+CELEBRATED = "phone_celebrated"
 
 # Ten wrong PINs in a quarter of an hour, per caller.
 MOST_FAILURES = 10
@@ -135,7 +137,35 @@ def _tab(name):
         abort(404)
     current = name or (keys[0] if keys else None)
     days = _task_days(config, person) if current == "tasks" else []
-    return _render("phone/home.html", person=person, tabs=tabs, current=current, days=days)
+    return _render("phone/home.html", person=person, tabs=tabs, current=current, days=days,
+                   streak=_streak(config, person) if current == "tasks" else None)
+
+
+def _streak(config, person):
+    """This person's running and best streak. Shown here only, never on the wall."""
+    today = config_module.today_for(config)
+    since = today - timedelta(days=streaks.MAX_DAYS)
+    done = current_store().load_completions(since)
+    return {"now": streaks.person_streak(config, person["id"], done, today),
+            "best": streaks.best_person_streak(config, person["id"], done, today)}
+
+
+def _celebrate(config, person_id, day, today):
+    """Say well done when `person_id`'s last task due on `day` is ticked, once a day."""
+    if day != today or session.get(CELEBRATED) == day.isoformat():
+        return
+    done = {(c["task_id"], c["date"], c["person_id"])
+            for c in current_store().load_completions(today)}
+    due = [t for t in tasks_for(config, day)
+           if t["mode"] != "anyone" and person_id in t["person_ids"]]
+    if not due or any((t["id"], day.isoformat(), person_id) not in done for t in due):
+        return
+    session[CELEBRATED] = day.isoformat()
+    name = (_person(config, person_id) or {}).get("name", "")
+    run = streaks.person_streak(config, person_id, current_store().load_completions(
+        today - timedelta(days=streaks.MAX_DAYS)), today)
+    flash(f"That's everything for today, {name}. Well done!"
+          + (f" {run} days in a row." if run > 1 else ""), "ok")
 
 
 def _restricted():
@@ -207,6 +237,7 @@ def tick():
         store.remove_completion(entry, today)
     else:
         store.record_completion(entry, today)
+        _celebrate(config, person_id, day, today)
     return redirect(url_for("phone.tab", tab="tasks"))
 
 

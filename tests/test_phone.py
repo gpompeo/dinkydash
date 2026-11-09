@@ -420,3 +420,34 @@ class TestTicking:
         tick(client, "tk-sam", today, "sam1")
         client.post("/settings/people/mia1/delete", data={"confirmed": "yes"})
         assert ticked(store) == {("tk-sam", today.isoformat(), "sam1")}
+
+
+class TestCelebration:
+    @pytest.fixture
+    def today(self, store):
+        store.config_path.write_text(TASK_CONFIG)
+        return today_of(store)
+
+    def _page(self, client):
+        return client.get("/h/tasks").get_data(as_text=True)
+
+    def test_finishing_the_last_task_celebrates_once(self, open_client, store, today):
+        pick(open_client, "mia1")
+        first = tick(open_client, "tk-mia", today, "mia1")
+        assert "everything for today" not in self._page(open_client)  # tk-all still due
+        tick(open_client, "tk-all", today, "mia1")
+        page = self._page(open_client)
+        assert "everything for today, Mia" in page
+        # Untick and tick again: the day was already celebrated.
+        tick(open_client, "tk-all", today, "mia1", done="0")
+        tick(open_client, "tk-all", today, "mia1")
+        assert "everything for today" not in self._page(open_client)
+        assert first.status_code == 302
+
+    def test_the_best_streak_is_on_the_phone_and_not_the_wall(self, open_client, store, today):
+        pick(open_client, "mia1")
+        for task in ("tk-mia", "tk-all"):
+            tick(open_client, task, today, "mia1")
+        assert "Best: 1 day" in self._page(open_client)
+        wall = open_client.get("/").get_data(as_text=True)
+        assert "Best:" not in wall and "everything for today" not in wall

@@ -28,6 +28,7 @@ from .clock import clock_of, format_time
 from .config import feature_on
 from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
+from .streaks import person_streak, task_streak
 
 # The agenda's row budget, not just today's cap. Today fills it first and
 # tomorrow tops up whatever is left, so a quiet day stops leaving the column
@@ -115,8 +116,47 @@ def reload_seconds(config):
     return min(MAX_RELOAD_SECONDS, int(refresh_interval(config).total_seconds()))
 
 
-def build_view(config, payload, today, now=None):
+def _open_names(config, task, day, have):
+    """Who has not yet done `task` on `day`; empty when it is done."""
+    if task["mode"] == "anyone":
+        done = any(t == task["id"] and d == day.isoformat() for t, d, _ in have)
+        return [] if done else ["Anyone"]
+    names = {p.get("id"): p.get("name", "") for p in config.get("people") or []
+             if isinstance(p, dict)}
+    return [names.get(i, "") for i in task["person_ids"]
+            if (task["id"], day.isoformat(), i) not in have]
+
+
+def add_checkins(view, config, tasks, today, completions):
+    """Done state, streaks and yesterday's open tasks, from the completions.
+
+    Worked out here on every render and stored nowhere. With `completions` of
+    None the store keeps none (cloud mode), so the card stays the plain list.
+    """
+    if completions is None:
+        return
+    have = {(c["task_id"], c["date"], c["person_id"]) for c in completions}
+    for task in tasks:
+        task["done"] = not _open_names(config, task, today, have)
+        if task["mode"] == "anyone":
+            task["streak"] = task_streak(config, task["id"], completions, today)
+    view["streaks"] = [
+        {"name": p.get("name", ""), "days": days}
+        for p in config.get("people") or []
+        if isinstance(p, dict) and p.get("id")
+        and (days := person_streak(config, p["id"], completions, today)) > 0]
+    yesterday = today - timedelta(days=1)
+    view["yesterday"] = [
+        {"emoji": t["emoji"], "title": t["title"], "assigned_to": ", ".join(names)}
+        for t in tasks_for(config, yesterday)
+        if (names := _open_names(config, t, yesterday, have))]
+
+
+def build_view(config, payload, today, now=None, completions=None):
     """The complete view model for templates/board.html.
+
+    `completions` is the list the store holds for the last 400 days, or None
+    when it keeps none.
 
     `now` is this moment on the family's clock, and only the banner reads it:
     without one every stale dashboard counts as late, which is what a caller
@@ -143,6 +183,8 @@ def build_view(config, payload, today, now=None):
         "clock": clock_of(config),
         "date_display": today.strftime("%A, %-d %B"),
         "tasks": tasks,
+        "streaks": [],
+        "yesterday": [],
         "countdowns": countdowns,
         "events": [],
         "tomorrow": [],
@@ -159,6 +201,9 @@ def build_view(config, payload, today, now=None):
         "today": today.isoformat(),
         "timezone": config.get("timezone") or "UTC",
     }
+
+    if tasks:
+        add_checkins(view, config, tasks, today, completions)
 
     fetched = (payload or {}).get("events") or []
     clock = view["clock"]

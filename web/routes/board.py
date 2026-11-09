@@ -12,12 +12,14 @@ dashboard is one piece of code reached two ways rather than two that drift.
 """
 
 import os
+from datetime import timedelta
 
 from flask import (Blueprint, abort, current_app, redirect, render_template,
                    request, url_for)
 
 from dinkydash import board as board_view
 from dinkydash import config as config_module
+from dinkydash import streaks
 from web import CLOUD
 from web import manifest as manifest_module
 from web.family import current_store
@@ -115,7 +117,10 @@ def render_board(store, manifest_url=None, access=None, changes_url=None):
         # dashboard that is not today's is actually late, and a date taken
         # separately could land the other side of midnight from it.
         now = config_module.now_for(config)
-        view = board_view.build_view(config, payload, now.date(), now=now)
+        load = getattr(store, "load_completions", None)
+        completions = load(now.date() - timedelta(days=streaks.MAX_DAYS)) if load else None
+        view = board_view.build_view(config, payload, now.date(), now=now,
+                                     completions=completions)
     if changes_url is None and hasattr(store, "change_token"):
         changes_url = url_for("board.changes")
     return render_template("board.html", view=view, changes_url=changes_url,
