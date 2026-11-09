@@ -2,6 +2,34 @@
 {% block title %}{{ person.name }}{% endblock %}
 {% block manifest %}<link rel="manifest" href="{{ url_for('phone.manifest') }}">{% endblock %}
 {% block feedback %}{% endblock %}
+{% block head %}
+<style>
+    .phone-check { display: flex; align-items: center; gap: 0.75rem; min-height: 2.75rem; cursor: pointer; }
+    .phone-check input { width: 1.5rem; height: 1.5rem; flex: none; accent-color: var(--accent); cursor: pointer; }
+    .phone-check input:disabled { cursor: not-allowed; }
+    .phone-check span { min-width: 0; overflow-wrap: anywhere; }
+    .phone-fields { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .phone-fields .field { flex: 1 1 10rem; min-width: 0; }
+    .phone-fields .field.quantity { flex: 1 1 7rem; }
+    .shopping-row { position: relative; }
+    .shopping-row > form { padding-right: 2.75rem; }
+    .shopping-edit > summary {
+        position: absolute; top: 0; right: 0; display: flex; align-items: center; justify-content: center;
+        width: 2.75rem; height: 2.75rem; border-radius: 0.625rem; color: var(--text-muted);
+        cursor: pointer; list-style: none;
+    }
+    .shopping-edit > summary::-webkit-details-marker { display: none; }
+    .shopping-edit > summary svg { width: 1.25rem; height: 1.25rem; }
+    .shopping-edit[open] { padding-top: 0.5rem; }
+    .shopping-edit[open] > summary { background: var(--tint); color: var(--text); }
+    @media (hover: hover) {
+        .phone-check:hover { color: var(--accent-dark); }
+        .shopping-edit > summary:hover { background: var(--warm); color: var(--accent-dark); }
+    }
+    .phone-check:active { color: var(--accent); }
+    .shopping-edit > summary:active { background: var(--border); }
+</style>
+{% endblock %}
 
 {% block appbar %}
 <h1 class="wordmark">DinkyDash</h1>
@@ -12,25 +40,25 @@
 {% endblock %}
 
 {% macro shopping_row(item, bought) %}
-<div style="display:flex;flex-direction:column;gap:0.375rem;">
-    <div class="inline-row">
-        <form method="post" action="{{ url_for('phone.shopping_tick', item_id=item.id) }}">
+<div class="shopping-row">
+    <form method="post" action="{{ url_for('phone.shopping_tick', item_id=item.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="done" value="{{ '0' if bought else '1' }}">
-            <button class="btn {{ '' if bought else 'outline' }}" type="submit"
-                    aria-pressed="{{ 'true' if bought else 'false' }}"
-                    aria-label="{{ item.text }}: {{ 'bought. Put back' if bought else 'not bought. Mark as bought' }}">{{ "✓" if bought else "○" }}</button>
-        </form>
+            <label class="phone-check">
+            <input type="checkbox" name="done" value="1" {{ 'checked' if bought }} onchange="this.form.submit()">
         <span>{{ item.text }}{% if item.quantity %} <span class="hint">{{ item.quantity }}</span>{% endif %}
             {% if names.get(item.added_by) %}<span class="hint">added by {{ names[item.added_by] }}</span>{% endif %}</span>
-    </div>
-    <details>
-        <summary class="hint">Edit</summary>
-        <form method="post" action="{{ url_for('phone.shopping_edit', item_id=item.id) }}"
-              style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            </label>
+            <input type="hidden" name="done" value="0">
+            <noscript><button class="btn outline" type="submit">Save</button></noscript>
+    </form>
+    <details class="shopping-edit">
+        <summary aria-label="Edit {{ item.text }}" title="Edit {{ item.text }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+        </summary>
+        <form class="phone-fields" method="post" action="{{ url_for('phone.shopping_edit', item_id=item.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input name="text" value="{{ item.text }}" maxlength="{{ limits.text }}" aria-label="Item" required style="flex:1 1 10rem;">
-            <input name="quantity" value="{{ item.quantity }}" maxlength="{{ limits.quantity }}" aria-label="Quantity" style="flex:0 1 7rem;">
+            <div class="field"><input type="text" name="text" value="{{ item.text }}" maxlength="{{ limits.text }}" aria-label="Item" required></div>
+            <div class="field quantity"><input type="text" name="quantity" value="{{ item.quantity }}" maxlength="{{ limits.quantity }}" aria-label="Quantity"></div>
             <button class="btn" type="submit">Save</button>
         </form>
         <form method="post" action="{{ url_for('phone.shopping_delete', item_id=item.id) }}" style="margin-top:0.5rem;">
@@ -57,20 +85,19 @@
 <div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">
     <div class="card-title">{{ day.label }}</div>
     {% for row in day.rows %}
-    <form class="inline-row" method="post" action="{{ url_for('phone.tick') }}">
+    <form method="post" action="{{ url_for('phone.tick') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="task_id" value="{{ row.id }}">
         <input type="hidden" name="date" value="{{ day.date }}">
         <input type="hidden" name="person" value="{{ row.person_id }}">
-        <input type="hidden" name="done" value="{{ '0' if row.done else '1' }}">
-        <button class="btn {{ '' if row.done else 'outline' }}" type="submit"
-                {% if not row.can %}disabled{% endif %}
-                aria-pressed="{{ 'true' if row.done else 'false' }}"
-                aria-label="{{ row.title }}, {{ row.who }}: {{ 'done. Untick' if row.done else 'not done. Tick' }}">
-            {{ "✓" if row.done else "○" }}
-        </button>
+        <label class="phone-check">
+        <input type="checkbox" name="done" value="1" {{ 'checked' if row.done }}
+               {{ 'disabled' if not row.can }} onchange="this.form.submit()">
         <span>{{ row.emoji }} {{ row.title }}
             <span class="hint">{{ row.who }}</span></span>
+        </label>
+        <input type="hidden" name="done" value="0">
+        {% if row.can %}<noscript><button class="btn outline" type="submit">Save</button></noscript>{% endif %}
     </form>
     {% else %}
     <div class="hint">Nothing {{ "is due" if day.label == "Today" else "was due" }}.</div>
@@ -78,11 +105,10 @@
 </div>
 {% endfor %}
 {% elif current == "shopping" %}
-<form class="card pad" method="post" action="{{ url_for('phone.shopping_add') }}"
-      style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+<form class="card pad phone-fields" method="post" action="{{ url_for('phone.shopping_add') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <input name="text" maxlength="{{ limits.text }}" placeholder="Add an item" aria-label="Item" required style="flex:1 1 10rem;">
-    <input name="quantity" maxlength="{{ limits.quantity }}" placeholder="How many?" aria-label="Quantity" style="flex:0 1 7rem;">
+    <div class="field"><input type="text" name="text" maxlength="{{ limits.text }}" placeholder="Add an item" aria-label="Item" required></div>
+    <div class="field quantity"><input type="text" name="quantity" maxlength="{{ limits.quantity }}" placeholder="How many?" aria-label="Quantity"></div>
     <button class="btn" type="submit">Add</button>
 </form>
 <div class="card pad" style="display:flex;flex-direction:column;gap:0.625rem;">

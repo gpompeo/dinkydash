@@ -104,7 +104,8 @@ def render_board(store, manifest_url=None, access=None, changes_url=None):
     manifest has to be reachable without a session, or "save to home screen"
     gets a redirect to `/login` instead of a name and an icon.
     Hosted callers also pass access state, so a lapsed panel cannot keep
-    recomputing the day. Active cloud dashboards retain parity with single mode.
+    recomputing the day. Stores without check-ins render the shared task list
+    without completion state.
     """
     config = store.load_config()
     payload = store.load_payload(config)

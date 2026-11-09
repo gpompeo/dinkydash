@@ -138,6 +138,18 @@ class TestRoutes:
         client.post("/h/shopping/clear")
         assert texts(store) == ["Eggs"]
 
+    def test_checkbox_submits_checked_and_unchecked_values(self, client, store):
+        from werkzeug.datastructures import MultiDict
+
+        client.post("/h/shopping/add", data={"text": "Milk"})
+        item = store.load_shopping()[0]
+        url = f"/h/shopping/{item['id']}/tick"
+        client.post(url, data=MultiDict([("done", "1"), ("done", "0")]))
+        assert store.load_shopping()[0]["bought_at"]
+        assert 'type="checkbox" name="done" value="1" checked' in client.get("/h/shopping").get_data(as_text=True)
+        client.post(url, data=MultiDict([("done", "0")]))
+        assert store.load_shopping()[0]["bought_at"] is None
+
     def test_a_refusal_is_shown_and_nothing_is_saved(self, client, store):
         response = client.post("/h/shopping/add", data={"text": "x" * 81}, follow_redirects=True)
         assert b"80 characters" in response.data

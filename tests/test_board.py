@@ -85,6 +85,37 @@ class TestFreshBoard:
         assert view["tasks"][0]["assigned_to"] in {"Mia", "Theo"}
         assert view["countdowns"][0]["title"] == "Christmas"
 
+    def test_completed_tasks_get_shedding_order_from_completion_time(self):
+        config = {**CONFIG, "tasks": [
+            {"id": "later", "title": "Later", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "fixed", "people": ["mia"]}},
+            {"id": "everyone", "title": "Together", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "everyone"}},
+            {"id": "earlier", "title": "Earlier", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "anyone"}},
+        ]}
+        completions = [
+            {"task_id": "later", "person_id": "mia", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T11:00:00+02:00"},
+            {"task_id": "everyone", "person_id": "mia", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T07:00:00+02:00"},
+            {"task_id": "everyone", "person_id": "theo", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T10:00:00+02:00"},
+            {"task_id": "earlier", "person_id": "theo", "date": TODAY.isoformat(),
+             "completed_at": "2026-09-03T09:00:00+03:00"},
+        ]
+        tasks = build_view(config, None, TODAY, completions=completions)["tasks"]
+        assert [task["id"] for task in tasks] == ["later", "everyone", "earlier"]
+        assert {task["id"]: task["shed_rank"] for task in tasks} == {
+            "earlier": 0, "everyone": 1, "later": 2}
+
+        # A hand-edited completion without a timestamp is still done, but its
+        # age is unknown and must not outrank a known completion.
+        completions[3].pop("completed_at")
+        tasks = build_view(config, None, TODAY, completions=completions)["tasks"]
+        assert {task["id"]: task["shed_rank"] for task in tasks} == {
+            "everyone": 0, "later": 1, "earlier": 2}
+
 
 class TestStaleBoard:
     """A payload from yesterday, still on the wall this morning."""

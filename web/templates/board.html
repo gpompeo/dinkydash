@@ -580,10 +580,10 @@
             {% if view.tasks or view.yesterday %}
             <div>
                 {% if view.tasks %}
-                <div class="label">Whose turn</div>
+                <div class="label">Tasks</div>
                 <div class="chores">
                     {% for chore in view.tasks %}
-                    <span class="chore{{ ' done' if chore.done }}">
+                    <span class="chore{{ ' done' if chore.done }}"{% if chore.done and chore.shed_rank is defined %} data-shed-rank="{{ chore.shed_rank }}"{% endif %}>
                         {% if chore.done %}<svg class="chore-tick" viewBox="0 0 16 16" aria-label="Done" role="img"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endif %}
                         {% if chore.emoji %}<span class="chore-emoji">{{ chore.emoji }}</span>{% endif %}
                         <span class="chore-title">{{ chore.title }} &mdash; {{ chore.assigned_to }}</span>
@@ -734,14 +734,20 @@
     // one to hide it and one to put it back.
     function candidates(board) {
         var list = [];
-        // The yesterday group goes first, then done tasks from the top of the
-        // list (the oldest ticked), then the rest in the order below.
+        // The yesterday group goes first, then the oldest completed tasks,
+        // then the rest in the order below.
         var yesterday = board.querySelector(".yesterday:not(.shed)");
         if (yesterday) {
             list.push([function () { yesterday.classList.add("shed"); },
                        function () { yesterday.classList.remove("shed"); }]);
         }
-        var finished = board.querySelector(".chore.done:not(.shed)");
+        var done = board.querySelectorAll(".chore.done:not(.shed)");
+        var finished = null, oldest = Infinity;
+        for (var i = 0; i < done.length; i++) {
+            var value = done[i].getAttribute("data-shed-rank");
+            var rank = value === null ? Infinity : Number(value);
+            if (!finished || rank < oldest) { finished = done[i]; oldest = rank; }
+        }
         if (finished) {
             list.push([function () { finished.classList.add("shed"); },
                        function () { finished.classList.remove("shed"); }]);

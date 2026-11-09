@@ -250,13 +250,12 @@ class TestABoardOutOfPostgres:
         leaked below the storage layer — which is the thing CLAUDE.md's "every
         change must work in both" exists to prevent.
 
-        **One line is allowed to differ, and exactly one**: the `<link
-        rel=manifest>`. A wall panel reaches its manifest at
+        Compare the shared dashboard with the same storage capabilities. A wall
+        panel reaches its manifest at
         `/s/<token>/manifest.webmanifest`, because the signed-in one is behind
         the session and would hand a tablet a redirect to `/login` instead of a
-        name and an icon (DIN-42). Normalising that href rather than dropping
-        the assertion is the point — every other byte still has to match, so a
-        second divergence fails here rather than being absorbed.
+        name and an icon. File stores also support check-ins and change polling,
+        which the frozen cloud store does not.
         """
         import re
 
@@ -272,8 +271,13 @@ class TestABoardOutOfPostgres:
         today = payload_for_today()
         file_store.save_agenda(file_store.load_config(), today)
         file_store.save_brief(file_store.load_config(), today)
-        from_file = create_app(file_store).test_client().get("/").get_data(as_text=True)
         from_rows = client.get(board_path(pg_pool, pg_family)).get_data(as_text=True)
+        file_client = create_app(file_store).test_client()
+        with_checkins = file_client.get("/").get_data(as_text=True)
+        assert "Yesterday, still open" in with_checkins
+        assert "Yesterday, still open" not in from_rows
+        monkeypatch.setattr(file_store, "load_completions", None)
+        from_file = file_client.get("/").get_data(as_text=True)
 
         manifest = re.compile(r'<link rel="manifest" href="[^"]+">')
         assert manifest.search(from_file) and manifest.search(from_rows)

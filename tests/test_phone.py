@@ -2,10 +2,12 @@
 
 import json
 import logging
+import re
 import stat
 from datetime import timedelta
 
 import pytest
+from werkzeug.datastructures import MultiDict
 
 from dinkydash import pins
 from dinkydash.store import FileStore
@@ -343,6 +345,24 @@ class TestTicking:
         pick(open_client, "mia1")
         tick(open_client, "tk-mia", today, "mia1")
         tick(open_client, "tk-mia", today, "mia1", done="0")
+        assert ticked(store) == set()
+
+    def test_checkbox_submits_its_checked_state_and_can_be_undone(self, open_client, store, today):
+        pick(open_client, "mia1")
+
+        def checkbox():
+            page = open_client.get("/h/tasks").get_data(as_text=True)
+            forms = re.findall(r"<form\b.*?</form>", page, re.S)
+            form = next(f for f in forms if 'name="task_id" value="tk-mia"' in f
+                        and f'name="date" value="{today.isoformat()}"' in f)
+            return re.search(r'<input type="checkbox"[^>]*>', form).group()
+
+        assert "checked" not in checkbox()
+        fields = [("task_id", "tk-mia"), ("date", today.isoformat()), ("person", "mia1")]
+        assert open_client.post("/h/tick", data=MultiDict(fields + [("done", "1"), ("done", "0")])).status_code == 302
+        assert "checked" in checkbox()
+        assert open_client.post("/h/tick", data=MultiDict(fields + [("done", "0")])).status_code == 302
+        assert "checked" not in checkbox()
         assert ticked(store) == set()
 
     def test_yesterday_but_not_the_day_before(self, open_client, store, today):

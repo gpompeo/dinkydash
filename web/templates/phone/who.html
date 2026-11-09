@@ -21,7 +21,7 @@
         {% if person.id in pinned %}
         <div class="field">
             <label for="pin-{{ person.id }}">PIN for {{ person.name }}</label>
-            <input type="password" id="pin-{{ person.id }}" name="pin" inputmode="numeric"
+            <input class="phone-input" type="password" id="pin-{{ person.id }}" name="pin" inputmode="numeric"
                    pattern="[0-9]*" maxlength="8" autocomplete="off"
                    {% if asking == person.id %}autofocus aria-invalid="true"{% endif %}>
             {% if asking == person.id and problem %}

@@ -21,7 +21,7 @@ while the family is still setting up: the invented household is what the
 settings home previews, and what a screen opened that early shows.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
@@ -131,6 +131,26 @@ def _open_names(config, task, day, have):
             if (task["id"], day.isoformat(), i) not in have]
 
 
+def _completed_at(task, today, completions):
+    """When the whole task became done; unknown timestamps sort last."""
+    moments = []
+    for entry in completions:
+        if entry["task_id"] != task["id"] or entry["date"] != today.isoformat():
+            continue
+        if task["mode"] != "anyone" and entry["person_id"] not in task["person_ids"]:
+            continue
+        try:
+            moment = datetime.fromisoformat(entry.get("completed_at") or "")
+            if moment.tzinfo is None:
+                return None
+            moments.append(moment.astimezone(timezone.utc))
+        except (TypeError, ValueError):
+            return None
+    if not moments:
+        return None
+    return min(moments) if task["mode"] == "anyone" else max(moments)
+
+
 def add_checkins(view, config, tasks, today, completions):
     """Done state, streaks and yesterday's open tasks, from the completions.
 
@@ -144,6 +164,10 @@ def add_checkins(view, config, tasks, today, completions):
         task["done"] = not _open_names(config, task, today, have)
         if task["mode"] == "anyone":
             task["streak"] = task_streak(config, task["id"], completions, today)
+    done = [(task, _completed_at(task, today, completions)) for task in tasks if task["done"]]
+    done.sort(key=lambda pair: (pair[1] is None, pair[1] or datetime.max.replace(tzinfo=timezone.utc)))
+    for rank, (task, _) in enumerate(done):
+        task["shed_rank"] = rank
     view["streaks"] = [
         {"name": p.get("name", ""), "days": days}
         for p in config.get("people") or []

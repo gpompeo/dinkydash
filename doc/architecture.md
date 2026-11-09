@@ -20,8 +20,9 @@ check anywhere else means the change is in the wrong layer.
 puts it at `/`: one family, no session, the URL somebody types into a Pi's kiosk browser. Cloud mode
 cannot, because a wall panel has no way to sign in — so there the dashboard is at `/s/<token>` and `/`
 is the front door of the signed-in area. `board.render_board` is what the two routes share, so it is
-one dashboard reached two ways rather than two that drift, and `tests/test_cloud_mode.py` asserts the
-two are byte-identical apart from the one link that has to differ.
+one dashboard reached two ways rather than two that drift. `tests/test_cloud_mode.py` compares the
+shared rendering with matching storage capabilities; the file store also supplies check-ins and
+change polling, and the screen manifest has its own link.
 
 - **Self-hosted keeps working with no Postgres, no Stripe, no email provider**, and no network
   beyond the two things it fetches. A feature that needs a database is a cloud feature, or it is not
