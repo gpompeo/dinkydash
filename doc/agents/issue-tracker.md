@@ -14,7 +14,7 @@ Issues and specs for this repo live as GitHub issues. Use the `gh` CLI for all o
 - **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
 - **Close**: post the explanation with `gh issue comment <number> --body "..."`, then `gh issue close <number>`. On an already-closed issue, `gh issue close --comment` drops the comment and still exits 0.
 
-This repo is `gpompeo/dinkydash`, a fork of `caspii/dinkydash` (the `upstream` remote). `gh repo set-default gpompeo/dinkydash` is set, and every `gh` command should still pass `--repo gpompeo/dinkydash` when run from a script or an agent. Never file, comment on or label issues in `caspii/dinkydash`.
+This repo is `gpompeo/pompdash`, a fork of `caspii/dinkydash` (the `upstream` remote). `gh repo set-default gpompeo/pompdash` is set, and every `gh` command should still pass `--repo gpompeo/pompdash` when run from a script or an agent. Never file, comment on or label issues in `caspii/dinkydash`.
 
 Issues for the household modules work are tracked per phase as milestones. Blocking is recorded with GitHub's native issue dependencies, not in the body: a ticket is ready when it has no open blocker (`gh issue view <n> --json blockedBy`, then check each blocker's state).
 

@@ -9,4 +9,4 @@ This decision does not rule out refactoring when a specific maintenance problem 
 
 ## Prior requests
 
-- [#22: Refactor task-form arguments](https://github.com/gpompeo/dinkydash/issues/22)
+- [#22: Refactor task-form arguments](https://github.com/gpompeo/pompdash/issues/22)
