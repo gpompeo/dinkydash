@@ -32,7 +32,7 @@ def test_removal_prompt_escapes_the_item_name(household):
     config = store.load_config()
     config['tasks'][0]['title'] = '<script>example</script>'
     store.save_config(config)
-    for url in ['/settings/recurring/tableaaa', '/settings/recurring/tableaaa/delete']:
+    for url in ['/settings/tasks/tableaaa', '/settings/tasks/tableaaa/delete']:
         response = client.post(url) if url.endswith('/delete') else client.get(url)
         html = response.get_data(as_text=True)
         assert '<script>example</script>' not in html
@@ -104,7 +104,7 @@ def test_age_grammar(household, monkeypatch, age):
 
 def test_current_user_labels_distinguish_tasks_calendars_and_daily_message(household):
     client, _, _ = household
-    html = client.get('/settings/recurring/new').get_data(as_text=True)
+    html = client.get('/settings/tasks/new').get_data(as_text=True)
     assert 'New task' in html and '>Task</label>' in html
     home = client.get('/settings/').get_data(as_text=True)
     assert 'Rewrite daily headline' in home

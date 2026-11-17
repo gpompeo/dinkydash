@@ -78,7 +78,7 @@ def plain(emoji):
 
 class TestEveryEmojiField:
     def test_four_sections_have_one(self):
-        assert EMOJI_SECTIONS == ["people", "pets", "recurring", "special_dates"]
+        assert EMOJI_SECTIONS == ["people", "pets", "tasks", "special_dates"]
 
     @pytest.mark.parametrize("section", EMOJI_SECTIONS)
     def test_the_quick_picks_none_and_the_way_to_the_rest(self, client, section):
@@ -103,7 +103,7 @@ class TestEveryEmojiField:
     def test_the_dialog_sits_outside_the_form_and_puts_nothing_in_it(self, client):
         # Enter in the search box must not press Save, and a named control in the dialog
         # would ride along with it.
-        page = client.get("/settings/recurring/new").get_data(as_text=True)
+        page = client.get("/settings/tasks/new").get_data(as_text=True)
         assert page.index('id="emoji-dialog"') > page.index("</form>")
         assert 'name="' not in DIALOG.read_text()
 
@@ -128,7 +128,7 @@ class TestWhatIsTicked:
         assert "checked" not in none
 
     def test_nothing_saved_means_none_is_ticked(self, client):
-        form = Form(client.get("/settings/recurring/table123").get_data(as_text=True))
+        form = Form(client.get("/settings/tasks/table123").get_data(as_text=True))
         [none] = form.controls(id="e-emoji-none")
         assert "checked" in none
         [own] = form.controls(id="e-emoji-own")
@@ -138,7 +138,7 @@ class TestWhatIsTicked:
 # -- what the server accepts --------------------------------------------------------
 
 class TestWhatTheServerAccepts:
-    CHORE = "/settings/recurring/table123"
+    CHORE = "/settings/tasks/table123"
 
     def save(self, client, emoji):
         return client.post(self.CHORE, data={"title": "Set the table", "emoji": emoji, "choices": ["mia12345"]})

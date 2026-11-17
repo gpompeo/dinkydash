@@ -104,15 +104,15 @@ class TestSettingsHome:
     def test_tasks_off_hides_tasks_in_settings(self, client):
         client.post("/settings/features", data={"special_dates": "on"})
         home = client.get("/settings/").get_data(as_text=True)
-        assert "/settings/recurring" not in home
+        assert "/settings/tasks" not in home
         assert "/settings/special_dates" in home
-        assert client.get("/settings/recurring").status_code == 404
+        assert client.get("/settings/tasks").status_code == 404
 
     def test_special_dates_off_hides_them_in_settings(self, client):
         client.post("/settings/features", data={"tasks": "on"})
         home = client.get("/settings/").get_data(as_text=True)
         assert "/settings/special_dates" not in home
-        assert "/settings/recurring" in home
+        assert "/settings/tasks" in home
         assert client.get("/settings/special_dates").status_code == 404
 
     def test_the_wall_follows_the_switch(self, client):

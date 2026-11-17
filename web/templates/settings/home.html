@@ -241,14 +241,14 @@
             </div>{{ icons.chevron() }}
         </a>
         {% if config.features.tasks %}
-        <a class="row" href="{{ url_for('settings.section_list', section_name='recurring') }}">
+        <a class="row" href="{{ url_for('settings.section_list', section_name='tasks') }}">
             <div class="row-main">
                 <div class="row-title">Tasks</div>
                 <div class="row-sub">
                     {# The titles, not a count: a starter job left behind — "Feed
                        Biscuit" after Biscuit has gone — should be visible from here. #}
-                    {% if counts.recurring and counts.recurring <= 3 %}{{ config.tasks | map(attribute='title') | join(' · ') }}{% else %}{{ counts.recurring }} task{{ "s" if counts.recurring != 1 }}{% endif %}{% if counts.jobs_unassigned %}
-                    &middot; <span style="color:var(--amber-dark);font-weight:700;">{{ counts.jobs_unassigned }} with nobody assigned</span>{% endif %}
+                    {% if counts.tasks and counts.tasks <= 3 %}{{ config.tasks | map(attribute='title') | join(' · ') }}{% else %}{{ counts.tasks }} task{{ "s" if counts.tasks != 1 }}{% endif %}{% if counts.tasks_unassigned %}
+                    &middot; <span style="color:var(--amber-dark);font-weight:700;">{{ counts.tasks_unassigned }} with nobody assigned</span>{% endif %}
                 </div>
             </div>{{ icons.chevron() }}
         </a>

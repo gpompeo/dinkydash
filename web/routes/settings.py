@@ -96,8 +96,7 @@ SECTIONS = {
             ("avatar_emoji", "Emoji", "emoji", False, ""),
         ],
     },
-    # The URL stays `recurring`; what the section edits is `tasks`.
-    "recurring": {
+    "tasks": {
         "key": "tasks",
         "title": "Tasks",
         "singular": "task",
@@ -158,7 +157,7 @@ SECTIONS = {
 EMOJI_SUGGESTIONS = {
     "people": ["🦖", "⚽", "🎨", "☕", "🚀", "🎸", "🐙", "📚"],
     "pets": ["🐕", "🐈", "🐰", "🐠", "🐹", "🐦", "🐢", "🐴"],
-    "recurring": ["🍽", "🦴", "🗑", "🧺", "🛏", "🌱", "🧹", "📦"],
+    "tasks": ["🍽", "🦴", "🗑", "🧺", "🛏", "🌱", "🧹", "📦"],
     "special_dates": ["🎄", "☀️", "🚂", "🎃", "✈️", "🎆", "🥚", "🍂"],
 }
 
@@ -187,7 +186,21 @@ def save(config, *, invalidate_calendars=()):
 
 # The sections each switch owns. Off, they are not offered and their routes
 # answer 404; the data stays in the config.
-SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
+SECTION_FEATURES = {"tasks": "tasks", "special_dates": "special_dates"}
+
+# Section names an earlier release put in URLs. Forms already open on a screen still post to them,
+# so they resolve to the current name before any handler, switch or form sees them.
+LEGACY_SECTION_NAMES = {"recurring": "tasks"}
+
+
+@bp.url_value_preprocessor
+def _use_current_section_name(endpoint, values):
+    """Serve an old section URL through the same view as its current one.
+
+    One view means one feature check, one sign-in guard and one write, whichever URL a form used.
+    """
+    if values and values.get("section_name") in LEGACY_SECTION_NAMES:
+        values["section_name"] = LEGACY_SECTION_NAMES[values["section_name"]]
 
 
 def task_form(config, task):
@@ -200,13 +213,13 @@ def task_form(config, task):
              if isinstance(p, dict) and p.get("id")}
     people = (task.get("assignment") or {}).get("people") or []
     chosen = [i for i in people if i in by_id]
-    mode = (task.get("assignment") or {}).get("mode")
+    assignment_mode = (task.get("assignment") or {}).get("mode")
     today = config_module.today_for(config)
     return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
             "choices": chosen, "names": [by_id[i] for i in chosen],
             "rec": taskform.recurrence_state(task.get("recurrence"), today),
             "when": taskform.describe(task.get("recurrence"), today),
-            "mode": mode if mode in taskform.MODES else taskform.ROTATE}
+            "mode": assignment_mode if assignment_mode in taskform.MODES else taskform.ROTATE}
 
 
 def known_person_ids(config, ids):
@@ -218,7 +231,7 @@ def known_person_ids(config, ids):
 def task_from_form(config, existing, submitted):
     """The task to store for a submitted Tasks form.
 
-    `submitted` carries the checked `recurrence` and `mode`; the rotation offset is kept from
+    `submitted` carries the checked `recurrence` and the assignment `mode`; the rotation offset is kept from
     `existing`.
     The form posts person ids and only ids of people in the family are kept, so a later rename
     changes nothing and no empty id reaches an assignment.
@@ -246,10 +259,10 @@ def read_rules(form, submitted, item, stored, today):
         return {}
     submitted["rec"] = taskform.draft_state(form, today)
     submitted["recurrence"], problems = taskform.recurrence_from_form(form, today)
-    mode = form.get("mode", "")
-    if mode not in taskform.MODES:
+    assignment_mode = form.get("mode", "")
+    if assignment_mode not in taskform.MODES:
         problems["mode"] = "Choose whose job it is."
-    submitted["mode"] = mode if mode in taskform.MODES else taskform.ROTATE
+    submitted["mode"] = assignment_mode if assignment_mode in taskform.MODES else taskform.ROTATE
     return problems
 
 
@@ -357,18 +370,18 @@ def home():
 
     calendars = config.get("calendars") or []
     broken = [c for c in (payload or {}).get("calendar_statuses", []) if c.get("ok") is False]
-    jobs = [c for c in config.get("tasks") or [] if isinstance(c, dict)]
+    tasks = [c for c in config.get("tasks") or [] if isinstance(c, dict)]
 
     counts = {
         "people": len(config.get("people") or []),
         "pets": len(config.get("pets") or []),
-        "recurring": len(jobs),
+        "tasks": len(tasks),
         "special_dates": len(config.get("special_dates") or []),
         "calendars": len(calendars),
-        # A job with nobody in its rotation is skipped on the dashboard. Say so on
-        # the row rather than counting it as rotating.
-        "jobs_unassigned": sum(
-            1 for c in jobs
+        # A task with nobody to take it is skipped on the dashboard. Say so on
+        # the row rather than counting it as assigned.
+        "tasks_unassigned": sum(
+            1 for c in tasks
             if (c.get("assignment") or {}).get("mode") in taskform.NAMED_MODES
             and not task_form(config, c)["choices"]),
     }
@@ -503,7 +516,7 @@ def section_list(section_name):
     extras = {}
     if section_name == "people":
         extras["birthdays"] = [compute_birthday_info(p, today) for p in items]
-    if section_name == "recurring":
+    if section_name == "tasks":
         today_for = {t["id"]: t["assigned_to"] for t in tasks_for(config, today)}
         extras["turns"] = [[{"assigned_to": today_for[c["id"]]}] if c.get("id") in today_for else []
                            for c in items]
@@ -533,7 +546,7 @@ def section_edit(section_name, item_id):
     is_new = item_id == "new"
     if is_new:
         item = {}
-        if section_name == "recurring":
+        if section_name == "tasks":
             item = task_form(config, {})
         if section_name == "calendars":
             item = {"enabled": True, "show_locations": True,
@@ -543,7 +556,7 @@ def section_edit(section_name, item_id):
         index, item = config_module.find_item(items, item_id)
         if item is None:
             abort(404)
-        if section_name == "recurring":
+        if section_name == "tasks":
             stored_task, item = item, task_form(config, item)
         if section_name == "calendars" and "show_locations" not in item:
             # Absent means shown, so the box starts ticked and the copy keeps
@@ -558,12 +571,12 @@ def section_edit(section_name, item_id):
         for field in section["fields"]:
             submitted[field[0]] = parse_field(field, request.form, item)
         task_problems = {}
-        if section_name == "recurring":
+        if section_name == "tasks":
             submitted["choices"] = known_person_ids(config, submitted["choices"])
             task_problems = read_rules(request.form, submitted, item,
                                        None if is_new else stored_task, today)
 
-        if section_name == "recurring" and (request.form.get("move_choice")
+        if section_name == "tasks" and (request.form.get("move_choice")
                                             or request.form.get("action") == "update_choices"):
             # No-JavaScript ordering edits the submitted draft, never storage.
             direction, _, person = request.form.get("move_choice", "").partition(":")
@@ -579,7 +592,7 @@ def section_edit(section_name, item_id):
             item = submitted
         else:
             problems = validate(section, submitted, today)
-            if section_name == "recurring":
+            if section_name == "tasks":
                 problems.update(task_problems)
                 if submitted["mode"] in taskform.NAMED_MODES and not submitted["choices"]:
                     problems["choices"] = "Choose at least one person."
@@ -595,7 +608,7 @@ def section_edit(section_name, item_id):
                 # Saving the form is the touch that makes the item theirs,
                 # whatever they left in the boxes.
                 submitted.pop(config_module.INVENTED, None)
-                if section_name == "recurring":
+                if section_name == "tasks":
                     submitted = task_from_form(config, None if is_new else stored_task, submitted)
                 if is_new:
                     submitted["id"] = config_module.new_id(

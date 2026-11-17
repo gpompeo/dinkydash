@@ -131,7 +131,7 @@ def test_unchanged_and_cosmetic_task_edits_keep_each_rotation(household):
     # Rendering after the People list moves must still follow each task's own order.
     client.post('/settings/people/averyaaa/move', data={'direction': 'down'})
     for task in config['tasks']:
-        url = '/settings/recurring/' + task['id']
+        url = '/settings/tasks/' + task['id']
         html = client.get(url).get_data(as_text=True)
         posted_choices = Form(html).checked_people()
         assert posted_choices == task['assignment']['people']
@@ -150,7 +150,7 @@ def ids_of(store, index):
 
 def test_reordering_a_draft_keeps_other_fields_and_only_save_persists(household):
     client, store, _ = household
-    url = '/settings/recurring/tableaaa'
+    url = '/settings/tasks/tableaaa'
     draft = MultiDict([('title', 'New title'), ('choices', 'rileyaaa'), ('choices', 'averyaaa'),
                       ('choices', 'jordanaa'), ('move_choice', 'up:jordanaa')])
     html = client.post(url, data=draft).get_data(as_text=True)
@@ -168,14 +168,14 @@ def test_reordering_a_draft_keeps_other_fields_and_only_save_persists(household)
 def test_no_script_membership_update_is_not_a_save(household):
     client, store, _ = household
     data = MultiDict([('title', 'New chore'), ('choices', 'jordanaa'), ('action', 'update_choices')])
-    html = client.post('/settings/recurring/new', data=data).get_data(as_text=True)
+    html = client.post('/settings/tasks/new', data=data).get_data(as_text=True)
     assert Form(html).checked_people() == ['jordanaa']
     assert len(store.load_config()['tasks']) == 2
 
 
 def test_enter_defaults_to_save_not_a_rotation_action(household):
     client, _, _ = household
-    controls = Form(client.get('/settings/recurring/tableaaa').get_data(as_text=True))
+    controls = Form(client.get('/settings/tasks/tableaaa').get_data(as_text=True))
     first = controls.controls(type='submit')[0]
     assert (first['name'], first['value']) == ('action', 'save')
     assert 'disabled' not in first
@@ -183,7 +183,7 @@ def test_enter_defaults_to_save_not_a_rotation_action(household):
 
 def test_empty_participants_and_bad_email_link_errors_to_controls(household):
     client, store, _ = household
-    html = client.post('/settings/recurring/tableaaa', data={'title': 'Keep this'}).get_data(as_text=True)
+    html = client.post('/settings/tasks/tableaaa', data={'title': 'Keep this'}).get_data(as_text=True)
     assert 'Choose at least one person.' in html
     for field in Form(html).controls(name='choices'):
         assert field['aria-invalid'] == 'true'
@@ -211,7 +211,7 @@ def test_picker_names_and_disabled_list_boundaries(household):
     assert '<legend>Date</legend>' in html
     assert 'for="f-date-day">Day</label>' in html
     assert 'for="f-date-month">Month</label>' in html
-    controls = Form(client.get('/settings/recurring').get_data(as_text=True)).controls(type='submit')
+    controls = Form(client.get('/settings/tasks').get_data(as_text=True)).controls(type='submit')
     assert 'disabled' in controls[0] and 'disabled' not in controls[1]
     assert 'disabled' not in controls[2] and 'disabled' in controls[3]
     assert controls[1]['aria-label'] == 'Move Set the table down'

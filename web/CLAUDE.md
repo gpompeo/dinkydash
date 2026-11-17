@@ -58,6 +58,11 @@ against.
 `web/templates/settings/home.html`. The list, edit, delete and reorder routes are generic and need
 no changes.
 
+**Renaming a section's URL.** Keep the old name in `LEGACY_SECTION_NAMES` in `web/routes/settings.py`.
+It resolves to the current name before the view runs, so forms already open on a screen still
+post to it, and the feature switch, sign-in guard and CSRF check are the ones the current URL has.
+Never redirect a legacy POST: it would drop the form or write twice.
+
 **Edits stay protected until Save.** Mark editable forms with `data-dirty-guard` for the shared
 `settings.js` navigation warning. Set it to `changed` when redisplaying an unsaved draft after
 a calendar test or validation error. Only dirty forms attach `beforeunload`, so unchanged pages
