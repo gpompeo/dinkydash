@@ -85,7 +85,7 @@ def write_stored(home, payload):
 
 
 def fake_fetch(events, statuses, seen=None):
-    def _fetch(calendars, today, tzinfo, days_ahead=14, timeout=30):
+    def _fetch(calendars, today, tzinfo, days_ahead=14, timeout=30, since=None):
         if seen is not None:
             seen.append({"calendars": calendars, "today": today, "days_ahead": days_ahead})
         return list(events), list(statuses)

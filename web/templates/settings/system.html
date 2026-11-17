@@ -39,6 +39,19 @@
     </div>
 
     <div class="field">
+        <label for="week_start">Week starts on</label>
+        <select id="week_start" name="week_start">
+            {% for name, label in week_starts %}
+            <option value="{{ name }}" {{ 'selected' if name == config.week_start }}>{{ label }}</option>
+            {% endfor %}
+        </select>
+        <div class="hint">
+            The first day of the week page on the dashboard. It shows the seven days of the
+            current week, including the days already gone.
+        </div>
+    </div>
+
+    <div class="field">
         <label for="location">Where you live</label>
         <input type="text" id="location" name="location" value="{{ config.location or '' }}" placeholder="Berlin, Germany">
         <div class="hint">Gives the headline a sense of place. Optional.</div>

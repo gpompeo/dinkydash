@@ -29,6 +29,10 @@ headline. You only need a key for the headline written each day.
   name, age and interests, pet names, today's event titles, times and locations, the next few days'
   event titles, today's tasks and the countdowns (`dinkydash/prompt.py`). Without
   `ANTHROPIC_API_KEY` the run is refused and nothing is sent.
+- **The week page** shows events from earlier in the current week, so the calendar fetch
+  reaches back to the first day of your week. Those earlier events are stored in the dashboard
+  file on your machine and drawn on the wall; they are never added to the headline prompt, which
+  carries today's events and the next few days' titles only.
 - **Feedback** from the settings page exists only if `SENDGRID_API_KEY` is set. It goes to
   `DINKYDASH_FEEDBACK_TO`, or to the default support address in `dinkydash/mail.py` when that is
   unset. See [security.md](security.md).
@@ -157,6 +161,7 @@ Now these three pages are live:
 | `family_name` | Shown in the corner of the dashboard. |
 | `timezone` | An IANA name like `Europe/Berlin`. Decides when "today" rolls over and how event times read. Set it even on a Pi whose clock is already local — the engine works from this, not the machine clock. |
 | `location` | Your city and country. Optional; gives the headline a sense of place. |
+| `week_start` | The first day of the week page: `monday` to `sunday`, default `sunday`. A missing or unrecognised value is Sunday. Changing it makes the next tick fetch the calendars again. Also on **Settings > System**. |
 | `theme` | `dark` (the default) or `light`. One choice for the dashboard, the settings pages and the phone page; a missing or unrecognised value is dark. |
 | `calendars` | One entry per iCal feed: a `label`, a `url` (the secret iCal address) and `enabled`. Merged into one agenda. An optional `shared_with` list of email addresses shows only the events with one of those people as a guest or organiser. |
 | `people` | `name`, `date_of_birth` (YYYY-MM-DD), an `avatar_emoji`, an `avatar_color`, and `interests` that can shape the headline. |

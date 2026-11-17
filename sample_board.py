@@ -18,9 +18,13 @@ from datetime import datetime, timedelta, timezone
 from dinkydash import config as config_module
 from dinkydash.store import FileStore
 
-# Enough to fill today's agenda and leave a fortnight of context behind it, the
-# same window a real run fetches.
+# Enough to fill today's agenda, leave a fortnight of context ahead of it, and
+# put events on the days of this week already gone for the week page.
 SAMPLE_EVENTS = [
+    (-3, "Piano lesson", "16:30", None),
+    (-2, "Parents' coffee", "09:00", "Cafe Mitte"),
+    (-1, "Inset day", None, None),
+    (-1, "Choir", "17:00", None),
     (0, "Swimming lesson", "09:30", "Stadtbad"),
     (0, "Lunch at Oma's", "12:30", None),
     (0, "Football training", "16:00", "Sportplatz"),

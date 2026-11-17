@@ -19,6 +19,9 @@ clock: "24h"
 # Optional. Gives the daily headline a bit of local flavour.
 location: "Berlin, Germany"
 
+# The first day of the week page: monday to sunday. Sunday is the default.
+week_start: "sunday"
+
 # dark (the default) or light: one choice for the dashboard, settings and phone page.
 theme: dark
 

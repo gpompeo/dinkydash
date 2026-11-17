@@ -30,6 +30,7 @@ from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
 from . import shopping as shopping_module
 from .streaks import person_streak, task_streak
+from . import week as week_module
 
 # The agenda's row budget, not just today's cap. Today fills it first and
 # tomorrow tops up whatever is left, so a quiet day stops leaving the column
@@ -39,6 +40,10 @@ MAX_EVENTS = 5
 # reads as today's first.
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
+
+# One column of the week page names this many events, then counts the rest. The
+# page is read-only and unscrolled, so a crowded day says how many it left out.
+MAX_WEEK_EVENTS = 6
 
 # The wall's shopping card names this many unbought items, then counts the rest.
 MAX_SHOPPING = 8
@@ -75,6 +80,34 @@ def as_shown(events, clock, hide_locations=()):
         written = format_time(event.get("start") or event.get("time"), clock)
         shown.append({**event, "time": written or event.get("time")})
     return shown
+
+
+def week_view(config, today, fetched, clock, hidden):
+    """The seven days of the family's current week, for the week page.
+
+    Worked out from `today` and the `week_start` setting, never from the
+    payload, so it is the right week even when the last fetch is old. Locations
+    are left off: the page is a glance, and a calendar that hides its
+    locations then has nothing to leak. Times are written for the family's
+    clock like every other.
+    """
+    days = week_module.days(today, week_module.week_start_of(config))
+    shown = []
+    for day in days:
+        on_day = events_on(fetched, day)
+        rows = [{**e, "location": None}
+                for e in as_shown(on_day[:MAX_WEEK_EVENTS], clock, hidden)]
+        shown.append({
+            "date": day.isoformat(),
+            "weekday": day.strftime("%a"),
+            "weekday_name": day.strftime("%A"),
+            "day": day.day,
+            "today": day == today,
+            "past": day < today,
+            "events": rows,
+            "more": max(0, len(on_day) - MAX_WEEK_EVENTS),
+        })
+    return {"range": week_module.range_label(days), "days": shown}
 
 
 def computed_headline(events):
@@ -256,6 +289,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     # below is on the family's clock too.
     events = as_shown(events_on(fetched, today)[:MAX_EVENTS], clock, hidden)
     view["events"] = events
+    view["week"] = week_view(config, today, fetched, clock, hidden)
     # The fetch reaches 14 days ahead, so tomorrow is in the payload even when
     # it is a day old. Slots are what today did not use, which is why a busy
     # day silently drops tomorrow rather than overflowing the panel.

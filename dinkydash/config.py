@@ -16,6 +16,7 @@ from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from .calendars import addresses, zone
 from .clock import CLOCKS, DEFAULT_CLOCK
+from .week import week_start_of
 
 log = logging.getLogger(__name__)
 
@@ -26,6 +27,8 @@ DEFAULTS = {
     # time *is*, the other how it is written.
     "clock": DEFAULT_CLOCK,
     "location": "",
+    # The day the week page starts on; see dinkydash/week.py.
+    "week_start": "sunday",
     "theme": "dark",
     "calendars": [],
     "people": [],
@@ -189,6 +192,7 @@ def with_defaults(raw):
 
     if config.get("theme") not in THEMES:
         config["theme"] = DEFAULT_THEME
+    config["week_start"] = week_start_of(config)
 
     # Each switch is coerced to a real boolean for the same reason as the
     # theme: a hand-edited file can hold anything, and a missing switch takes

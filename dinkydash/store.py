@@ -22,6 +22,7 @@ except ImportError:  # pragma: no cover - Windows has no flock
 from . import config as config_module
 from . import history as history_module
 from .calendars import feed_label
+from .week import week_start_of
 
 log = logging.getLogger(__name__)
 
@@ -280,6 +281,7 @@ def calendar_config(config):
     """Fetch inputs, grouped by the label carried by stored events.
 
     Ignore item IDs so backfilling them does not invalidate a working agenda.
+    The week start is part of it because it decides how far back a fetch reaches.
     Keep duplicate labels together: changing either source invalidates that label.
     """
     feeds = {}
@@ -288,7 +290,7 @@ def calendar_config(config):
             feeds.setdefault(feed_label(entry), []).append(
                 {key: value for key, value in entry.items() if key != "id"})
     return (config.get("timezone") or config_module.DEFAULTS["timezone"],
-            int(config.get("calendar_days_ahead") or 14), feeds)
+            int(config.get("calendar_days_ahead") or 14), week_start_of(config), feeds)
 
 
 def invalidated_agenda(previous, current, payload, labels=()):
@@ -296,10 +298,10 @@ def invalidated_agenda(previous, current, payload, labels=()):
     before, after = calendar_config(previous), calendar_config(current)
     if payload is None or (before == after and not labels):
         return None
-    changed = set(labels) | {label for label in before[2].keys() | after[2].keys()
-                            if before[2].get(label) != after[2].get(label)}
+    changed = set(labels) | {label for label in before[3].keys() | after[3].keys()
+                            if before[3].get(label) != after[3].get(label)}
     return {key: [entry for entry in payload.get(key) or []
-                  if before[:2] == after[:2] and entry.get(label_key) not in changed]
+                  if before[:3] == after[:3] and entry.get(label_key) not in changed]
             for key, label_key in (("events", "calendar"), ("calendar_statuses", "label"))}
 
 

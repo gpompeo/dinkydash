@@ -26,6 +26,7 @@ from . import config as config_module
 from .calendars import fetch_events, sort_key
 from .claude_client import GenerationError
 from .generate import generate
+from .week import first_day, week_start_of
 
 log = logging.getLogger(__name__)
 
@@ -34,17 +35,20 @@ def refresh_calendars(config, store, now=None, today=None):
     """Re-fetch every enabled feed and store the merged agenda. No model call.
 
     `now` is when this is happening and becomes the `calendars_fetched_at`
-    stamp. `today` is the day the fourteen-day window starts on, and defaults
-    to today on the family's clock — they are the same thing except under
-    `generate.py --date`, where the window is moved but the stamp is not.
+    stamp. `today` is the day the fourteen-day window is measured from, and
+    defaults to today on the family's clock — they are the same thing except
+    under `generate.py --date`, where the window is moved but the stamp is not.
+    The window starts on the first day of the family's week, so the week page
+    has the days already gone; nothing earlier is fetched or kept.
     """
     now = now or datetime.now(timezone.utc)
     tzinfo = config_module.tzinfo_for(config)
     today = today or now.astimezone(tzinfo).date()
 
     days_ahead = int(config.get("calendar_days_ahead") or 14)
+    since = first_day(today, week_start_of(config))
     events, statuses = fetch_events(
-        config.get("calendars"), today, tzinfo, days_ahead=days_ahead,
+        config.get("calendars"), today, tzinfo, days_ahead=days_ahead, since=since,
     )
 
     # Read only to find out what a failing feed last gave us. Nothing from this
@@ -55,7 +59,7 @@ def refresh_calendars(config, store, now=None, today=None):
     if failed:
         log.warning("Calendars that did not answer: %s", ", ".join(sorted(failed)))
         events = _with_last_known(events, previous, failed,
-                                  today, today + timedelta(days=days_ahead))
+                                  since, today + timedelta(days=days_ahead))
 
     agenda = {
         "events": events,
@@ -72,7 +76,7 @@ def _with_last_known(fresh, previous, failed_labels, start, end):
     """Fresh events, plus the last-known events of the feeds that did not answer.
 
     A missing event is invisible while a stale one is still on the right day —
-    the previous fetch reached the same fourteen days ahead — so a feed that
+    the previous fetch reached the same days — so a feed that
     fails holds its last agenda rather than emptying it. Only that feed does:
     the ones that answered are always fresh, or a single dead URL would freeze
     the whole dashboard for as long as nobody fixed it.

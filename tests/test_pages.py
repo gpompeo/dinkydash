@@ -13,8 +13,10 @@ TWO = (Page("main", "Dashboard"),
 
 
 class TestAvailability:
-    def test_the_real_registry_holds_only_the_main_dashboard(self):
+    def test_the_real_registry_offers_the_week_only_with_a_calendar(self):
         assert [p.key for p in pages.available({})] == ["main"]
+        calendars = {"calendars": [{"label": "F", "url": "https://example.com/private-xxxx"}]}
+        assert [p.key for p in pages.available(calendars)] == ["main", "week"]
 
     def test_the_main_dashboard_is_always_available(self):
         config = {"features": {"tasks": False, "shopping": False, "special_dates": False}}

@@ -436,14 +436,18 @@ def feed_label(entry):
 
 
 def fetch_events(calendars, today, tzinfo, days_ahead=DEFAULT_DAYS_AHEAD,
-                 timeout=DEFAULT_TIMEOUT):
+                 timeout=DEFAULT_TIMEOUT, since=None):
     """Fetch every enabled feed and merge into one ordered agenda.
 
     One broken feed must not empty the dashboard, so a failing feed is logged and
     skipped. The second return value reports per-feed status so the settings
     page can show which one needs attention.
+
+    The window runs from `since` (default `today`) to `days_ahead` after
+    `today`, so the week page can show the days of this week already gone.
     """
-    end = today + timedelta(days=days_ahead)
+    start = since or today
+    end = max(today + timedelta(days=days_ahead), start)
     merged = []
     statuses = []
 
@@ -458,7 +462,7 @@ def fetch_events(calendars, today, tzinfo, days_ahead=DEFAULT_DAYS_AHEAD,
             continue
         wanted = addresses(entry.get("shared_with"))
         try:
-            events = fetch_feed(url, today, end, tzinfo, label=label, timeout=timeout,
+            events = fetch_feed(url, start, end, tzinfo, label=label, timeout=timeout,
                                 shared_with=wanted)
         except FeedError as exc:
             log.warning("Calendar %r failed: %s", label, exc)

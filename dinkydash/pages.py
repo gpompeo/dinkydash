@@ -39,7 +39,16 @@ class Page:
     template: Optional[str] = None
 
 
-REGISTRY = (Page(MAIN, "Dashboard"),)
+def _has_calendar(config):
+    """Whether any calendar is switched on: the week page has nothing to show without one."""
+    return any(isinstance(c, dict) and c.get("enabled", True) and c.get("url")
+               for c in config.get("calendars") or [])
+
+
+REGISTRY = (
+    Page(MAIN, "Dashboard"),
+    Page("week", "Week", when=_has_calendar, template="_week.html"),
+)
 
 
 def available(config, registry=None):

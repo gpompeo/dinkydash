@@ -23,6 +23,7 @@ from dinkydash import schedule, taskform
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
 from dinkydash.clock import CLOCKS, DEFAULT_CLOCK, clock_of, format_time
+from dinkydash.week import WEEK_STARTS
 from dinkydash.context import compute_birthday_info, parse_monthday, tasks_for
 from dinkydash.runner import refresh_calendars
 from dinkydash.runner import run as run_generation
@@ -994,6 +995,9 @@ def system():
         clock = request.form.get("clock", "").strip()
         if clock in CLOCKS:
             config["clock"] = clock
+        week_start = request.form.get("week_start", "").strip().lower()
+        if week_start in WEEK_STARTS:
+            config["week_start"] = week_start
         model = request.form.get("claude_model", "").strip()
         if model:
             config["claude_model"] = model
@@ -1011,8 +1015,9 @@ def system():
     names = {"24h": "24-hour", "12h": "12-hour"}
     clocks = [(name, f"{names[name]} ({format_time(time(15, 45), name)})")
               for name in CLOCKS]
+    week_starts = [(name, name.capitalize()) for name in WEEK_STARTS[-1:] + WEEK_STARTS[:-1]]
     return render_template("settings/system.html", config=config, zones=zones,
-                           clocks=clocks)
+                           clocks=clocks, week_starts=week_starts)
 
 
 # -- telling us something ---------------------------------------------------

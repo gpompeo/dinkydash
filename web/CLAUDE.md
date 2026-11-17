@@ -264,6 +264,12 @@ while the main page is hidden, so a page sized to its own needs must do its own 
 nothing extra is drawn. The pager is a flex strip under the board, no `gap` (Safari 12 test), margins only.
 Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pages_browser.py`.
 
+The **week page** (`_week.html`, `board.week_view`) is the first registered page: seven columns, read-only,
+available while a calendar is switched on. Its columns are fixed by the screen, so `fitWeek()` in `board.html`
+hides trailing events of a column that overflows and counts them in its `+N more`; it runs from `fit()`'s
+early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
+Tests: `tests/test_week.py`, `tests/test_week_browser.py`.
+
 ## Phone page, wall token and sign-in
 
 `web/parent.py` holds the optional sign-in (`enabled()`, `guard()`, the attempt limiter); the settings

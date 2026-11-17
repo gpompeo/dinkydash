@@ -43,7 +43,9 @@ A task is never due before `recurrence.effective_start` (its `start`, else `crea
 ## What the payload holds, and what it does not
 
 The payload stores only what cannot be recomputed: the model's `headline`, plus the
-fetched calendar window (14 days, not just today). `note` and `note_kind` are still on the
+fetched calendar window (from the first day of the family's week, `week.first_day`, to 14 days ahead,
+not just today; `week_start` is part of what invalidates a stored agenda). The headline prompt still
+gets only today's events and the next few days' titles, so earlier days of the week never reach the model. `note` and `note_kind` are still on the
 brief, empty when a new one is written, so an older file and an export keep their shape.
 The dashboard does not render a note. Chores, countdowns and ages are pure functions of
 config + date, so `board.build_view` recomputes them on every render.

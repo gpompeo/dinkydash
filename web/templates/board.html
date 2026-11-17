@@ -471,6 +471,92 @@
             padding: 1.45rem 2.2rem 1.5rem;
         }
 
+        /* ---- week page --------------------------------------------------
+           Seven columns sized off the root like the rest of the dashboard.
+           Nothing here scrolls: a column clips, and the server has already
+           capped each day and counted what it left out. No flex gap: the
+           margins match the rest of this file. */
+        .page[data-page="week"]:not([hidden]) { display: flex; flex-direction: column; }
+        .week { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .week > * + * { margin-top: 1rem; }
+        .week-days {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-rows: minmax(0, 1fr);
+            grid-column-gap: 0.55rem;
+            column-gap: 0.55rem;
+        }
+        .week-day {
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0.55rem 0.45rem;
+            background: var(--card);
+            border: 1px solid var(--card-edge);
+            box-shadow: var(--card-lift);
+            border-radius: 0.8rem;
+        }
+        .week-day.past { opacity: 0.72; }
+        .week-day.today {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), var(--card-lift);
+        }
+        .week-day-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid var(--card-edge);
+        }
+        .week-weekday {
+            font-size: max(0.72rem, 12px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .week-day.today .week-weekday { color: var(--accent-dark); }
+        .week-daynum {
+            font-family: 'Inter', 'Nunito', system-ui, -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-left: 0.3rem;
+        }
+        .week-events { list-style: none; margin: 0; padding: 0; }
+        .week-event + .week-event { margin-top: 0.5rem; }
+        .week-time {
+            display: block;
+            font-family: 'Inter', 'Nunito', system-ui, -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-size: max(0.72rem, 12px);
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .week-time.all-day { color: var(--text-muted); }
+        .week-title {
+            display: block;
+            font-size: max(0.78rem, 12px);
+            font-weight: 700;
+            line-height: 1.18;
+            overflow-wrap: break-word;
+        }
+        .week-more, .week-none {
+            font-size: max(0.72rem, 12px);
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+        .week-more { margin-top: 0.5rem; }
+        .week-more[hidden], .week-event.shed { display: none; }
+        .week-none { font-weight: 600; }
+
         /* The touch controls sit under the page in their own strip, so they
            never cover content and the fit script counts them in its height. */
         .pager {
@@ -827,13 +913,40 @@
         }
     }
 
+    // A week column is fixed by the screen, not by its events, so what does
+    // not fit is hidden from the end of the day and counted in its "+N more".
+    // The first event of a day always stays.
+    function fitWeek() {
+        var days = document.querySelectorAll(".page:not([hidden]) .week-day");
+        for (var i = 0; i < days.length; i++) {
+            var day = days[i];
+            var rows = day.querySelectorAll(".week-event");
+            var more = day.querySelector(".week-more");
+            var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+            for (var r = 0; r < rows.length; r++) { rows[r].classList.remove("shed"); }
+            if (more) {
+                more.hidden = !left;
+                more.textContent = left ? "+" + left + " more" : "";
+            }
+            var hidden = 0;
+            for (var k = rows.length - 1; k > 0 && day.scrollHeight > day.clientHeight + 1; k--) {
+                rows[k].classList.add("shed");
+                hidden++;
+                if (more) {
+                    more.hidden = false;
+                    more.textContent = "+" + (left + hidden) + " more";
+                }
+            }
+        }
+    }
+
     function fit() {
         // Let a phone viewer enlarge the dashboard without shrinking it back.
         if (window.visualViewport && window.visualViewport.scale > 1) return;
         // Fitting is the main dashboard's; measuring while another page is
         // shown would size the type to that page instead.
         var shown = document.querySelector(".board");
-        if (shown && shown.hidden) return;
+        if (shown && shown.hidden) { fitWeek(); return; }
         var room = window.innerHeight;
         clearShed();
         // A comfortable day fits at or above the floor and stops here. The
