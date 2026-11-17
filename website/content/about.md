@@ -26,11 +26,10 @@ Once a day, at a time you pick, Claude reads the day ahead and writes the headli
 - **Nothing to feed.** The turns move on by themselves, and nobody has to chase anybody. Ticking a task off from your phone is there if you want it, not something the wall needs.
 - **Yours to keep.** The code is MIT-licensed and public, so the dashboard can't be taken away from you.
 
-## Two ways to have it
+## Run it yourself
 
-**We host it.** Free for 14 days, and we don't ask for a card. After that it's $39 a year or $6 a month. We store your settings so we can build your dashboard each day, and the day's agenda goes to Anthropic so Claude can write the headline. [The privacy policy](/privacy/) names every company involved. [Start free](https://app.dinkydash.co/login).
 
-**You host it.** Free, on your own machine, with your own Anthropic key, which costs about $0.13 a month. Your family's details stay with you. The one thing that leaves is the day's agenda, which goes to Anthropic under your key. Setting it up takes an afternoon and some comfort with a terminal.
+**You host it.** It's free to run on your own machine. Add your own Anthropic key if you want a daily headline; details about your family and calendars go to Anthropic to write it. Setting it up takes an afternoon and some comfort with a terminal. The [privacy page](/privacy/) explains what goes where.
 
 ## Where to start
 

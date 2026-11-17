@@ -37,9 +37,8 @@ Every other family calendar needs somebody to keep it current. Someone ticks the
 
 Nothing has to be ticked for DinkyDash to work. The rota advances on the date whether anyone's looking or not, and a birthday countdown that says 28 days is doing the sum fresh, not reading a number somebody typed in November.
 
-## Two ways to run it
+## Getting started
 
-**We host it.** Paste a calendar link, open your dashboard on any screen with a browser, and leave it there. Free for 14 days, and we don't ask for a card. [Start a trial](https://app.dinkydash.co/login).
 
 **You host it.** It's MIT-licensed and free for ever. You'll need something to serve it — an old laptop, a spare PC, a [Raspberry Pi](/raspberry-pi-family-calendar/) — and your own Anthropic key, which runs well under a dollar a month. [The setup guide](/getting-started/) has the commands.
 

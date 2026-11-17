@@ -53,6 +53,5 @@ Instead of keeping everyone's schedule and chore assignments in your head, it's 
 
 Set it up once, and your family gets a fresh dashboard every day without lifting a finger.
 
-**We host it.** Paste a calendar link and open your dashboard on any screen with a browser. Free for 14 days, and we don't ask for a card. After that it's $39 a year or $6 a month. [Start free](https://app.dinkydash.co/login).
 
 **You host it.** It's open source and free on your own machine, with your own Anthropic key at about $0.13 a month. [The setup guide](/getting-started/) has the commands.

@@ -1,4 +1,4 @@
-"""Date recovery, rotation integrity and accessible form errors in both modes."""
+"""Date recovery, rotation integrity and accessible form errors for the household."""
 
 from copy import deepcopy
 from datetime import date
@@ -10,7 +10,7 @@ from werkzeug.datastructures import MultiDict
 from dinkydash import config as config_module
 from dinkydash.context import build_countdowns, tasks_for
 from dinkydash.store import FileStore
-from tests.conftest import board_path, client_for
+from tests.conftest import client_for
 from web import create_app
 
 CONFIG = {
@@ -51,29 +51,11 @@ class Form(HTMLParser):
         return [x['value'] for x in self.controls(name='choices') if 'checked' in x]
 
 
-@pytest.fixture(params=['file', 'postgres'])
-def household(request, tmp_path, monkeypatch):
-    if request.param == 'file':
-        monkeypatch.setenv('DINKYDASH_MODE', 'single')
-        store = FileStore(tmp_path / 'config.yaml')
-        app = create_app(store)
-        client = client_for(app)
-        dashboard = '/'
-    else:
-        from dinkydash.pgstore import PostgresStore
-        pool = request.getfixturevalue('pg_pool')
-        family = request.getfixturevalue('pg_family')
-        store = PostgresStore(pool, family)
-        with pool.connection() as conn, conn.transaction():
-            user = conn.execute('INSERT INTO users (family_id, email) VALUES (%s, %s) RETURNING id',
-                                (family, 'ux-test@example.com')).fetchone()[0]
-        monkeypatch.setenv('DINKYDASH_MODE', 'cloud')
-        monkeypatch.setenv('DINKYDASH_SECRET_KEY', 'isolated-test-key')
-        client = client_for(create_app(pool=pool))
-        with client.session_transaction() as session:
-            session['family_id'] = str(family)
-            session['user_id'] = user
-        dashboard = board_path(pool, family)
+@pytest.fixture
+def household(tmp_path):
+    store = FileStore(tmp_path / 'config.yaml')
+    client = client_for(create_app(store))
+    dashboard = '/'
     config = config_module.with_defaults(deepcopy(CONFIG))
     store.save_config(config)
     today = config_module.today_for(config).isoformat()

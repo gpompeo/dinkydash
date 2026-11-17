@@ -1,35 +1,10 @@
-"""What somebody can tell us from inside the app, and where it goes.
-
-    enabled() -> bool
-    clean(message) -> str
-    recipient() -> str
-    submit(message, address=None, family_id=None) -> None
-
-One form, one email, no table. A family writes a few sentences, they arrive in a
-mailbox with that family's own address as the reply-to, and nothing is stored
-on our side — so there is no feedback to export, none to delete, and no
-migration to run. That is deliberate: **the cheapest version of this that a
-person can actually reach beats a better one that is not built yet.** If enough
-arrives to need triage, a table and a queue can follow it.
-
-**The message is somebody's own words, so it is treated as theirs.** It is never
-logged, never attached to an error report, and never shown back to anybody but
-the person who typed it. What a log line gets is that feedback was sent, and
-nothing of what it said.
-
-**Whether the form exists at all is decided by whether there is anywhere to send
-it.** Not by the mode: a Pi with no mail provider is the same case as a cloud
-deployment whose key has been pulled, and both should offer nothing rather than
-a button that fails. That is the same rule as "a feature that needs a database
-is a cloud feature" — this one needs an email provider.
-"""
+"""Send optional feedback without storing or logging its contents."""
 
 import os
 
 # The key `dinkydash.mail` sends with, named here rather than imported so that
 # asking whether the form can work costs nothing and imports nothing. That is
-# what keeps `mail`'s promise — single mode never imports it — true: with no key
-# the pill is not drawn and the route is a 404, so nothing on that path runs.
+# with no key the pill is not drawn and the route is a 404.
 MAIL_KEY = "SENDGRID_API_KEY"
 
 # Where the form sends, when it should not be the address the app publishes.
@@ -62,62 +37,26 @@ def clean(message):
     return text.strip()
 
 
-def compose(message, address=None, family_id=None):
-    """The body of the email: what was written, then who wrote it.
-
-    The message goes first, because that is what is being read. Under it sit the
-    two things that make an answer possible — the address, which is also the
-    reply-to, and the family id, without which "my dashboard is blank" is not a
-    question anybody can look into. Nothing from the dashboard goes with it: no
-    name, no calendar, no written line. If the message names a child, that is
-    because the person writing it chose to.
-    """
-    who = address or "a self-hosted dashboard"
-    trailer = [f"From: {who}"]
-    if family_id:
-        trailer.append(f"Family: {family_id}")
-    return f"{message}\n\n--\n" + "\n".join(trailer) + "\n"
+def compose(message):
+    """Put the message first and identify its self-hosted origin."""
+    return f"{message}\n\n--\nFrom: a self-hosted dashboard\n"
 
 
-def subject_for(address=None):
-    """One subject per sender, so a mailbox threads two messages and not twenty."""
-    return f"{SUBJECT} from {address}" if address else f"{SUBJECT} (self-hosted)"
+def subject_for():
+    return f"{SUBJECT} (self-hosted)"
 
 
 def recipient():
-    """Where a message goes, which need not be the address the pages give out.
-
-    Defaults to the support mailbox, which is what a self-hosted dashboard and
-    a deployment that sets nothing get. `DINKYDASH_FEEDBACK_TO` moves
-    what the form sends to another mailbox — one that is read every day rather
-    than the one printed on the policy — and moves nothing else:
-    `support_address()` stays the reply-to on our own mail, the contact address
-    in the legal pages, and what this page offers when a send fails.
-
-    **The two can diverge without stranding anybody**, because a reply is sent
-    from wherever the message was read and carries that family's own address, so
-    an answer and its thread stay together whichever mailbox answered. What must
-    not diverge is this and the privacy policy: the mailbox a message lands in
-    is something that page states, so a deployment that sets this says so there.
-
-    Read at send time and never cached, like `enabled()`: the address behind a
-    form is operational, and moving it should not need a restart.
-    """
+    """Read the chosen mailbox at send time, defaulting to support."""
     chosen = os.environ.get(FEEDBACK_TO, "").strip()
     return chosen or support_address()
 
 
-def submit(message, address=None, family_id=None):
-    """Send one message to the feedback mailbox. Raises `mail.MailError` if it did not go.
-
-    Imported here rather than at the top of the module, so that a deployment
-    with no key never reaches `dinkydash.mail` at all.
-    """
+def submit(message):
+    """Send feedback; raise `mail.MailError` if delivery fails."""
     from dinkydash import mail
 
-    mail.send(recipient(), subject_for(address),
-              compose(message, address=address, family_id=family_id),
-              reply_to=address)
+    mail.send(recipient(), subject_for(), compose(message), reply_to=None)
 
 
 def support_address():

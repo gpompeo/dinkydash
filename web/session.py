@@ -1,41 +1,11 @@
-"""What the session cookie carries, and what it has to prove.
-
-Two things live in that cookie and both are authentication:
-
-    who is signed in     `user_id` and `family_id`, set by a magic link
-    a CSRF token         proof that a form that writes came from a page we sent
-
-Flask signs the cookie, it does not encrypt it. So what goes in is what we are
-happy for the holder to read: two ids, and no email address. In cloud mode the
-signature *is* the login, which is why `create_app` refuses to start on the
-self-hosted fallback key.
-
-**The cookie flags are stated, not left to their defaults.** `HttpOnly` is
-Flask's default and `SameSite` is not; a flag nobody writes down is a flag
-nobody notices when a default moves under it.
-
-**`Secure` is the one thing here that mode gates.** A Raspberry Pi serves plain
-HTTP on a home network, and a `Secure` cookie is never sent over it — the
-settings UI would lose every flash message, and every CSRF token with them.
-Cloud mode is HTTPS only and sets it.
-
-**CSRF is on in both modes**, and that is deliberate. Self-hosted has no
-accounts, but it does sit on a home network with a guessable address: a page
-in another tab can POST to `http://raspberrypi.local:5123/settings/...` and
-edit somebody's dashboard. It costs a hidden field, and running the same code in
-both modes is what stops it being a check nobody exercises.
-"""
+"""Signed local sessions, cookie flags and CSRF protection."""
 
 import hmac
 import secrets
 from datetime import timedelta
 
-from flask import abort, current_app, redirect, request, session, url_for
+from flask import abort, request, session
 from flask.sessions import SecureCookieSessionInterface
-
-# What the session holds when somebody is signed in.
-USER_ID = "user_id"
-FAMILY_ID = "family_id"
 
 # The CSRF token: where it is kept, and what the form calls it.
 CSRF_KEY = "csrf"
@@ -51,12 +21,10 @@ SESSION_LIFETIME = timedelta(days=30)
 
 def configure(app):
     """Cookie flags, the CSRF check, and `csrf_token()` for the templates."""
-    from . import CLOUD
-
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=app.config["MODE"] == CLOUD,
+        SESSION_COOKIE_SECURE=False,
         PERMANENT_SESSION_LIFETIME=SESSION_LIFETIME,
     )
     app.jinja_env.globals["csrf_token"] = csrf_token
@@ -84,54 +52,8 @@ class CookieSession(SecureCookieSessionInterface):
 
 # -- who is signed in -------------------------------------------------------
 
-def sign_in(user_id, family_id):
-    """Start a session for that user, throwing away whatever was there.
-
-    `session.clear()` first is the session-fixation defence: an attacker who
-    got a victim to carry their cookie must not still be holding it after the
-    victim signs in.
-    """
-    session.clear()
-    session.permanent = True
-    session[USER_ID] = user_id
-    session[FAMILY_ID] = str(family_id)
-
-
 def sign_out():
     session.clear()
-
-
-def signed_in():
-    return bool(session.get(USER_ID))
-
-
-def current_user_id():
-    """Who is signed in, or None. The person, as opposed to the family.
-
-    Almost everything is scoped to the family and reads `web/family.py`
-    instead. This is for the two things that are about the *person*: showing
-    somebody their own address, and confirming that they typed it back before
-    deleting the account.
-    """
-    return session.get(USER_ID)
-
-
-def guard():
-    """Cloud mode: no session, no family. Returns a redirect, or None.
-
-    Authentication and authorisation are the same act here, because the session
-    is not merely permission to see a dashboard — it *is* which dashboard. The family
-    on it is the only thing `web/family.py` will build a store from (DIN-39).
-
-    No `next` parameter. A redirect target taken from a URL is an open redirect
-    waiting to be written wrongly, and everything behind this gate is one page
-    away from `/settings/` anyway.
-    """
-    from . import CLOUD
-
-    if current_app.config["MODE"] != CLOUD or signed_in():
-        return None
-    return redirect(url_for("auth.login"))
 
 
 # -- proving a form came from us --------------------------------------------
@@ -161,14 +83,9 @@ def check_csrf():
     `CSRF_ENABLED` flag is a flag somebody eventually sets wrongly in
     production, and it would leave the accepting path untested everywhere else.
     The test client in `tests/conftest.py` carries the token the way a browser
-    does, so every form POST in the suite goes through this function rather
-    than around it. A route that genuinely cannot carry one — a Stripe webhook
-    is the coming example — is exempted here, by path, in the open.
+    does, so every form POST in the suite goes through this function.
     """
     if request.method in SAFE_METHODS:
-        return None
-    if request.endpoint == "billing.webhook":
-        # Cloud-only route; authenticates the raw body with Stripe's signature.
         return None
     held = session.get(CSRF_KEY) or ""
     sent = request.form.get(CSRF_FIELD) or request.headers.get("X-CSRF-Token") or ""

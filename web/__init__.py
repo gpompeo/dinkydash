@@ -1,158 +1,65 @@
-"""Build the Flask app for single or cloud mode.
-
-Single mode shares one FileStore and needs no accounts. Cloud mode shares a
-database pool, resolves stores per request, and requires a real session key.
-CSRF and the no-referrer policy apply in both modes.
-"""
+"""Build the self-hosted Flask app."""
 
 import os
 
-from flask import Flask, redirect, url_for
+from flask import Flask
 
-SINGLE, CLOUD = "single", "cloud"
+from dinkydash.mode import validate
 
+SINGLE = "single"
 SELF_HOSTED_KEY = "dinkydash-self-hosted"
 
 
 def mode():
-    return os.environ.get("DINKYDASH_MODE", SINGLE).strip().lower() or SINGLE
+    return validate(os.environ.get("DINKYDASH_MODE"))
 
 
-def create_app(store=None, *, pool=None):
-    """Build the app, optionally injecting its storage dependency.
+def create_app(store=None):
+    """Build an app using the provided file store, or the default one."""
+    mode()
 
-    Single mode accepts a store; cloud mode accepts a pool and constructs a
-    family's store only after authenticating the request.
-    """
+    if store is None:
+        from dinkydash.store import FileStore
+        store = FileStore()
+
     app = Flask(__name__, static_folder="static", template_folder="templates")
-    app.config["MODE"] = mode()
-    if app.config["MODE"] not in (SINGLE, CLOUD):
-        raise ValueError("DINKYDASH_MODE must be 'single' or 'cloud'.")
-    app.secret_key = _secret_key(app.config["MODE"])
+    app.config.update(MODE=SINGLE, STORE=store,
+                      APP_HOST=os.environ.get("DINKYDASH_APP_HOST", "").strip())
+    app.secret_key = os.environ.get("DINKYDASH_SECRET_KEY") or SELF_HOSTED_KEY
 
-    if app.config["MODE"] == CLOUD:
-        if store is not None:
-            raise ValueError("Cloud mode accepts a pool, not a store.")
-        if pool is None:
-            from dinkydash import db
-            pool = db.pool()
-            # Refuse to start rather than start and fail every request: a
-            # container that never comes up is a deploy that never goes live.
-            db.ready(pool)
-    else:
-        if pool is not None:
-            raise ValueError("Single mode accepts a store, not a pool.")
-        if store is None:
-            from dinkydash.store import FileStore
-            store = FileStore()
-    app.config.update(STORE=store, POOL=pool)
-
-    app.config["APP_HOST"] = os.environ.get("DINKYDASH_APP_HOST", "").strip()
-
-    # Settings templates use `config` for the family's settings, not Flask's.
-    app.jinja_env.globals["cloud"] = app.config["MODE"] == CLOUD
-
-    # Whether the feedback pill is drawn at all. A callable rather than a
-    # boolean, for the reason `turnstile_site_key` is one: it is read at render
-    # time, so pulling the mail key takes the form away without a rebuild — and
-    # it is the same function the route is gated behind, so a button that could
-    # not work is never shown.
-    from . import feedback, fathom
-    from dinkydash import ads
+    from . import feedback, parent
+    from .request_log import quieten_the_request_log
+    quieten_the_request_log()
+    parent.check_configuration(app)
     app.jinja_env.globals["feedback_enabled"] = feedback.enabled
-    # Read at render time, like the feedback gate: unset means the sign-in
-    # pages fetch nothing, which is what a self-hosted dashboard and the test
-    # suite get. The include that draws the script is not on the shell.
-    app.jinja_env.globals["fathom_site_id"] = fathom.site_id
-    # Same shape, for the Google Ads tag: unset means `_google_ads.html`
-    # renders nothing, on the sign-in pages and on the one billing page that
-    # includes it.
-    app.jinja_env.globals["google_ads_id"] = ads.ads_id
-    app.jinja_env.globals["google_ads_consent_regions"] = lambda: ads.CONSENT_REGIONS
+    app.jinja_env.globals["parent_sign_in_on"] = parent.enabled
 
     from .session import configure as configure_session
     configure_session(app)
-
     from .assets import configure as configure_assets
     configure_assets(app)
 
     from .routes.board import bp as board_bp
     from .routes.settings import bp as settings_bp
+    from .routes.parent import bp as parent_bp
+    from .routes.phone import bp as phone_bp, pins_bp
+    from .routes.activity import bp as activity_bp
 
     app.register_blueprint(board_bp)
     app.register_blueprint(settings_bp, url_prefix="/settings")
+    app.register_blueprint(parent_bp)
+    app.register_blueprint(phone_bp)
+    app.register_blueprint(pins_bp, url_prefix="/settings/pins")
+    app.register_blueprint(activity_bp, url_prefix="/settings/activity")
 
-    if app.config["MODE"] == SINGLE:
-        from . import parent
-        from .routes.parent import bp as parent_bp
-
-        parent.check_configuration(app)
-        app.register_blueprint(parent_bp)
-
-        from .routes.phone import bp as phone_bp, pins_bp
-        app.register_blueprint(phone_bp)
-        app.register_blueprint(pins_bp, url_prefix="/settings/pins")
-
-        from .routes.activity import bp as activity_bp
-        app.register_blueprint(activity_bp, url_prefix="/settings/activity")
-
-        # Only with sign-in on: with it off the token address does not exist.
-        if parent.password():
-            from .routes.wall import admin_bp as wall_admin_bp, bp as wall_bp
-            app.register_blueprint(wall_bp)
-            app.register_blueprint(wall_admin_bp, url_prefix="/settings/wall")
-        # Read at render time, like the gates above, so the settings home
-        # offers "Sign out" only when there is something to sign out of.
-        app.jinja_env.globals["parent_sign_in_on"] = parent.enabled
-
-    if app.config["MODE"] == CLOUD:
-        from . import turnstile
-
-        # A global rather than something a route passes, for the reason
-        # `session.csrf_token` is one: the sign-in form is rendered from more
-        # than one place, and a form that quietly lost its bot check would look
-        # exactly like one that never had it. Called at render time, so setting
-        # the keys takes effect without rebuilding the app.
-        app.jinja_env.globals["turnstile_site_key"] = turnstile.site_key
-
-        from .routes.auth import bp as auth_bp
-        app.register_blueprint(auth_bp)
-
-        from .routes.screen import bp as screen_bp
-        app.register_blueprint(screen_bp)
-
-        from .routes.admin import bp as admin_bp
-        app.register_blueprint(admin_bp)
-
-        from dinkydash.billing import Billing
-        from .routes.billing import bp as billing_bp
-        app.config["BILLING"] = Billing.from_env()
-        app.register_blueprint(billing_bp)
-
-        from dinkydash.pgstore import NoSuchFamily
-
-        @app.errorhandler(NoSuchFamily)
-        def family_is_gone(exc):
-            """Sign out sessions whose family has since been deleted."""
-            from .session import sign_out
-            sign_out()
-            return redirect(url_for("auth.login"))
+    if parent.password():
+        from .routes.wall import admin_bp as wall_admin_bp, bp as wall_bp
+        app.register_blueprint(wall_bp)
+        app.register_blueprint(wall_admin_bp, url_prefix="/settings/wall")
 
     @app.after_request
     def no_referrer(response):
-        """Keep credential-bearing URLs out of outbound Referer headers."""
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         return response
 
     return app
-
-
-def _secret_key(current_mode):
-    key = os.environ.get("DINKYDASH_SECRET_KEY")
-    if key:
-        return key
-    if current_mode == CLOUD:
-        raise RuntimeError(
-            "DINKYDASH_SECRET_KEY is not set. Cloud mode will not start without one."
-        )
-    return SELF_HOSTED_KEY

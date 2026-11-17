@@ -21,8 +21,8 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp/requirements
-COPY requirements.txt requirements-dev.txt requirements-site.txt requirements-cloud.txt ./
+COPY requirements.txt requirements-dev.txt requirements-site.txt ./
 RUN python -m venv /opt/venv \
- && pip install --no-cache-dir -r requirements-dev.txt -r requirements-cloud.txt
+ && pip install --no-cache-dir -r requirements-dev.txt
 
 WORKDIR /workspace

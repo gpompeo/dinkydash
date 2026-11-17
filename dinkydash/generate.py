@@ -53,8 +53,7 @@ def generate(config, today, events, client=None):
     ai = call_claude(user_prompt, config, client=client)
 
     return {
-        # UTC, not the server's clock: the Pi is often not set to the family's
-        # timezone, and hosted the server is nowhere near them. Rendered local.
+        # UTC is independent of the server clock; the dashboard renders local time.
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "generated_for_date": today.isoformat(),
         "family_name": config.get("family_name", ""),

@@ -1,7 +1,7 @@
 # Commands and workflow
 
-Read this when setting up a checkout, running the app, applying the schema, generating a dashboard
-or working in a new Conductor workspace. Local hosted development (sign-in, port overrides,
+Read this when setting up a checkout, running the app, generating a dashboard
+or working in a new Conductor workspace. Local development (port overrides,
 Conductor configuration) is in [development.md](development.md).
 
 ## Setup (Python 3.11+)
@@ -22,37 +22,7 @@ Run before every commit:
 venv/bin/python -m pytest tests/ -q
 ```
 
-That is the suite a self-hoster runs: the Postgres tests skip, everything else passes. To run the
-other half — the store contract against a real database, and the cloud-mode dashboard — point it at
-a scratch database:
-
-```bash
-pip install -r requirements-cloud.txt          # psycopg; not in requirements.txt
-createdb dinkydash_test
-DINKYDASH_TEST_DATABASE_URL=postgresql:///dinkydash_test venv/bin/python -m pytest tests/ -q
-```
-
-The fixture migrates that database itself, so there is nothing to set up and nothing to tear down.
-CI runs it both ways on every push, because the parity assertions only mean something if they
-actually run. The tests cover leap years, timezone conversion, event ordering, rotation, staleness
-and the config round-trip — the things that break silently — in under a second.
-
-## Apply the schema (cloud mode only)
-
-```bash
-venv/bin/python migrate.py --status   # what is outstanding
-venv/bin/python migrate.py            # apply it
-```
-
-**It does not read `.env`.** That file holds the live cluster under production's own key
-`DATABASE_URL_DIRECT`, and a schema tool that loaded it would treat "apply my change" as "apply it
-to the running service" — silently, because an up-to-date schema reports the same either way. So
-with nothing named it migrates `db.DEV_DATABASE_URL`, this machine's development database and the
-one `dev.py` serves — put through `db.on_this_machine` first, because a URL with no host is
-redirected by `PGHOST` and a local-looking default is not a local one. `DATABASE_URL_DIRECT` is
-used when the *environment* sets it, which on App Platform's pre-deploy job is the only thing set
-and on a laptop takes an export; `--database-url` overrides both, and an empty value there is
-refused rather than fallen back from.
+CI runs this self-hosted suite on each push and pull request. No database is required.
 
 ## Generate a dashboard (needs `ANTHROPIC_API_KEY` in `.env`)
 
@@ -75,19 +45,13 @@ state, or move it aside entirely to see the dashboard before its first brief.
 ## Run
 
 ```bash
-venv/bin/python dev.py              # hosted dashboard + marketing site; Conductor's default run action
-python app.py                       # self-hosted app; or: flask run --host=0.0.0.0
-FLASK_APP=website.site flask run --port 5001   # marketing site (pip install -r requirements-site.txt)
+venv/bin/python dev.py              # dashboard + marketing site on loopback
+python app.py                       # dashboard; or: flask run --host=0.0.0.0
+FLASK_APP=website.site flask run --port 5001   # marketing site
 ```
 
-- `dev.py` requires a development `DATABASE_URL` **on this machine** — loopback or a Unix socket; a
-  remote database is refused before anything connects, because a workspace's `.env` can carry one —
-  and a `DINKYDASH_SECRET_KEY`. Outstanding migrations are applied on start, because that database
-  is disposable. Both processes stop together; the launcher always selects cloud mode and refuses
-  invalid setup.
-- The self-hosted dashboard is at `/`, settings at `/settings`, all three screen sizes at `/preview`.
-- The marketing site has no build step and no `docs/` directory: `website/site.py` renders
-  `content/*.md` through `website/templates/` on request. Adding a page is "write a Markdown file".
+The dashboard is at `/`, settings at `/settings`, and screen-size previews at `/preview`.
+The separate marketing site renders `content/*.md` through `website/templates/` on request.
 
 ## Docker Compose (self-hosted)
 
@@ -130,6 +94,6 @@ scripts/ralph/ralph.sh once          # one iteration to watch first
 scripts/ralph/ralph.sh 10            # then up to 10, stopping on COMPLETE or STUCK
 ```
 
-The container (`scripts/ralph/Dockerfile`) bakes in Python 3.11, the dev and cloud requirements at
+The container (`scripts/ralph/Dockerfile`) bakes in Python 3.11, the development requirements at
 `/opt/venv`, and the Claude Code and GitHub CLIs. It mounts only the checkout. Notes go to
 `.ralph/progress.txt` (gitignored). Read the commits and the issue comments before merging.

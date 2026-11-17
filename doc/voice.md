@@ -47,8 +47,7 @@ rather than softening everything around it.
 "a compatible device". Replace "various" and "several" with the actual examples, or cut
 the sentence.
 
-**5. Say the awkward part.** Setting up a Pi is an afternoon. There is no login on the
-self-hosted app. An Echo Show closes its browser and we say so on its own page. A caveat
+**5. Say the awkward part.** Setting up a Pi is an afternoon. Sign-in is optional, and the app belongs on a trusted network. An Echo Show closes its browser and we say so on its own page. A caveat
 stated plainly is worth more than the sentence it complicates, and the honesty is the
 product's argument, not a cost of making it.
 
@@ -79,9 +78,8 @@ Not in another page of copy, which may have the same fault. The usual places:
 |---|---|
 | When anything happens on a schedule | `dinkydash/schedule.py` — there are two cadences, and one of them is a time the family chooses |
 | What is stored, sent, or kept | `website/content/privacy.md`, and the code it describes |
-| The link a wall screen uses | `dinkydash/screens.py` |
+| The link a wall screen uses | `web/routes/wall.py` |
 | What a family can change | `web/routes/settings.py` and `web/templates/settings/` |
-| What the trial does and what billing can do | `doc/billing.md`, `dinkydash/billing.py` |
 
 Three claims that are wrong in ways that read as right:
 

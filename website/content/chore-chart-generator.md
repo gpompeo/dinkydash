@@ -56,11 +56,11 @@ A printed chart is the right tool for a week you can hold. It goes quiet the wee
 
 That's a different job from this page. Here you make a grid and print it. A [digital calendar and chore chart](/digital-calendar-and-chore-chart/) is the screen that holds the week and the chores together, and keeps the turns moving after you've stopped reprinting.
 
-The hosted version is free for 14 days, no card, then $39 a year or $6 a month. The self-hosted version is free, on a computer you leave switched on. The daily headline is optional and costs about $0.13 a month on your own Anthropic key.
+DinkyDash is free to run on a computer you leave switched on. The daily headline is optional and costs about $0.13 a month on your own Anthropic key.
 
 [See the dashboard](/)
 
-[Start the free trial](https://app.dinkydash.co/login)
+[Get started](/getting-started/)
 
 ## Questions
 

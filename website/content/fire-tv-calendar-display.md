@@ -13,7 +13,7 @@ faq:
   - q: "How do I type a web address on a Fire TV?"
     a: "Use the Alexa voice button on the remote to dictate it, or the Fire TV phone app, which gives you a real keyboard. Then bookmark the page so you never type it again."
   - q: "Do I need an Amazon subscription for this?"
-    a: "No. Silk is a free download, and nothing here touches Prime. DinkyDash is free to run yourself, or $39 a year if we host it."
+    a: "No. Silk is a free download, and nothing here touches Prime. DinkyDash is free to run on your own machine."
 ---
 
 There's no good family calendar app for Fire TV. There is, though, a **browser** — Amazon's
@@ -28,7 +28,7 @@ is a browser. The honest limit is at the bottom of the page.
 DinkyDash is a **web page**, not an app. So there are two parts:
 
 1. **Something to serve it.** A Raspberry Pi or an old computer on your Wi-Fi — free, MIT
-   licensed, and about an evening's work. Or [start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.
+   licensed, and about an evening's work.
 2. **The Fire TV**, which is the screen. Silk opens that address.
 
 ![The DinkyDash dashboard on a wide screen: today's events on the left, whose turn each chore is and the countdowns on the right](/images/family-calendar-tv-board.webp)
@@ -42,7 +42,7 @@ screen. Nothing needs configuring for a particular set.
 "Silk", pick **Amazon Silk** and choose **Download**. It's free and it's Amazon's own, so
 there's no sideloading and no developer mode.
 
-**2. Type the address, once.** If we host it, that's the screen link under **Settings → The screen**: `app.dinkydash.co/s/` and twelve characters, with no letters that are easy to confuse. If you run it yourself, it's the address of the machine serving it on your network, something like `http://192.168.1.50:5000`.
+**2. Type the address, once.** Use the address of the machine serving it on your network, something like `http://192.168.1.50:5000`. If parent sign-in is enabled, use the screen link from **Settings → Wall screen link** instead.
 Typing that on an on-screen keyboard with a remote is the worst minute of this whole setup.
 Two ways round it:
 
@@ -111,5 +111,3 @@ headline — a Claude API call once a day, roughly $0.13 a month, and the dashbo
 The [setup guide](/getting-started/) covers the other half: getting DinkyDash running, adding
 your calendars, and pointing a screen at it. The code is on
 [GitHub](https://github.com/caspii/dinkydash) under an MIT licence.
-
-Rather skip the setup? [Start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.

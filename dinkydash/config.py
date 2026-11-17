@@ -39,9 +39,7 @@ DEFAULTS = {
     # Read only by `generate.py --tick`. A plain run still does both at once.
     "refresh_minutes": 60,
     "brief_time": "06:00",
-    # Storage-layer keys, read only by dinkydash.store.FileStore. They say
-    # where a self-hoster's generated files go and mean nothing in cloud mode,
-    # where the same two things are rows.
+    # Storage-layer keys read by FileStore to locate generated files.
     "data_file": "dashboard_data.json",
     "content_history_file": "content_history.json",
 }
@@ -325,9 +323,7 @@ def starter_config():
             "assignment": {"mode": "rotate", "people": rotation, "offset": 0},
         })
     ensure_ids(config)
-    # Storage-layer keys: they say where a self-hoster's generated files go and
-    # mean nothing as a jsonb column. `with_defaults` puts them in; a hosted
-    # family should not carry two filenames nothing will ever open.
+    # FileStore supplies its default paths when loading this starter config.
     for key in ("data_file", "content_history_file"):
         config.pop(key, None)
     return config
@@ -447,9 +443,7 @@ def is_set_up(config):
 
     **Pure and config-only**, so both ask the same question of the same
     data. There is no stored "onboarding step" to drift out of line with what
-    the config actually holds, and no mode check: a freshly cloned Pi running
-    the untouched example file is in the same state as a hosted family five
-    seconds old.
+    the config actually holds.
     """
     return not invented_names(config) and timezone_is_set(config)
 

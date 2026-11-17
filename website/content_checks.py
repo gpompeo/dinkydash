@@ -26,16 +26,8 @@ UNRENDERED = re.compile(r"\]\(|\[[^\]\n]{1,60}\](?!\()")
 CLAUSE_FINAL_CONTRACTION = re.compile(
     r"\b(?:there|it|that|here|what|where|who)'s[ \t]*[.,;:!?)]", re.I)
 
-# A sentence that names DinkyDash or the hosted plan, and a price in it.
-OURS = re.compile(r"DinkyDash|hosted|we host|Start free|free trial|14-day|fourteen days", re.I)
-PRICE = re.compile(r"\$(\d+(?:\.\d+)?)\s*(?:a|per|/)\s*(year|yr|month|mo)\b", re.I)
-ALLOWED_PRICES = {("39", "year"), ("6", "month")}
-# A competitor's price in the same sentence is fine as long as the sentence
-# doesn't attach it to us.
-THEIRS = re.compile(r"Skylight|Hearth|DAKboard|Mango|Cozyla|Cozi|Dæly|Plus|"
-                    r"Essential|Pro\b|membership|Anthropic|AI key|API")
-# The retired launch offer, anywhere in the page source.
-RETIRED_PRICE = re.compile(r"\$29(?![\d.])")
+# Offers for the retired hosted product must not reappear in public copy.
+RETIRED_OFFER = re.compile(r"(?:app\.dinkydash\.co/login|14.day hosted trial|we host it)", re.I)
 
 
 def visible(html_text):
@@ -59,33 +51,12 @@ def clause_final_contractions(text):
             for m in CLAUSE_FINAL_CONTRACTION.finditer(text)]
 
 
-def wrong_prices(text):
-    """Every price attached to DinkyDash that is not $39 a year or $6 a month,
-    read a sentence or a table row at a time — the unit a reader takes a price
-    from."""
-    wrong = []
-    for chunk in re.split(r"(?<=[.!?])\s+|\n", text):
-        if not OURS.search(chunk):
-            continue
-        for amount, period in PRICE.findall(chunk):
-            period = "year" if period.lower() in ("year", "yr") else "month"
-            if (amount, period) in ALLOWED_PRICES or THEIRS.search(chunk):
-                continue
-            wrong.append(f"${amount}/{period} in {chunk.strip()[:120]!r}")
-    return wrong
-
-
-def retired_price(html_text):
-    return bool(RETIRED_PRICE.search(html_text))
-
-
 def problems(html_text):
     """Every check above, on one served page, as readable lines."""
     text = visible(html_text)
     found = [f"draft marker {m!r}" for m in draft_markers(text)]
     found += [f"unrendered Markdown {m!r}" for m in unrendered_markdown(text)]
     found += [f"contraction ends a clause {m!r}" for m in clause_final_contractions(text)]
-    found += [f"wrong price {m}" for m in wrong_prices(text)]
-    if retired_price(html_text):
-        found.append("the retired $29 offer")
+    if RETIRED_OFFER.search(html_text):
+        found.append("the retired hosted offer")
     return found

@@ -1,8 +1,7 @@
 """The rolling record of what was written recently.
 
 Pure: this decides what the history says, `dinkydash.store` decides where it
-is kept. On a Pi that is a JSON file; hosted it is a table. An export reads it
-back, and a file written earlier still loads. The prompt does not.
+is kept. History is stored in a JSON file; the prompt does not read it.
 """
 
 

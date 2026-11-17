@@ -1,36 +1,8 @@
-"""The storage seam: where a family's config, dashboard and history are kept.
+"""File-backed household config, dashboard, history and activity data.
 
-FileStore keeps config.yaml and two JSON files; PostgresStore keeps rows keyed
-on a family. The config dict is the contract, and both expose seven operations:
-
-    load_config()                save_config(config, invalidate_calendars=())
-    load_payload(config)         save_agenda(config, agenda)
-                                 save_brief(config, brief)
-    recent_notes(config, days)   record_note(config, entry, keep)
-
-The runner, the dashboard route and the settings routes take a store and never
-learn which one they were given.
-
-**The dashboard is read whole and written in halves**, and that is the shape rather
-than an accident. A refresh owns the agenda; the daily brief owns the words.
-They run on different clocks, and the brief's write is separated from its read
-by a slow model call — so a single `save_payload` meant a refresh that landed
-during that call was overwritten by stale keys, silently, while the button that
-triggered it said it had worked (DIN-28). Two operations that each write only
-what they own makes that impossible rather than merely unlikely; in Postgres
-they are already two tables, so it is also the more honest mapping.
-
-Settings saves clear affected calendars under the same lock as agenda writes.
-`save_agenda` returns False if the saved calendar settings no longer match the
-fetch; the runner then stops before generating a brief from obsolete results.
-
-The payload and history calls are handed the config because `FileStore` needs
-two keys out of it — `data_file` and `content_history_file` — to know where to
-write. Those are storage-layer keys: they mean nothing in cloud mode, and this
-is the only module that reads them.
-
-This module and `config.py` are the only places under `dinkydash/` that touch
-a file.
+The agenda and daily brief are written separately so a refresh during a model
+call cannot be overwritten by the earlier read. Calendar settings and agenda
+writes share a lock, so an obsolete fetch cannot publish stale events.
 """
 
 import hashlib
@@ -344,8 +316,7 @@ def _locked(directory):
     file to remember to exclude.
 
     Lock the config directory for settings and payload writes, including when
-    `data_file` points elsewhere. No network call runs under this lock. Cloud
-    mode coordinates config and agenda writes with a family-row lock instead.
+    `data_file` points elsewhere. No network call runs under this lock.
     """
     if fcntl is None:  # Windows; the dashboard runs on Linux and macOS
         yield

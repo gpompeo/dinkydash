@@ -163,7 +163,7 @@ class TestMovingBetweenPages:
         """It reloads itself, and a reload is not a navigation worth animating."""
         assert "@view-transition" not in client.get("/").get_data(as_text=True)
 
-    def test_settings_links_are_prerendered_and_the_export_is_not(self, client):
+    def test_settings_links_are_prerendered(self, client):
         page = client.get("/settings/people").get_data(as_text=True)
         match = re.search(r'<script type="speculationrules">\s*(.*?)\s*</script>', page, re.S)
         assert match, "the settings shell carries speculation rules"
@@ -172,7 +172,4 @@ class TestMovingBetweenPages:
         for kind in ("prefetch", "prerender"):
             [rule] = rules[kind]
             assert rule["eagerness"] == "moderate"
-            clauses = rule["where"]["and"]
-            assert {"href_matches": "/settings/*"} in clauses
-            # A hover must not download a family's data.
-            assert {"not": {"href_matches": "/settings/account/export"}} in clauses
+            assert rule["where"] == {"href_matches": "/settings/*"}

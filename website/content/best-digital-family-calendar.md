@@ -25,7 +25,7 @@ You're paying for plug-and-play: unbox, connect Wi-Fi, done. As of 9 October 202
 
 A family calendar display is, mechanically, a screen showing a web page. If a spare tablet, a TV, or a Raspberry Pi at about $150 is available, software gets you there:
 
-**DinkyDash (free to self-host, or $39/yr hosted)** — our project, and the reason this site exists. Any screen with a browser becomes a family calendar with automatic chore rotation, birthday countdowns, and a fresh headline every day, written around your own family. It reads [Google](/google-calendar-ical-link/), [Apple iCloud](/icloud-calendar-link/), [Outlook](/outlook-calendar-ics-link/) and [Cozi](/cozi-calendar-display/) calendars (paste each one's sharing link; there's no sign-in) and merges them into a single agenda. Self-hosting takes an afternoon and a bit of terminal comfort ([guide](/getting-started/)). Or [start a free 14-day hosted trial](https://app.dinkydash.co/login) with no card required, then $39 a year or $6 a month.
+**DinkyDash (free to self-host)** — our project, and the reason this site exists. Any screen with a browser becomes a family calendar with automatic chore rotation, birthday countdowns, and a fresh headline every day, written around your own family. It reads [Google](/google-calendar-ical-link/), [Apple iCloud](/icloud-calendar-link/), [Outlook](/outlook-calendar-ics-link/) and [Cozi](/cozi-calendar-display/) calendars (paste each one's sharing link; there's no sign-in) and merges them into a single agenda. Self-hosting takes an afternoon and a bit of terminal comfort ([guide](/getting-started/)).
 
 **Mango Display (free tier; Pro $5.99/mo or $59.99/yr)** — commercial BYO-screen software with polished apps for smart TVs and tablets. The no-DIY version of this path — but budget for Pro, because the free plan has no calendar.
 
@@ -46,7 +46,6 @@ A family calendar display is, mechanically, a screen showing a web page. If a sp
 | Hearth | $699 | $86.40/yr | Visual routines for kids |
 | Cozyla | From $169.99 | $0, or $79.99/yr optional | Pay-once hardware |
 | DinkyDash, self-hosted | $0 (your screen) | ~$1.50/yr (your own AI key) | Open source, yours to keep |
-| DinkyDash, hosted | $0 (your screen) | $39/yr or $6/mo | Nothing to set up or maintain |
 | Mango Display | $0 (your screen) | $0–60/yr | Easiest BYO-screen |
 | DAKboard | $0 (your screen) | $0–120/yr | Deep customisation |
 

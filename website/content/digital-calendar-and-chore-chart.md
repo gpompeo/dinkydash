@@ -26,7 +26,7 @@ Nobody negotiates with a screen. The rotation is provably fair (it cycles throug
 
 | Option | Cost | Chore features |
 |---|---|---|
-| **DinkyDash** (screen you own) | Free to self-host; hosted $39/yr or $6/mo | Automatic daily rotation |
+| **DinkyDash** (screen you own) | Free to self-host | Automatic daily rotation |
 | **DAKboard** (screen you own) | Free tier; $6–10/mo | Chore columns per child, points and rewards — paid plans only |
 | **Skylight Calendar** | $299.99–$599.99 | Chore chart free; rewards need Plus ($79/yr) |
 | **Hearth Display** | $699 + $9/mo ($86.40/yr) | Routines and task assignments |
@@ -41,4 +41,4 @@ One more thing that earns its place on the chore screen: countdowns. "8 days unt
 
 You can see the effect without installing anything: our [birthday countdown](/birthday-countdown/) is the same panel on its own, free and with no sign-up. Add the kids' birthdays and leave it open on a spare screen.
 
-Set it up this weekend: **[Self-host DinkyDash](/getting-started/)** — or [start a free 14-day hosted trial](https://app.dinkydash.co/login) if you'd rather skip the setup.
+Set it up this weekend: **[Self-host DinkyDash](/getting-started/)**.

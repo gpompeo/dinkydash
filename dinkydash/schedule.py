@@ -1,8 +1,7 @@
 """What is owed right now: a calendar refresh, a brief, both, or nothing.
 
 Pure — no clock, no file, no network. The caller passes `now` as an aware
-datetime and gets back a dict of two booleans, so the same function serves a
-Pi's cron tick and (later) a worker loop walking every family.
+datetime and gets back a dict of two booleans for the local cron tick.
 
 The two cadences differ because their costs do. Re-fetching the calendars is a
 few HTTP requests and happens every `refresh_minutes`, which is what puts an
@@ -60,11 +59,10 @@ def brief_due(config, payload, now):
     """Owe the first brief as soon as the family is set up; later ones after brief_time.
 
     A calendar-only payload has no generated_for_date. Failed first briefs stay
-    due on each tick; cloud callers remain subject to the spend breaker.
+    due on each tick.
 
-    **The first brief waits for set-up, not for the morning.** A hosted family
-    starts with an invented household and no timezone, and a Pi copying the
-    example file starts the same way. Writing a brief then would spend a call
+    **The first brief waits for set-up, not for the morning.** The example
+    config starts with an invented household and no timezone. Writing a brief then would spend a call
     on somebody else's children, put that line into the family's history, and
     hang it on the wall as the first thing they see. The moment the household
     is theirs and the clock is theirs, it is owed at any hour, as before.

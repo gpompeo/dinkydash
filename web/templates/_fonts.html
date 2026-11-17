@@ -2,7 +2,7 @@
 
     Four reasons, in order of how much they matter:
 
-     1. The screen token. Cloud mode puts the dashboard at /s/<token>, and that token
+     1. The screen token. Parent sign-in puts the dashboard at /s/<token>, and that token
         is a bearer credential. A request to Google's font host from that page
         hands the whole URL to Google in the Referer header. Referrer-Policy
         covers it now; not making the request at all is what settles it.

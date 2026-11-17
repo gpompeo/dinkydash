@@ -33,17 +33,14 @@ Every item, on every page the PR touches:
 2. **One point.** The page has one clear point, an opening that states it, and a structure that
    follows from it. No list in the first screen that a reader has to decode.
 3. **Our claims are true.** Every sentence about what DinkyDash does is traced to the code
-   (voice.md's table says where). Prices: hosted $39 a year or $6 a month after a 14-day trial
-   with no card; self-hosted $0 plus about $0.13 a month of the reader's own Anthropic key.
-   Nothing unbuilt is described as built. A page that says "free" also says which version.
+   (voice.md's table says where). DinkyDash is free to self-host; an optional headline uses the reader's own Anthropic key.
+   Nothing unbuilt is described as built.
 4. **Their claims are checked.** Every competitor price or feature is read off that competitor's
    own site or store on the day, and the page says "checked <date>". If it can't be verified,
    it's softened or removed.
 5. **Nothing unfinished.** No TBD, TODO, placeholder, internal note, draft text, unrendered
    Markdown, or AI filler ("both companies would rather you didn't know", "game-changer").
-6. **Links and CTAs work.** Internal links resolve. The trial link goes to
-   `https://app.dinkydash.co/login`, and a non-technical reader is never sent only to GitHub or
-   a Raspberry Pi build.
+6. **Links and CTAs work.** Internal links resolve and setup links lead to the getting-started guide.
 7. **Legal pages** (`privacy`, `terms`) change in the same PR as the code they describe, and
    their "Last updated" date moves with them.
 
@@ -56,9 +53,7 @@ A PR doesn't merge while any of these is true:
     "internal note", "note to self", `[insert`, placeholder)
   - unrendered Markdown in visible text (`](` or a bare `[text]`)
   - a contraction that ends a clause ("where it's.")
-  - any DinkyDash price other than $39 a year or $6 a month, and the retired $29 offer
   - an internal link to a page that doesn't exist, or an example calendar address without `xxxx`
-  - "payments aren't live" language, or a hosted offer that isn't $39 in the page's data
 - **The checklist isn't in the PR description**, with what was verified against what.
 - **Caspar hasn't merged it.**
 
@@ -66,8 +61,7 @@ A PR doesn't merge while any of these is true:
 
 **Weekly, automated.** `.github/workflows/live-check.yml` runs `python -m website.check_live`
 every Monday at 06:00 UTC, and can be run by hand from the Actions tab after a content deploy. It
-reads the sitemap, follows every internal link on every page, and fetches the app's public pages
-(`/login`). Each page must answer 200 and pass the same rules as `tests/test_site.py`, which live
+reads the sitemap and follows every internal link on every page. Each page must answer 200 and pass the same rules as `tests/test_site.py`, which live
 in `website/content_checks.py` so the two can't disagree. It prints nothing when everything
 passes. When something fails it lists each page and the problem, and the run goes red, which
 GitHub emails to whoever last edited the schedule. Each failure becomes a Content issue in Linear.

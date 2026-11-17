@@ -155,7 +155,7 @@ def add_checkins(view, config, tasks, today, completions):
     """Done state, streaks and yesterday's open tasks, from the completions.
 
     Worked out here on every render and stored nowhere. With `completions` of
-    None the store keeps none (cloud mode), so the card stays the plain list.
+    None leaves the card as a plain list.
     """
     if completions is None:
         return
@@ -290,26 +290,3 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
         view["overdue"] = brief_is_overdue(config, payload, view["stale_days"], now)
 
     return view
-
-
-def build_lapsed_view(config, payload, show_last_board):
-    """Hold the last brief's date and computed turns, then show only a message.
-
-    Read existing data rather than retaining another copy of calendar details.
-    Explicit settings edits and calendar privacy invalidation still take effect.
-    """
-    if show_last_board:
-        try:
-            saved_day = date.fromisoformat((payload or {}).get("generated_for_date", ""))
-        except (TypeError, ValueError):
-            pass  # No successful brief: there is no dashboard to preserve.
-        else:
-            view = build_view(config, payload, saved_day)
-            view["state"] = "frozen"
-            return view
-    return {
-        "state": "ended", "family_name": "", "reload_seconds": MAX_RELOAD_SECONDS,
-        "theme": "dark" if config.get("theme") == "dark" else "light",
-        "clock": clock_of(config),
-        "timezone": config.get("timezone") or "UTC",
-    }

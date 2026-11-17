@@ -1,8 +1,4 @@
-{# One box and a Send button (DIN-34). Nothing is asked for that we already
-   know: the address comes from the account and the family from the session, so
-   there is no name field, no "type of enquiry" and no category to choose. The
-   address is shown rather than collected, because somebody should be able to
-   see where a reply will land before they press anything. #}
+
 {% extends "settings/base.html" %}
 {% block title %}Send feedback{% endblock %}
 {% set back_href = url_for('settings.home') %}
@@ -34,7 +30,6 @@
                   >{{ message or '' }}</textarea>
         {% if problem %}<div class="field-error" id="error-message" role="alert">{{ problem }}</div>{% endif %}
         <div class="hint" id="hint-message">
-            {% if address %}We will reply to <strong>{{ address }}</strong>.{% endif %}
             Nothing from your dashboard is sent with it — no names, no calendar
             and no appointments. Only what you write here.
         </div>

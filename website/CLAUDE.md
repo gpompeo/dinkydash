@@ -17,27 +17,17 @@ who drafts and checks, the checklist, and the tests in `tests/test_site.py` that
   list is what a self-hosted dashboard installs, and a Pi serves no marketing site. The
   site needs `markdown`, `pyyaml` and `gunicorn`; the two image scripts need `Pillow` and
   live in `requirements-dev.txt`, and `generate_social_preview.py` also wants Chrome, which
-  pip cannot install. `requirements-cloud.txt` pulls in the site's list, because one
-  container serves both hostnames.
+  pip cannot install.
 - **There is no build step and no `docs/` directory.** This said the opposite until DIN-27:
   `build.py` used to write `docs/` and GitHub Pages served it, so a template change was not
   finished until the site was rebuilt and the output committed. None of that is true now.
   `website/site.py` is a Flask app rendering `content/*.md` through `templates/` on request,
-  deployed on the same App Platform container as the dashboard with `wsgi.py` routing on the
-  `Host` header. **Adding a page is writing a Markdown file, and nothing else.**
+  as a separate app. **Adding a page is writing a Markdown file, and nothing else.**
 - **GitHub Pages is switched off**, and it took until 8 September to notice. The setting outlived
   the directory: it kept failing on every push *and* kept serving the last good build, so a stale
   copy of this whole site sat on `caspii.github.io` for a fortnight. See
   [doc/operations.md](../doc/operations.md). Nothing here should ever be written to be served from
   two places at once.
-- **Every link to the hosted app is written as `https://app.dinkydash.co/...` and rewritten
-  at request time.** `render.APP_URL` is the origin the content and the homepage name;
-  `site.py` swaps it for `DINKYDASH_APP_URL` when that is set, or for `127.0.0.1` on
-  `CONDUCTOR_PORT` when only that is — Conductor sets it for every run script and it is the
-  dashboard's port, so a preview's "Start your free trial" opens the dashboard being worked on
-  rather than production even though Conductor reads its scripts from the main checkout. Keep
-  writing the real address in Markdown — the file is the document a reader sees — and never a
-  bare local port. `tests/test_site.py` checks every direction.
 - **Nunito and Inter live here twice on purpose.** `website/static/fonts/` and
   `web/static/fonts/` are separate deployables, so editing one means editing both. The site's
   copy carries Nunito's italic pair as well; the dashboard's does not, because the dashboard
@@ -76,7 +66,7 @@ sets close a loop: *where do I get my calendar link* and *what do I put it on*.
 Three rules, and the third is the one that will be tempting to break:
 
 - **Every one of them states the architecture.** DinkyDash is a web page and something has to
-  serve it — a Pi or an old computer on the network, or the hosted version. The device is the
+  serve it — a Pi or an old computer on the network, or another self-hosted machine. The device is the
   *screen*. Left implicit, every page reads as "install DinkyDash on your Fire TV", which is
   not a thing and never will be.
 - **Nothing claims a native app**, because there is none. The wording is that it opens in the
@@ -100,22 +90,12 @@ The two dashboard screenshots — `family-calendar-tv-board.webp` (16:9) and
 are the real dashboard against `config.example.yaml` with a hand-written payload, the way
 `README.md` describes. Regenerate them the same way rather than editing the images.
 
-## The legal pages
+## The privacy page
 
-`content/privacy.md` and `content/terms.md` are the hosted service's, and they are **claims
-about what the code does**. A retention period is a promise that a `DELETE` exists; a
-sub-processor list is a promise that nothing else is called. Changing what the app stores,
-what it sends, or who it sends it to means changing those pages in the same commit — a
-policy that has drifted from the code is worse than no policy, because somebody relied on it.
-
-The contact address is `hi@keepthescore.com` on purpose: **`dinkydash.co` has no MX records**,
-so it sends email and receives none. `dinkydash/mail.py` sets the same address as `Reply-To`
-for that reason. When DinkyDash gets a mailbox, all three move together.
-
-Where the feedback form *sends* is a separate thing and deliberately not an address on these
-pages — `DINKYDASH_FEEDBACK_TO`, per `web/feedback.py`. What the policy says about it is the
-kind of mailbox and who reads it, which stays true when that variable changes; an address
-written here would not.
+`content/privacy.md` describes the self-hosted app's data handling and the separate website's
+analytics. Changes to storage or outbound services must update it in the same commit. The optional
+feedback route sends a message through SendGrid to the configured mailbox; its destination is set
+by `DINKYDASH_FEEDBACK_TO`. Verify claims against the code and the actual deployment.
 
 ## The two image generators
 

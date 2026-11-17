@@ -77,7 +77,7 @@ Alexa already knows about.
 
 ![The DinkyDash dashboard on a tablet in portrait, stacked into one column: today's events, whose turn each chore is, and countdowns](/images/family-calendar-tablet-board.webp)
 
-[DinkyDash](/) is open-source software that turns that tablet into a family dashboard. It's free to run yourself, or $39 a year if we host it:
+[DinkyDash](/) is open-source software that turns that tablet into a family dashboard. It's free to run on your own machine:
 
 - **Today's events**, merged from every calendar you add:
   [Google](/google-calendar-ical-link/), [iCloud](/icloud-calendar-link/),
@@ -104,5 +104,3 @@ without it.
 The [setup guide](/getting-started/) covers the whole thing: getting DinkyDash running, adding
 your calendars, and pointing a screen at it. The code is on
 [GitHub](https://github.com/caspii/dinkydash) under an MIT licence.
-
-Rather skip the setup? [Start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.

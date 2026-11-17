@@ -68,10 +68,9 @@ pip install -r ../requirements-site.txt
 
 ### Running it
 
-For website and hosted dashboard development together, use Conductor's **dev**
-action or `venv/bin/python dev.py` from the repository root. It points all login
-and signup links at the local dashboard. See [local development](../doc/development.md)
-for database setup, port overrides and shutdown behavior.
+For website and self-hosted dashboard development together, use Conductor's **dev**
+action or `venv/bin/python dev.py` from the repository root. See [local development](../doc/development.md)
+for port overrides and shutdown behaviour.
 
 To serve only the marketing site:
 
@@ -84,20 +83,6 @@ A request for `/about/` reads `content/about.md`, renders it through the templat
 names, and returns it. `/sitemap.xml` and `/robots.txt` are generated the same way. Page discovery
 and the git dates behind `lastmod` are read once at start-up, so a content change needs a restart —
 which on the server is a deploy.
-
-### How it is deployed
-
-DigitalOcean App Platform, from `.do/app.yaml` at the repo root. Python buildpack, no Dockerfile,
-`deploy_on_push` from `main`. To change the spec:
-
-```bash
-doctl apps update <app-id> --spec .do/app.yaml
-```
-
-**One thing only the dashboard can do**: create an app with a GitHub source. `doctl` has an API
-token and no GitHub OAuth session, so it refuses to *introduce* one — though it will happily update
-an app that already has one. DigitalOcean also will not let you change a component's source type
-after creation, so an app made with a plain git URL has to be recreated rather than converted.
 
 ## Adding New Pages
 
@@ -121,12 +106,6 @@ after creation, so an app made with a plain git URL has to be recreated rather t
 
 ## Deployment
 
-Pushed to `main`, and DigitalOcean App Platform rebuilds from the commit — `deploy_on_push` in
-`.do/app.yaml`. There is no build step and nothing to commit but the source: `website/site.py`
-renders `content/*.md` through `templates/` on request.
-
-**It shares one container with the dashboard.** `wsgi.py` routes on the `Host` header —
-`dinkydash.co` here, `app.dinkydash.co` to the dashboard — so a change to either deploys both.
-
-This section used to say GitHub Pages served `docs/`. That was true until DIN-27 and is not
-now; the directory is gone.
+The site is a separate Flask app. `website/site.py` renders `content/*.md` through `templates/`
+on request, so there is no build step or generated HTML to commit. Install `requirements-site.txt`
+to serve it independently of the dashboard.

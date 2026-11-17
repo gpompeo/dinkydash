@@ -105,8 +105,7 @@ Two buttons on the settings home force the point:
 the daily headline is written, on your own clock. They are the `refresh_minutes` and `brief_time` keys,
 so editing them by hand still works; the page is just the version you can reach from a phone. The
 dashboard's own refresh follows: it redraws every five minutes, or every `refresh_minutes` if you set
-something shorter than that. A redraw that cannot reach the server — the Pi's Wi-Fi is down, or you
-are looking at the hosted dashboard during a deploy — keeps the last good dashboard on screen with a
+something shorter than that. A redraw that cannot reach the server — for example, when the Pi's Wi-Fi is down — keeps the last good dashboard on screen with a
 "Reconnecting" note in the corner, and tries again every minute.
 
 ## Keeping settings on your phone
@@ -180,8 +179,7 @@ need replacing.
 
 **"Reconnecting" in the bottom corner.** The dashboard could not fetch its next copy, so it is
 showing the last one it got and trying again every minute. On a Pi that means Flask stopped
-answering (`sudo systemctl status dinkydash`); on the hosted dashboard it means the screen has no
-route to app.dinkydash.co, which is nearly always the Wi-Fi. The note says when the dashboard on
+answering (`sudo systemctl status dinkydash`) or the screen has lost its Wi-Fi. The note says when the dashboard on
 screen was last updated, and changes to "Showing Thursday's dashboard" once that day is over, because
 the turns and countdowns on it are then a day old. It goes away by itself the moment a copy arrives.
 

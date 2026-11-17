@@ -14,6 +14,7 @@ skin around dinkydash.runner.
 
 import argparse
 import logging
+import os
 import sys
 from contextlib import contextmanager
 from datetime import date, datetime, timezone
@@ -29,6 +30,7 @@ from dinkydash import config as config_module
 from dinkydash.claude_client import GenerationError
 from dinkydash.runner import refresh_calendars, run, write_brief
 from dinkydash.schedule import due
+from dinkydash.mode import validate
 from dinkydash.store import FileStore
 
 load_dotenv()
@@ -43,6 +45,12 @@ def main(argv=None):
                         help="do only what is due now, and nothing when nothing is")
     parser.add_argument("--quiet", action="store_true", help="only log warnings and errors")
     args = parser.parse_args(argv)
+
+    try:
+        validate(os.environ.get("DINKYDASH_MODE"))
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 1
 
     if args.tick and args.date:
         parser.error("--tick works from the real clock; --date is for one-off runs")
@@ -111,15 +119,8 @@ def only_one_tick(path):
         handle.close()  # releases the lock, and so does the process exiting
 
 
-def tick(config, store, budget=None):
-    """Do what the clock and the config say is owed, and no more.
-
-    `budget` is the ceiling on what the model call may cost and defaults to
-    none, which is what a self-hoster's own API key deserves. The worker passes
-    a Postgres-backed one per family (DIN-43); a refusal arrives here as an
-    ordinary `GenerationError` and takes the keep-last-good path below without
-    needing a branch of its own.
-    """
+def tick(config, store):
+    """Run whichever local refreshes are due."""
     now = datetime.now(timezone.utc)
     payload = store.load_payload(config)
     owed = due(config, payload, now)
@@ -134,12 +135,12 @@ def tick(config, store, budget=None):
         if owed["refresh"]:
             # A stale refresh also stops this tick's brief; the next pass loads
             # the new config before fetching or making a model call.
-            refresh_calendars(config, store, now=now, budget=budget)
+            refresh_calendars(config, store, now=now)
         if owed["brief"]:
             today = now.astimezone(config_module.tzinfo_for(config)).date()
             # runner logs date and usage. Reporting family text is reserved for
-            # the explicit CLI run above, never the shared worker or cron tick.
-            write_brief(config, store, today=today, budget=budget)
+            # the explicit CLI run above, never the scheduled tick.
+            write_brief(config, store, today=today)
     except GenerationError as exc:
         log.error("%s", exc)
         log.error("Keeping the previous dashboard; the next tick will try again.")

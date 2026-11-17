@@ -2,8 +2,7 @@
 
 # The marketing site, when it is served rather than built (DIN-27). Not in
 # requirements.txt because a self-hosted dashboard installs that file and has
-# no business rendering landing pages, and not in requirements-cloud.txt
-# because the site needs no database.
+# no business rendering landing pages.
 #
 # jinja2 is absent on purpose: Flask depends on it already.
 #

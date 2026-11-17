@@ -109,5 +109,3 @@ Both are established ways to put a dashboard on a wall, and both are worth a loo
 ## Start here
 
 If you can copy commands into a terminal, you can have this on your kitchen wall by Sunday: **[the complete setup guide](/getting-started/)**. Buying hardware for it? Start with the [Raspberry Pi build guide](/raspberry-pi-family-calendar/).
-
-Rather skip the setup entirely? [Start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.

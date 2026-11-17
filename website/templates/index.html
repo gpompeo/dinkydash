@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}DinkyDash — Digital Family Calendar for Screens You Own{% endblock %}
-{% block description %}A family calendar for the wall, on the tablet, TV or monitor you already own. Paste one calendar link and it rebuilds itself daily. Free for 14 days, no card.{% endblock %}
+{% block description %}A family calendar for the wall, on a screen you already own. Run it on your own machine and add your calendar links.{% endblock %}
 {% block og_title %}DinkyDash — A Family Calendar on the Screen You Already Own{% endblock %}
 {# No og_image override: the home page shares the same card as everything else. #}
 
@@ -12,52 +12,15 @@
    wants to send the reader somewhere carries `href` and `link` instead of an
    anchor in the answer.
 
-   Ordered by what somebody who has just read the page actually wants to know,
-   which is what the trial costs and what happens when it ends. The permanence
-   questions are last: they reassure, but nobody arrives asking them. #}
+   Answers are shared with the structured FAQ data. #}
 {% set faqs = [
-    {
-        "q": "What happens after the 14 days?",
-        "a": "You can subscribe for $39 a year or $6 a month. We'll email you three days before the trial ends, and nothing is charged unless you pay in Checkout. If you don't, your dashboard stops updating and says so.",
-    },
-    {
-        "q": "Do I need a card?",
-        "a": "No. You give us an email address, we send you a link, and that's the whole sign-up. We don't ask for a card then. You only enter one later, in Checkout, if you choose to subscribe — and we don't keep the card details.",
-    },
-    {
-        "q": "What do I have to buy?",
-        "a": "Nothing. DinkyDash is the software, not the screen, so it runs on whatever you've already got with a web browser: an old iPad or Android tablet, a smart TV, a spare monitor, a laptop on the counter, or a Raspberry Pi with a touchscreen. The dashboard measures the screen it lands on and sizes itself to be read from across the room.",
-    },
-    {
-        "q": "Does it work with Google, Apple and Outlook calendars?",
-        "a": "Yes, all three, and Cozi as well. Each of them lets you share a calendar as an iCal link, and that link is what DinkyDash reads. You paste it in, so there's no sign-in to grant and no app to install on the screen. Connect several and they're merged into one agenda in time order.",
-        "href": "/getting-started/",
-        "link": "The setup guide has the steps for each one",
-    },
-    {
-        "q": "Where do my children's names and birthdays go?",
-        "a": "They're stored so we can build your dashboard each day, and the day's agenda goes to Anthropic so Claude can write the daily headline. Nothing is sold, there are no adverts, and there's no camera and no microphone anywhere in this. If the calendar you connect also holds work and private appointments, you can limit it to the events shared with your partner, and the rest is never stored and never sent.",
-        "href": "/privacy/",
-        "link": "The privacy policy names every company involved",
-    },
-    {
-        "q": "How is this different from a Skylight or a Hearth?",
-        "a": "Skylight and Hearth sell you a dedicated touchscreen ($299.99 for Skylight's 15-inch, $699 for a Hearth), with a subscription on top that's optional at Skylight and required at Hearth. DinkyDash is just the software, running on a screen you already own, and nothing on it can be taken away later. It also does something they don't: a headline written fresh each day, about what's actually on.",
-        "href": "/skylight-calendar-alternatives/",
-        "link": "See the full comparison",
-    },
-    {
-        "q": "Can I run it myself instead?",
-        "a": "Yes, and that won't change. DinkyDash is open source and MIT-licensed, and the hosted version is built from the same repository, so they're one dashboard with a different person keeping it running. The commands are at the foot of this page. Self-hosting is free for ever, needs your own Anthropic key at well under a dollar a month, and is community-supported rather than something we promise to fix.",
-    },
-    {
-        "q": "What happens to my dashboard if DinkyDash goes away?",
-        "a": "If you self-host, nothing happens: the code is MIT-licensed and already on your machine, so it keeps running whether this project continues or not. If we host it for you, you can download your data as a file at any time, and the code stays public, so you could set the same dashboard up on your own machine. That's a fresh setup, not an import, and your screens would need the new address.",
-    },
-    {
-        "q": "Will features I have today ever move behind a subscription?",
-        "a": "Not for anything already released. Everything on the dashboard today is MIT-licensed, and that grant can't be withdrawn for code that's already out, so a copy you're running stays yours to run. The hosted version is a convenience: we run the machine and pay the AI bill. It isn't a key to features you'd otherwise lose.",
-    },
+    {"q": "What does it cost?", "a": "DinkyDash is free and open source. You run it on your own machine. If you want a daily AI headline, you can add your own Anthropic API key and pay for its use."},
+    {"q": "What do I need?", "a": "A computer that stays on and a screen with a browser. An old laptop or Raspberry Pi can run the dashboard; a tablet or TV can show it."},
+    {"q": "Does it work with Google, Apple and Outlook calendars?", "a": "Yes, and Cozi too. Add their iCal sharing links and DinkyDash combines them into one agenda.", "href": "/getting-started/", "link": "Find your calendar links"},
+    {"q": "Where do my family's details go?", "a": "Your settings and dashboard are stored on your own machine. If you add an Anthropic key, details about your family and calendar go to Anthropic to write the headline.", "href": "/privacy/", "link": "Read the privacy policy"},
+    {"q": "How do I set it up?", "a": "The setup guide walks you through running it on your own computer. You'll need a little comfort with a terminal.", "href": "/getting-started/", "link": "Open the setup guide"},
+    {"q": "Can I protect the settings?", "a": "Yes. Parent sign-in is optional, and you can set PINs for family members. Keep the app on a trusted network even with sign-in enabled."},
+    {"q": "Does the headline need an API key?", "a": "Yes. The dashboard and calendars work without one; add your own Anthropic key if you want a headline written for your family."}
 ] %}
 
 {% block extra_head %}
@@ -546,9 +509,9 @@
             <h1>A family calendar for the wall, on a screen you already own</h1>
             <p class="subtitle">Paste one calendar link and open your dashboard on any tablet, TV or spare monitor. It rebuilds itself every day, so there's nothing to keep up to date.</p>
             <div class="hero-buttons">
-                <a href="{{ app_url }}/login" class="btn">Start free &mdash; 14 days, no card</a>
+                <a href="/getting-started/" class="btn">Get started</a>
             </div>
-            <p class="price-line"><strong>Then $39 a year</strong> or $6 a month. Or <a href="#for-makers">run it yourself, free &rarr;</a></p>
+            <p class="price-line">Free to run on your own machine.</p>
         </div>
         <figure class="shot hero-board">
             <img src="/images/family-dashboard-board.webp" width="1600" height="960" fetchpriority="high" decoding="async"
@@ -562,7 +525,7 @@
 <section class="band how">
     <div class="container">
         <div class="section-head">
-            <h2>Five minutes, then it looks after itself</h2>
+            <h2>Set it up once, then it looks after itself</h2>
             <p>Three steps, the second one's optional, and the third is opening a web page. After that, the dashboard is the only thing doing any work.</p>
         </div>
         <ol class="steps" role="list">
@@ -572,7 +535,7 @@
                          alt="A hand holding a phone showing the DinkyDash settings page, with sections for people, pets, chores, special dates and calendars">
                 </figure>
                 <h3><span class="step-number">1</span>Paste a calendar link</h3>
-                <p>Give us an email address and we send a link that signs you in and starts your dashboard &mdash; no password, and no card. Then paste in a calendar link: Google, Apple, Outlook and Cozi each give you one.</p>
+                <p>Run DinkyDash on your own machine, then add a calendar link in settings. Google, Apple, Outlook and Cozi each give you one.</p>
             </li>
             <li class="step">
                 <figure class="shot">
@@ -591,7 +554,7 @@
                 <p>Your dashboard has its own link. Open it in any browser &mdash; an old tablet, the TV, a monitor on the counter &mdash; and leave the screen on.</p>
             </li>
         </ol>
-        <p class="lede">There's no app to install and nothing to sign in to on the screen. Once a day, at a time you pick, the headline is written fresh. The agenda comes from your calendars. Whose turn it is, and the countdowns, are worked out from the date. The headline is the only part an AI writes.</p>
+        <p class="lede">There's no app to install and nothing to sign in to on the screen. With an Anthropic key, a headline is written once a day at a time you pick. The agenda comes from your calendars. Whose turn it is, and the countdowns, are worked out from the date. The headline is the only part an AI writes.</p>
         <p class="lede">There's no layout to build and no account to link on the wall. <strong>The dashboard has one layout, and it's already right.</strong></p>
     </div>
 </section>
@@ -653,11 +616,10 @@
                 <span class="verdict">This happens.</span>
             </div>
         </div>
-        <p class="lede">DinkyDash is MIT-licensed and public, and the hosted version you're being offered is built from that same repository. <strong>The code can't be taken back.</strong></p>
-        <p class="lede">Which is the honest pitch for the $39: you're not paying us to hold the keys, because there are no keys. You're paying us to run the machine and pay the AI bill. The day you'd rather do that yourself, <a href="https://github.com/caspii/dinkydash">the code is right there</a>: set it up on your own machine and point your screens at it.</p>
+        <p class="lede">DinkyDash is MIT-licensed and public. Run it on your own machine and point your screens at it. <strong>The code is yours to keep.</strong></p>
         <p class="source-note">Competitor prices and features checked 9 October 2026. Skylight and Hearth are good products &mdash; you just might not need the hardware.</p>
         <div class="mid-cta">
-            <a href="{{ app_url }}/login" class="btn">Start free &mdash; 14 days, no card</a>
+            <a href="/getting-started/" class="btn">Get started</a>
         </div>
     </div>
 </section>
@@ -738,8 +700,8 @@
             <h2>No adverts, no camera, nothing sold</h2>
             <p>The dashboard holds your children's names, their birthdays and your week. Here's exactly where that goes.</p>
         </div>
-        <p class="lede">There's no camera and no microphone, because it's a web page. We keep your settings so we can build the dashboard each day, and once a day the day's events, with first names, ages and interests, go to Anthropic so Claude can write the headline. None of it goes anywhere else, nothing is sold, and there are no adverts.</p>
-        <p class="lede">You can export the lot and delete the account whenever you like, and <strong>the code that touches all of it is public</strong>. <a href="/privacy/">The privacy policy names every company involved</a>, which is a short list.</p>
+        <p class="lede">Your settings and dashboard stay on your machine. If you add an Anthropic key, details about your family and calendar go to Anthropic to write the headline. The dashboard has no adverts, camera or microphone.</p>
+        <p class="lede"><a href="/privacy/">Read the privacy policy</a> for the services the app and this separate website can contact.</p>
     </div>
 </section>
 
@@ -747,8 +709,8 @@
 <section class="section costs" id="pricing">
     <div class="container">
         <div class="section-head">
-            <h2>Two ways to have it</h2>
-            <p>It's the same dashboard either way. The only difference is who keeps it running.</p>
+            <h2>Run it yourself</h2>
+            <p>Free, open source, and kept on your own machine.</p>
         </div>
         <div class="tiers">
             <div class="tier">
@@ -759,29 +721,13 @@
                 <ul>
                     <li>Runs on a laptop, an old PC or a Raspberry Pi</li>
                     <li>Up in a few minutes. A wall-mounted Pi is an afternoon.</li>
-                    <li>Bring your own Anthropic key &mdash; it's under a dollar a month</li>
-                    <li>We never see any of it. Your machine, your key.</li>
+                    <li>Add your own Anthropic key for an optional daily headline</li>
+                    <li>Your configuration and dashboard stay on your machine</li>
                     <li>Community-supported, on GitHub</li>
                 </ul>
                 <a href="#for-makers" class="btn btn-outline">Show me the commands</a>
             </div>
-            <div class="tier featured">
-                <div class="tier-label">Start today</div>
-                <h3>We host it.</h3>
-                <div class="tier-price">$39 a year</div>
-                <div class="tier-sub">Or $6 a month. Free for 14 days, and we don't ask for a card.</div>
-                <ul>
-                    <li>Nothing to install, nothing to keep alive</li>
-                    <li>We fetch your calendars and write the daily headline</li>
-                    <li>The AI bill is ours, not yours</li>
-                    <li>One link, and every screen in the house can use it</li>
-                    <li>Change anything from your phone</li>
-                    <li>Nothing is charged unless you choose to subscribe</li>
-                </ul>
-                <a href="{{ app_url }}/login" class="btn">Start free &mdash; 14 days, no card</a>
-            </div>
         </div>
-        <p class="tier-foot">It's the same public code underneath. You can download your data as a file whenever you like, and if you'd ever rather run it yourself, the self-hosted version is free. Moving over means setting it up again on your own machine; there's no import.</p>
     </div>
 </section>
 
@@ -809,7 +755,7 @@
             <p>Here&rsquo;s what &ldquo;You host it&rdquo; actually involves: the same repository, on your own machine, free for ever.</p>
         </div>
         <div class="makers-body">
-            <p>DinkyDash has been open source since 2021, and self-hosting isn't a demo of it &mdash; it's the same code the hosted version runs, for one family. You can have the real dashboard on your own machine in about two minutes, with no API key and nothing to pay for:</p>
+            <p>DinkyDash is open source and runs on your own machine. Try a sample dashboard with no API key:</p>
 <pre><code>git clone https://github.com/caspii/dinkydash.git
 cd dinkydash
 python3 -m venv venv &amp;&amp; source venv/bin/activate
@@ -819,7 +765,7 @@ python sample_board.py &amp;&amp; python app.py</code></pre>
             <p>That serves the dashboard on <code>localhost:5000</code>, with an invented family and a canned daily headline. Add your own calendar links from <code>/settings</code>, and an Anthropic key when you want the real one &mdash; it runs once a day and costs well under a dollar a month.</p>
 
             <h3>What to know before you do</h3>
-            <p>Setting up a Raspberry Pi is an afternoon rather than five minutes: systemd, kiosk mode, a screen schedule. <strong>There's no login</strong> &mdash; the dashboard and the settings page are both served without authentication, on the assumption they sit on your home network like a printer, so keep the port off the public internet. And self-hosting is community-supported: issues and pull requests are welcome, but there's no support commitment.</p>
+            <p>Setting up a Raspberry Pi is an afternoon rather than five minutes: systemd, kiosk mode, a screen schedule. <strong>Sign-in is optional</strong> &mdash; keep the app on a trusted network and off the public internet, even when sign-in is enabled. And self-hosting is community-supported: issues and pull requests are welcome, but there's no support commitment.</p>
 
             <div class="makers-links">
                 <a href="/getting-started/">The setup guide</a>
@@ -843,11 +789,10 @@ python sample_board.py &amp;&amp; python app.py</code></pre>
 <section class="section cta">
     <div class="container">
         <h2>Put it on the wall this week</h2>
-        <p>Paste a calendar link, open it on the screen you already own, and leave it there. Free for fourteen days, and we don't ask for a card.</p>
+        <p>Run DinkyDash on your own machine, add a calendar link and open it on a screen you already own.</p>
         <div class="cta-buttons">
-            <a href="{{ app_url }}/login" class="btn">Start free &mdash; 14 days, no card</a>
+            <a href="/getting-started/" class="btn">Get started</a>
         </div>
-        <p class="cta-note">Then $39 a year or $6 a month. Already have an account? <a href="{{ app_url }}/login">Sign in</a>.</p>
     </div>
 </section>
 

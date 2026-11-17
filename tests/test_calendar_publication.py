@@ -12,7 +12,7 @@ from dinkydash import board, runner
 from dinkydash.claude_client import GenerationError
 from dinkydash.schedule import due
 from test_generate import FakeClient
-from test_store_contract import store  # noqa: F401 - run against both backends
+from test_store_contract import store  # noqa: F401 - file-backed store
 
 NOW = datetime(2026, 9, 3, 8, tzinfo=timezone.utc)
 PRIVATE = "Private appointment marker"

@@ -51,7 +51,7 @@ chats.
 
 ## Part 2 — put it on a screen
 
-[DinkyDash](/) is open-source software that does exactly that. We can host it for you ($39 a year after a 14-day free trial), or you can run it yourself for free. It turns a screen you already own into a family
+[DinkyDash](/) is open-source software that does exactly that. It's free to run on your own machine. It turns a screen you already own into a family
 dashboard: today's events, a chore chart that rotates between people by itself, countdowns to
 birthdays and holidays, and a headline written fresh each day by AI. It runs in a
 browser, so an old tablet, a spare monitor, a TV or a Raspberry Pi will all do.
@@ -129,6 +129,6 @@ all merge into a single agenda on the screen:
 
 ## Start here
 
-To skip the setup, [start a free 14-day hosted trial](https://app.dinkydash.co/login) and paste the link there. To run it yourself, the [full setup guide](/getting-started/) starts on your own computer.
+The [setup guide](/getting-started/) starts on your own computer.
 
 The code is on [GitHub](https://github.com/caspii/dinkydash) under an MIT licence.

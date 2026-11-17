@@ -101,7 +101,7 @@ Pi](/raspberry-pi-family-calendar/) the tidiest, and a [smart TV](/smart-tv-cale
 or [Fire TV](/fire-tv-calendar-display/) will show it on the big screen. There's one device it
 doesn't work on, and [the Echo Show page](/echo-show-calendar-display/) says why.
 
-[DinkyDash](/) is open-source software that does exactly that. We can host it for you ($39 a year after a 14-day free trial), or you can run it yourself for free. Paste the link and today's
+[DinkyDash](/) is open-source software that does exactly that. It's free to run on your own machine. Paste the link and today's
 events appear on a wall screen, next to a chore chart that rotates by itself, countdowns to
 birthdays and holidays, and a headline written fresh each day. There's no Apple sign-in
 anywhere in it — the link is the entire connection, and it can only read.
@@ -128,4 +128,4 @@ guide](/getting-started/#personal-calendar) covers that properly.
   the ICS link
 - [Cozi](/cozi-calendar-display/) — Settings → Shared Cozi Calendars
 
-Mix providers freely; they all end up as one agenda. To skip the setup, [start a free 14-day hosted trial](https://app.dinkydash.co/login) and paste the link there. To run it yourself, the [full setup guide](/getting-started/) starts on your own computer.
+Mix providers freely; they all end up as one agenda. The [setup guide](/getting-started/) starts on your own computer.

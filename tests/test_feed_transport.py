@@ -108,13 +108,11 @@ def transport(certificate, monkeypatch):
         thread.join(timeout=5)
 
 
-@pytest.mark.parametrize('mode', ['single', 'cloud'])
 @pytest.mark.parametrize('address', [PUBLIC, PUBLIC_V6])
 def test_rebinding_cannot_change_the_socket_destination_and_tls_keeps_the_hostname(
-        transport, monkeypatch, mode, address):
+        transport, address):
     origin, seen, answers, _ = transport
     answers['calendar.example'] = [[address], ['127.0.0.1']]
-    monkeypatch.setenv('DINKYDASH_MODE', mode)
     events = calendars.fetch_feed(origin + '/calendar.ics', date(2026, 9, 7),
                                   date(2026, 9, 21), calendars.zone('UTC'))
     assert [event['title'] for event in events] == ['Swimming']

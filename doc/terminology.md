@@ -20,11 +20,10 @@ A **calendar** is one source of events, not the whole dashboard.
 |---|---|---|
 | DinkyDash | The product | Preserve the capital D in both parts. |
 | Dashboard | The complete household display | “Dashboard”, “View dashboard”, “Set up your dashboard”, “Show on the dashboard”, “Dashboard colours”, “Name on the dashboard”. |
-| Screen | A device displaying the dashboard | “The screen” in hosted settings; “Preview the screens” opens the device previews. Use dashboard when referring to the shared content. |
-| Screen link | The address opened on a display device | “Screen link & QR code”, “Copy link”, “Change the link”, followed by “Keep current link” / “Replace screen link”. In hosted mode anyone with the link can view the dashboard; replacing it invalidates the previous link on every screen. |
-| QR code | A scannable representation of the screen link | Available in hosted mode. It is another way to open the same dashboard, not a pairing code. |
-| Settings | The area for configuring the household and dashboard | The home page for a signed-in hosted user, or `/settings` when self-hosting. |
-| Family / household | The people sharing a dashboard and its settings | The current system stores one household per account. “Name on the dashboard” controls its displayed name. Do not imply that each person has a separate login. |
+| Screen | A device displaying the dashboard | Use dashboard when referring to its shared content. |
+| Screen link | The bearer address a screen opens when parent sign-in is enabled | Anyone with the link can view the dashboard. Replacing it invalidates the previous link. |
+| Settings | The area for configuring the household and dashboard | Available at `/settings`; optional parent sign-in protects it. |
+| Family / household | The people sharing a dashboard and its settings | One household per self-hosted installation. “Name on the dashboard” controls its displayed name. |
 | Person / People | A household member | “People”, “Add a person”, “New person”, “Remove this person”. Birth date supplies the age and birthday countdown; names can participate in chores. |
 | Pet / Pets | A household animal | “Pets”, “Add a pet”, “New pet”, “Kind of animal”. A pet can be mentioned in the headline. Pets are not a section of the dashboard. |
 | Task / Tasks | A household job with a recurrence and an assignment | “Tasks”, “Add a task”, “New task”, “Remove this task”. Recurrence is once, daily, weekly, monthly or on chosen weekdays; assignment is fixed, rotate, anyone or everyone. Ticked off from the phone page. Replaces the old “Chore”. |
@@ -48,10 +47,7 @@ A **calendar** is one source of events, not the whole dashboard.
 | Time zone | The household's clock for dates, events and daily generation | “Time zone” under “Family & system”, with a suggested local zone during setup. |
 | Clock | Whether times are written 24-hour or 12-hour | “Clock” under “Family & system”, beside “Time zone”: “24-hour (15:45)” or “12-hour (3:45 pm)”. The time zone decides what a time is; this decides how it is written. Defaults to 24-hour and applies to the agenda, the computed headline and the generated daily headline. |
 | Emoji | The small picture beside a person, pet, chore or special date | “Emoji” on the edit forms: a row of quick picks, “None”, and “More…”, which opens “Choose an emoji” with a search box that also takes an emoji typed on the keyboard. Shown as the avatar in settings lists and beside chores and countdowns on the dashboard. |
-| Colours | The dashboard's light or dark appearance | “Dashboard colours”, choices “Light” and “Dark”. Self-hosted navigation calls the page “Colours”; hosted navigation calls it “The screen” because it also holds the screen link. Changes apply immediately. |
-| Your data | The hosted account's export and deletion page | “Download my data” exports JSON. “Delete my account” removes the household and its saved data after email-address confirmation. |
-| Sign-in link | The email link used to sign in or start a hosted dashboard | “Email me a link”, “Sign in or start a dashboard”. It works once and expires after fifteen minutes; it is distinct from the persistent screen link. |
-| Trial | The initial hosted trial period | Fourteen days. Do not describe payment or renewal flows as available unless implemented. |
+| Colours | The dashboard’s light or dark appearance | “Dashboard colours”, choices “Light” and “Dark”. Changes apply immediately. |
 
 ## Copy conventions
 

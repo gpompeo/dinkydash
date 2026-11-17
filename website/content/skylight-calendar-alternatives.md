@@ -14,7 +14,7 @@ The good news: you have real options — including some that cost nothing becaus
 
 | Alternative | Hardware cost | Subscription | Bring your own screen? |
 |---|---|---|---|
-| **DinkyDash** | $0 | None self-hosted; hosted $39/yr or $6/mo after a free 14-day trial | Yes |
+| **DinkyDash** | $0 | None | Yes |
 | **Mango Display** | $0 | Free tier (no calendar); Pro $5.99/mo | Yes |
 | **DAKboard** | $0 | Free tier; $5–10/mo | Yes |
 | **Hearth Display** | $699 | $9/mo ($86.40/yr) | No |
@@ -25,13 +25,13 @@ The good news: you have real options — including some that cost nothing becaus
 
 *Prices checked 9 October 2026 — always confirm current pricing before buying. Dæly is sold in euros and ships from Germany.*
 
-## 1. DinkyDash — open source, free to self-host or $39 a year hosted
+## 1. DinkyDash — open source and free to self-host
 
 Full disclosure: DinkyDash is our project, so we're biased — but it exists precisely because we wanted a Skylight without the hardware bill. DinkyDash turns any TV, tablet, Raspberry Pi, or spare monitor into a family calendar with a daily chore rotation, birthday countdowns, and something no other option here has: **a daily headline written by AI, fresh every day**, written around your family's actual day.
 
 It works with the calendars you already keep: **Google Calendar, Apple iCloud Calendar and Outlook** each publish a sharing link, and DinkyDash reads all three into one agenda in time order. You paste the link — there's no account to sign in to. We have the steps for [Google](/google-calendar-ical-link/), [iCloud](/icloud-calendar-link/), [Outlook](/outlook-calendar-ics-link/) and [Cozi](/cozi-calendar-display/).
 
-It's MIT-licensed and free to self-host, which means being comfortable with a terminal for an afternoon. Our [getting started guide](/getting-started/) walks you through it. You can also [start a free 14-day hosted trial](https://app.dinkydash.co/login), with no card required.
+It's MIT-licensed and free to self-host, which means being comfortable with a terminal for an afternoon. Our [getting started guide](/getting-started/) walks you through it.
 
 **Best for:** families who want $0 hardware. Self-host it for free if there's a tinkerer in the house, or let us host it if there isn't.
 

@@ -29,7 +29,7 @@ both halves is below.
 DinkyDash is a **web page**, not an app you install. So there are two parts:
 
 1. **Something to serve it.** A Raspberry Pi or an old computer on your Wi-Fi — free, MIT
-   licensed, and about an evening's work. Or [start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.
+   licensed, and about an evening's work.
 2. **The TV**, which is the screen. It opens that address in the browser it already has.
 
 ![The DinkyDash dashboard on a wide screen: today's events on the left, whose turn each chore is and the countdowns on the right](/images/family-calendar-tv-board.webp)
@@ -44,7 +44,7 @@ On **LG**, it's **Web Browser**, in the launcher. On an **Android TV or Google T
 is usually no browser preinstalled — install Chrome, or use a [Fire TV
 stick](/fire-tv-calendar-display/) instead.
 
-**2. Type the address, once.** If we host it, that's the screen link under **Settings → The screen**: `app.dinkydash.co/s/` and twelve characters, with no letters that are easy to confuse. If you run it yourself, it's the address of the machine serving it on your network, something like `http://192.168.1.50:5000`.
+**2. Type the address, once.** Use the address of the machine serving it on your network, something like `http://192.168.1.50:5000`. If parent sign-in is enabled, use the screen link from **Settings → Wall screen link** instead.
 Typing that with a remote is the worst part of this whole page. Two ways to make it survivable:
 
 - Pair a **Bluetooth keyboard** to the TV for the one minute it takes.
@@ -110,5 +110,3 @@ Claude API call once a day, roughly $0.13 a month, and the dashboard works witho
 The [setup guide](/getting-started/) covers the other half: getting DinkyDash running, adding
 your calendars, and pointing a screen at it. The code is on
 [GitHub](https://github.com/caspii/dinkydash) under an MIT licence.
-
-Rather skip the setup? [Start a free 14-day hosted trial](https://app.dinkydash.co/login), no card required.

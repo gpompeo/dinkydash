@@ -28,7 +28,7 @@ This page compares six alternatives on the things that actually decide it: what 
 
 | Alternative | Software cost | Hardware | Self-hosted? | Open source? |
 |---|---|---|---|---|
-| **DinkyDash** | $0 self-hosted; hosted trial free, then $39/yr or $6/mo | Bring your own | Yes | Yes (MIT) |
+| **DinkyDash** | $0 self-hosted | Bring your own | Yes | Yes (MIT) |
 | **MagicMirror²** | $0 | Bring your own | Yes | Yes (MIT) |
 | **Home Assistant** | $0 | Bring your own | Yes | Yes (Apache 2.0) |
 | **Mango Display** | Free tier; Pro $5.99/mo | Bring your own | No | No |
@@ -48,7 +48,7 @@ Three reasons come up repeatedly, and they point at different replacements.
 
 **It's a dashboard first, a family organiser second.** DAKboard does now market a chore chart — a column per family member, one tap to check something off, points that convert into rewards you set, and a child lock so siblings can't clear each other's lists. It is on Essential and Plus, not the free tier. But the product underneath is still a way of arranging many data sources on one screen, so "whose turn is it to feed the dog" means pointing a general tool at a specific job.
 
-## 1. DinkyDash — open source, free to self-host or $39 a year hosted
+## 1. DinkyDash — open source and free to self-host
 
 Full disclosure: DinkyDash is our project, so treat this entry accordingly — the rest of the page is written to be useful whether or not you pick it.
 
@@ -60,7 +60,6 @@ It is MIT-licensed, and self-hosting it is free forever, with no paid tier and n
 
 The trade-off is real: self-hosting means an afternoon and some comfort with a terminal. Our [getting started guide](/getting-started/) has copy-paste commands. The only running cost is your own Anthropic key for the daily headline — about $0.13 a month, and well under $1.
 
-You can also [start a free 14-day hosted trial](https://app.dinkydash.co/login), with no card required. After that it's **$39 a year or $6 a month**, and nothing is charged unless you choose to subscribe.
 
 **Best for:** families who want the source and a calendar that is already family-shaped out of the box — free if you run it yourself, cheap if you would rather not.
 
@@ -110,7 +109,6 @@ Software only, assuming you already own a screen. Annual billing where offered.
 |---|---|
 | **DinkyDash (self-hosted)** | **~$5** — your own Anthropic key for the daily headline, about $0.13/month |
 | **MagicMirror² / Home Assistant** | **$0** |
-| DinkyDash (hosted) | $117 at $39/year |
 | DAKboard Essential | ~$180 |
 | Mango Display Pro | ~$180 |
 | DAKboard Plus | ~$288 |
@@ -134,7 +132,6 @@ If those matter more than price or source, stay where you are. That is a reasona
 - **Want $0, the source code, and a family calendar that works out of the box:** [DinkyDash, self-hosted](/getting-started/)
 - **Want DAKboard's flexibility for free, and enjoy configuring things:** MagicMirror²
 - **Already running Home Assistant:** add a dashboard, don't add a service
-- **Want the same dashboard without the terminal:** [start a free 14-day hosted trial](https://app.dinkydash.co/login) — no card required
 - **Want zero setup today, and will pay for it:** Mango Display Pro — budget for Pro, not the free tier, which has no calendar
 - **Want a finished touchscreen on the wall:** Skylight, or Hearth if mornings are the problem
 - **Want maximum layout control with support behind it:** stay on DAKboard

@@ -1,20 +1,9 @@
 """Conductor delegates to the same validated launcher used in a terminal."""
 
-import os
 from pathlib import Path
 import tomllib
 
-import pytest
-
-import dev
-
 ROOT = Path(__file__).resolve().parents[1]
-FILE_URL = 'postgresql:///invented_file_database'
-SCRATCH_URL = 'postgresql:///invented_scratch_database'
-# Stands for `db.DEV_DATABASE_URL` in the table below, resolved inside the test:
-# naming it here would import psycopg at collection, and this file has to be
-# collectable on a machine that installed requirements.txt alone.
-DEVELOPMENT = None
 
 
 def test_one_default_run_starts_both_apps():
@@ -23,51 +12,3 @@ def test_one_default_run_starts_both_apps():
     assert runs['dev']['command'] == 'venv/bin/python dev.py'
     assert runs['dev']['default'] is True
     assert 'dashboard' not in runs and 'website' not in runs
-
-
-@pytest.mark.parametrize('exported,file_value,expected', [
-    (SCRATCH_URL, FILE_URL, SCRATCH_URL),
-    (None, FILE_URL, FILE_URL),
-    (SCRATCH_URL, None, SCRATCH_URL),
-    # Nothing names a database, so the launcher's own development one is used.
-    (None, None, DEVELOPMENT),
-    ('', FILE_URL, DEVELOPMENT),
-])
-def test_preview_preserves_explicit_environment_and_never_prints_the_database(
-        tmp_path, monkeypatch, capsys, exported, file_value, expected):
-    if file_value is not None:
-        (tmp_path / '.env').write_text(f'DATABASE_URL="{file_value}"\nDINKYDASH_MODE=single\n')
-    for key in ('DATABASE_URL', 'DINKYDASH_MODE', 'DINKYDASH_APP_URL', 'DINKYDASH_APP_HOST',
-                'DINKYDASH_DEV_EMAIL', 'SENDGRID_API_KEY'):
-        # Record absent keys too, so configure's environment changes are undone.
-        monkeypatch.setenv(key, '')
-        monkeypatch.delenv(key)
-    monkeypatch.setenv('DINKYDASH_SECRET_KEY', 'development-test-key')
-    monkeypatch.setenv('CONDUCTOR_PORT', '5123')
-    if exported is not None:
-        monkeypatch.setenv('DATABASE_URL', exported)
-    monkeypatch.setattr(dev, 'ROOT', tmp_path)
-    if expected is DEVELOPMENT:
-        from dinkydash.db import DEV_DATABASE_URL
-
-        expected = DEV_DATABASE_URL
-    captured = {}
-
-    def prepare():
-        captured['database'] = os.environ['DATABASE_URL']
-
-    def supervise(ports, email):
-        captured.update(mode=os.environ['DINKYDASH_MODE'], ports=ports, email=email)
-        return 0
-
-    monkeypatch.setattr(dev, 'prepare_database', prepare)
-    monkeypatch.setattr(dev, 'supervise', supervise)
-    result = dev.main()
-    output = capsys.readouterr()
-    assert FILE_URL not in output.out + output.err
-    assert SCRATCH_URL not in output.out + output.err
-    assert result == 0, output.err
-    assert captured == {
-        'database': expected, 'mode': 'cloud',
-        'ports': {'Dashboard': 5123, 'Website': 5124}, 'email': None,
-    }

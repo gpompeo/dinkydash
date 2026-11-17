@@ -38,7 +38,7 @@ admin_bp = Blueprint("wall_admin", __name__)
 
 TOKEN_KEY = "screen_token"
 
-# Thirty wrong tokens per caller an hour, like the hosted screen.
+# Thirty wrong tokens per caller an hour.
 MOST_MISSES = 30
 PER_SECONDS = 3600
 

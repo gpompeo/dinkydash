@@ -10,15 +10,10 @@ Website: [dinkydash.co](https://dinkydash.co)
 
 DinkyDash merges your calendars into one agenda, works out whose turn each chore is, counts down to the next birthday, and once a day asks Claude for a headline. Then it puts the lot on a screen at home — light or dark, sized to read from across the kitchen.
 
-## Two ways to run it
+## Run it yourself
 
-**Self-hosted (this repo).** Free and MIT-licensed, runs on your own hardware. Use Docker Compose
-on Linux, including a 64-bit Raspberry Pi; the container image is published for `linux/arm64` and
-`linux/amd64`. See the [self-hosted Docker quickstart](#quickstart) for setup and run instructions.
-
-> Self-hosting is **community-supported**. Issues and pull requests are welcome, but there's no support commitment — if you need it to just work, use the hosted version.
-
-**Hosted.** [Start a free 14-day trial.](https://app.dinkydash.co/login) No card required. After that it's $39 a year or $6 a month, and nothing is charged unless you choose to subscribe. Built from this same repo, in cloud mode — see [Single mode first](CLAUDE.md#single-mode-first).
+DinkyDash is free and MIT-licensed. Run it on your own Linux hardware with Docker Compose,
+including a 64-bit Raspberry Pi. The image supports `linux/arm64` and `linux/amd64`.
 
 ## What the dashboard shows
 
@@ -92,21 +87,11 @@ unauthenticated `docker compose pull`.
 The getting-started guide has provider-specific directions for finding Google, iCloud and Outlook
 iCal links, plus Raspberry Pi kiosk/screen setup.
 
-> **There is no login.** The dashboard and the settings UI are both served without authentication, so
-> anyone who can reach the port can read your family's agenda and rewrite `config.yaml` — names,
-> birthdays, and every calendar link in it. The Compose port is published on the host's network
-> interfaces: allow access only from your trusted LAN using the host firewall, and never forward
-> port 5000 or expose it directly to the public internet.
->
-> That is deliberate rather than unfinished: DinkyDash is a config file with a web form on it, and
-> the file has no login either. It assumes it is on your home network, the same as a printer.
->
-> **So keep the port off the public internet.** Do not forward port 5000 on your router. If you need
-> it from outside the house, reach it over a VPN such as [Tailscale](https://tailscale.com) or
-> [WireGuard](https://www.wireguard.com), or put a reverse proxy with basic auth in front of it.
->
-> Hosted mode is a different matter — it authenticates every request and is scoped per family. See
-> [Hosted mode raises the stakes](doc/hosted-mode.md).
+> **Keep the app on a trusted network.** Without a parent password, anyone who can reach the
+> port can view the dashboard and edit its settings. You can enable parent sign-in with
+> `DINKYDASH_PARENT_PASSWORD` and a private `DINKYDASH_SECRET_KEY`; see
+> [Protecting the settings](doc/running-it.md#protecting-the-settings). Don't expose port 5000
+> directly to the public internet, even with sign-in enabled.
 
 ---
 
@@ -119,19 +104,16 @@ iCal links, plus Raspberry Pi kiosk/screen setup.
 | Every config key, with comments | [`config.example.yaml`](config.example.yaml) |
 | Living with it: the daily cycle, the two buttons, what to check when something looks wrong | [`doc/running-it.md`](doc/running-it.md) |
 | Coming from an older version | [`doc/upgrading.md`](doc/upgrading.md) |
-| Working on the code, and how the hosted build shares it | [`CLAUDE.md`](CLAUDE.md) |
+| Working on the code | [`CLAUDE.md`](CLAUDE.md) |
 | Product terms and UI wording | [`doc/terminology.md`](doc/terminology.md) |
 
 The install and Pi guides live on the website rather than here, so there is one copy of each
 to keep right.
 
-## Local hosted development
+## Local development
 
-Conductor's **dev** run action starts the hosted dashboard and marketing website
-together. The same command outside Conductor is `venv/bin/python dev.py`.
-See [local development](doc/development.md) for the required development database
-and session key, ports, sign-in, and how Conductor picks up the run configuration.
-The self-hosted quickstart above is unchanged.
+Conductor's **dev** action, or `venv/bin/python dev.py`, starts the self-hosted dashboard and the
+separate marketing site on loopback. See [local development](doc/development.md) for setup and ports.
 
 ## Running the tests
 
@@ -159,7 +141,6 @@ versions CI passed on. A pull request that fails either check shows a red X.
 | `dinkydash/runner.py` | The two halves of the cycle: `refresh_calendars` and `write_brief` |
 | `dinkydash/schedule.py` | `due()` — which of the two the clock and the config owe right now |
 | `dinkydash/store.py` | Where the config, the dashboard and the note history are kept |
-| `migrations/` | The hosted schema, plain SQL. Self-hosting needs none of it |
 | `web/` | Flask app — dashboard, settings UI, templates |
 | `web/templates/board.html` | The dashboard itself, light and dark, all screen sizes |
 | `generate.py` | Command-line skin over `dinkydash.runner` — this is what cron calls |
@@ -178,7 +159,7 @@ versions CI passed on. A pull request that fails either check shows a red X.
 
 ## Contributing
 
-Pull requests are welcome. The codebase is one monorepo serving both the self-hosted and the hosted build, so a change has to work in both modes — read [CLAUDE.md](CLAUDE.md) before starting anything structural, and open an issue first for larger changes.
+Pull requests are welcome. Read [CLAUDE.md](CLAUDE.md) before starting anything structural, and open an issue first for larger changes.
 
 Known rough edges are listed under "Known issues" in [CLAUDE.md](CLAUDE.md).
 

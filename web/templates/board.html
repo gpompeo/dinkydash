@@ -34,7 +34,7 @@
          full-screen dashboard with no browser around it. -->
     {# Which manifest depends on how this dashboard was reached: the signed-in view
    has one behind the session, a wall panel needs the token-scoped one, or
-   "save to home screen" gets a redirect to /login instead of a name. #}
+   "save to home screen" gets a sign-in redirect instead of a name. #}
 <link rel="manifest" href="{{ manifest_url }}">
     <link rel="apple-touch-icon" href="{{ static_url('apple-touch-icon.png') }}">
     <meta name="apple-mobile-web-app-title" content="{{ view.family_name or 'DinkyDash' }}">
@@ -514,24 +514,10 @@
 {# What the refresh script reads. `data-version` is the page's own
    (`assets.board_version`): a copy with a different one is a deploy, and gets
    a real reload. `data-today` is only on a dashboard that is *for* a day — the
-   ended screen has no date on it, and a frozen one says its dates are paused
-   — so only those escalate to "Showing Thursday's dashboard". #}
+   day, so the page can report when its date has gone stale. #}
 <body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}"{% if changes_url %} data-changes="{{ changes_url }}"{% endif %}>
 
-{% if view.state == 'ended' %}
-<div class="waiting">
-    <div class="family">DinkyDash</div>
-    <div class="waiting-head">Your trial or subscription has ended</div>
-    <div class="waiting-sub">Dashboard updates are paused. Open your settings on a phone or computer to manage your account.</div>
-</div>
-
-{% else %}
-
-{% if view.state == 'frozen' %}
-<div class="banner">
-    Your trial or subscription has ended. Showing the last saved dashboard; its dates and turns are paused.
-</div>
-{% elif view.overdue %}
+{% if view.overdue %}
 {# The headline on screen is the one worked out from the day. The banner says
    so, and only once this morning's brief was actually due. #}
 <div class="banner">
@@ -642,8 +628,6 @@
     </div>
 </div>
 
-{% endif %}
-
 {# Filled in and shown by the script below when a copy of the page could not
    be fetched; hidden again by the next copy that arrives, which brings its
    own. Text only, no way out: it sits on a wall. #}
@@ -664,8 +648,8 @@
    the ones that would not fit.
 
    2. Refreshing. The page fetches its next copy and swaps the body in, rather
-   than reloading. A reload that fails — the Wi-Fi dropped, the hosted app is
-   mid-deploy — replaces the dashboard with the browser's error page, and a
+   than reloading. A reload that fails when Wi-Fi drops replaces the dashboard
+   with the browser's error page, and a
    kiosk has nobody to press Back. A fetch that fails leaves the last good
    dashboard where it is, with a badge saying when it was last updated, and
    tries again in a minute. The <noscript> meta refresh in the head does what

@@ -12,7 +12,7 @@ pytest==9.1.1
 # the fit tests skip, and the rest of the suite does not need one.
 playwright==1.64.0
 
-# The marketing site generator: website/build.py (jinja2, markdown, pyyaml) and
+# The marketing site renderer (jinja2, markdown, pyyaml) and
 # the two one-off image scripts, website/generate_favicon.py and
 # website/generate_social_preview.py (Pillow — the latter also wants Chrome,
 # which pip cannot install and which nothing else here needs). Build-time only,

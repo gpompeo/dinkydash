@@ -1,130 +1,20 @@
-# Local hosted development
+# Local development
 
-From the repository root, install the existing dependencies and prepare a local
-Postgres database (Postgres must already be running):
+From the repository root:
 
 ```bash
 python3 -m venv venv
-venv/bin/pip install -r requirements-dev.txt -r requirements-cloud.txt
-createdb dinkydash_dev
-export DINKYDASH_SECRET_KEY="$(venv/bin/python -c 'import secrets; print(secrets.token_hex(32))')"
+venv/bin/pip install -r requirements-dev.txt
+cp -n config.example.yaml config.yaml
+venv/bin/python sample_board.py
 venv/bin/python dev.py
 ```
 
-`dinkydash_dev` is what the launcher uses when nothing names a database, so
-there is no `DATABASE_URL` to export. **The launcher applies outstanding
-migrations before it serves**, so a branch that adds one starts on its next run.
-It does that only to a database on this machine (see below), which is
-disposable: if a migration fails, drop and recreate the database and run again.
+The launcher starts the dashboard and the separate marketing site on loopback, without a database.
+The dashboard uses `DINKYDASH_PORT` (default 5000) and the site uses `DINKYDASH_WEBSITE_PORT`
+(default one higher). Conductor supplies `CONDUCTOR_PORT` for the dashboard; the site uses the
+next port. Both stop together. Restart the command after Python or content changes.
 
-`migrate.py` is for every other database. **It reads no `.env`**: that file carries the live
-cluster under production's own key `DATABASE_URL_DIRECT`, and a schema tool that
-loaded it would migrate the running service on a bare `migrate.py` — without
-saying so, because an up-to-date schema reports the same either way.
-
-Give a branch its own database when its migrations would disturb the others.
-Name it in the run environment rather than in `.env`, which is copied into each
-new workspace under the keys production uses. The launcher migrates it on start:
-
-```bash
-createdb dinkydash_scratch
-export DATABASE_URL=postgresql:///dinkydash_scratch
-venv/bin/python dev.py
-```
-
-`DINKYDASH_SECRET_KEY` does belong in `.env`, because it cannot be defaulted. A
-terminal export alone does not change Conductor's environment. Explicit
-environment values override `.env`; check which database you selected before
-starting or signing in. The launcher creates no sample accounts.
-
-**The launcher only accepts a database on this machine**: a loopback address or a
-Unix socket, with no override. A workspace's `.env` can carry a remote
-`DATABASE_URL`, and a launcher that connected to it would be a local preview of
-a real service, with its start-up check running through that service's pooler.
-A remote URL fails startup before anything connects; export a scratch database
-URL instead.
-
-The single **dev** run action starts both existing Flask apps:
-
-| App | In Conductor | Outside Conductor |
-|---|---|---|
-| Hosted dashboard | `CONDUCTOR_PORT` | `DINKYDASH_PORT`, default `5000` |
-| Marketing website | `CONDUCTOR_PORT + 1` | `DINKYDASH_WEBSITE_PORT`, default dashboard port + 1 |
-
-Both bind to `127.0.0.1`. The launcher prints labeled URLs after both servers
-have initialized and bound their ports. `CONDUCTOR_PORT` takes precedence over
-both port overrides; an empty, invalid, out-of-range or conflicting port fails.
-For example, outside Conductor:
-
-```bash
-DINKYDASH_PORT=5100 DINKYDASH_WEBSITE_PORT=5101 venv/bin/python dev.py
-```
-
-The dashboard always runs in cloud mode. A missing database URL, missing session
-key, unreachable database or unapplied migration fails startup; it never falls
-back to the self-hosted dashboard. Website login and trial/signup links, including
-those in Markdown pages, open this local dashboard's `/login`. The launcher
-overrides `DINKYDASH_APP_URL` and clears the production `DINKYDASH_APP_HOST` for
-its child processes.
-
-Stop the Conductor run action or press Ctrl-C to stop both servers. If either
-cannot start, times out during startup, or exits unexpectedly (even with status
-zero), the launcher stops the other and exits with an error. Restart the run
-action after Python, template or Markdown changes; there is no automatic reloader
-or interactive debugger.
-
-**To sign in without email, press the button.** The local `/login` page has a
-dashed **DEV ONLY** box under the form, with an address field and a **sign in →**
-button. It signs that address in at once and opens settings. An address with no
-account gets one, the same as a link from the form above would make it. The
-route behind it is added by `dev.py` to its own app, never by `create_app`, so
-no deployment has it.
-
-The field offers `dev@example.com` unless `DINKYDASH_DEV_EMAIL=you@example.com`
-in `.env` names another address, so signing in is one press either way. With
-that variable set, the launcher also prints a sign-in link for the address once
-both apps are up and opens it in your default browser;
-`venv/bin/python dev.py --sign-in you@example.com` does the same for one run.
-Against the local database a single address may hold a hundred live links
-rather than the ordinary three, so restarting and pressing often never locks
-you out.
-
-This works in Safari as well as Chrome and Firefox. Hosted mode marks its
-session cookie `Secure`, which Safari refuses to send to `http://127.0.0.1`;
-`dev.py` lifts that flag on its own dashboard process only, which binds to
-loopback, and sets it on the app object so that no environment variable can
-lift it anywhere else.
-
-The launcher never sends email: each message, sign-in links included, is
-printed to its output as `Email not sent (development) to ...`, whatever
-`SENDGRID_API_KEY` says. Typing an address into the form above and opening the
-link from the run output works too. For an existing account you can also mint a
-link without the form (substitute the printed dashboard port):
-
-```bash
-venv/bin/python login_link.py you@example.com \
-  --database-url "$DATABASE_URL" --base-url http://127.0.0.1:5000
-```
-
-Opening that URL shows a page with a **Sign me in** button and signs nobody in
-by itself; pressing the button is what spends the token. That is deliberate —
-mail scanners follow links and would otherwise spend it before the recipient —
-so a script driving a sign-in has to POST the token to `/login/link` rather than
-just fetch the URL. `tests/conftest.py::open_the_link` is the one-line version.
-
-Turnstile is off unless `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` are
-both set, so the sign-in form reaches Cloudflare for nothing locally.
-
-An Anthropic key is not required to start the servers.
-Generation still requires an Anthropic key when you request it.
-
-Conductor reads shared `.conductor/settings.toml` from the remote default branch.
-Merge the configuration into `main` for the shared run action to take effect.
-Until then, run `venv/bin/python dev.py` in this workspace's terminal or set that
-command as a repository-local run override. Higher-precedence Conductor settings
-can override the shared action. Runs are nonconcurrent because copied `.env`
-files can share a database; only enable concurrent runs when every workspace has
-its own database as well as its allocated ports.
-
-Production still uses `wsgi.py` to route the two apps by hostname. Self-hosted
-Raspberry Pis still use `app.py` / `run_app.sh` and need only `requirements.txt`.
+The launcher disables feedback email so a copied SendGrid key cannot send from a preview. To test
+parent sign-in, set both `DINKYDASH_PARENT_PASSWORD` and a private `DINKYDASH_SECRET_KEY` in the
+environment or `.env`. Keep local data and secrets out of commits.

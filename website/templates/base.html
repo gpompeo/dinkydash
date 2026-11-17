@@ -122,15 +122,7 @@
            bar. Anchor links carry no aria-current, because an anchor is a place
            on a page rather than a page. */
         .nav-links a[aria-current="page"] { color: var(--accent); }
-        /* Both ways in sit outside .nav-links on purpose: the links collapse
-           into the hamburger below the breakpoint, and neither a call to action
-           nor the way back to your own dashboard can live inside a closed menu.
-           Most visitors arrive on a guide rather than the home page, so this bar
-           is the only one they are offered.
-
-           Two links, one destination: /login is the sign-up form as well, so the
-           labels are what tell a new parent and a returning one apart. The quiet
-           one is first because the loud one should be the last thing read. */
+        /* Keep the setup button visible when the navigation collapses. */
         .nav-actions { display: flex; align-items: center; gap: 10px; }
         .nav-signin {
             color: var(--text-mid);
@@ -387,8 +379,6 @@
             }
         }
     </style>
-    {# The hosted offer is `InStock`: Checkout sells the subscription.
-       The trial is free and needs no card; the price is what you pay after. #}
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -434,22 +424,7 @@
           "priceCurrency": "USD",
           "availability": "https://schema.org/InStock",
           "description": "Run it on your own machine. MIT-licensed and free for ever."
-        },
-        {
-          "@type": "Offer",
-          "name": "Hosted",
-          "price": "39",
-          "priceCurrency": "USD",
-          "availability": "https://schema.org/InStock",
-          "description": "We run it for you. Free for fourteen days, no card required.",
-          "priceSpecification": {
-            "@type": "UnitPriceSpecification",
-            "price": "39",
-            "priceCurrency": "USD",
-            "billingDuration": 1,
-            "billingIncrement": 1,
-            "unitCode": "ANN"
-          }
+
         }
       ]
     }
@@ -491,11 +466,7 @@
             {{ nav_link('/about/', 'About', '/about/') }}
         </ul>
         <div class="nav-actions">
-            {# A family whose dashboard is already running arrives on a guide as
-               often as anybody else, and "Start free" is not a door they would
-               try. Both go to /login, which signs in and signs up alike. #}
-            <a class="nav-signin" href="{{ app_url }}/login">Sign in</a>
-            <a class="btn btn-nav" href="{{ app_url }}/login">Start free</a>
+            <a class="btn btn-nav" href="/getting-started/">Get started</a>
             <button class="mobile-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav-links">&#9776;</button>
         </div>
     </div>
@@ -590,49 +561,7 @@
         });
     })();
 </script>
-{# Carry the visit across to the hosted sign-in page. The marketing site
-   sends no referrer, so a click would arrive as direct traffic. This copies
-   the campaign parameters already on this page, and the origin of the site
-   that sent the reader here — scheme and host, never the path or the query,
-   so an address in a referrer cannot come along. Nothing is written to a
-   cookie. The link's own referrer policy then tells the app it came from
-   this site, which the page-level no-referrer header would otherwise hide. #}
-<script>
-(function () {
-    var keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
-    var safe = /^[A-Za-z0-9._~-]{1,80}$/;
-    var params = new URLSearchParams(window.location.search);
-    var carried = {};
-    keys.forEach(function (key) {
-        var value = params.get(key);
-        if (value && safe.test(value)) carried[key] = value;
-    });
-    var ref = "";
-    try {
-        if (document.referrer) {
-            var from = new URL(document.referrer);
-            if ((from.protocol === "https:" || from.protocol === "http:")
-                    && !from.username && from.origin !== window.location.origin) {
-                ref = from.origin;
-            }
-        }
-    } catch (error) {}
-    var links = document.querySelectorAll("a[href]");
-    for (var i = 0; i < links.length; i++) {
-        var link = links[i];
-        var url;
-        try { url = new URL(link.href, window.location.href); }
-        catch (error) { continue; }
-        if (!/^\/login\/?$/.test(url.pathname) || url.host === window.location.host) continue;
-        keys.forEach(function (key) {
-            if (carried[key] && !url.searchParams.has(key)) url.searchParams.set(key, carried[key]);
-        });
-        if (ref && !url.searchParams.has("ref")) url.searchParams.set("ref", ref);
-        link.href = url.toString();
-        link.referrerPolicy = "origin";
-    }
-})();
-</script>
+
 <!-- Fathom - beautiful, simple analytics -->
 <script src="https://cdn.usefathom.com/script.js" data-site="HLVHPKAZ" defer></script>
 <!-- / Fathom -->
@@ -640,8 +569,7 @@
 <script src="https://analytics.ahrefs.com/analytics.js" data-key="NInZX5cjFNqKC44BBPaEBA" data-page-location="{{ canonical_url }}" async></script>
 <!-- / Ahrefs analytics -->
 {# The first-touch cookie: whatever campaign parameters are on the address
-   that first brought this browser here, kept for 90 days so a sign-up on
-   `app.dinkydash.co` days later can still read them (`dinkydash/attribution.py`).
+   that first brought this browser here, kept for 90 days.
    Set once — a later visit with different parameters must not overwrite the
    first one — and only on this domain, so a local checkout of the site does
    not fail trying to set a cookie for `dinkydash.co`. #}

@@ -59,28 +59,13 @@
 {% endblock %}
 
 {% block appbar %}
-{# Under the title, who is signed in — hosted only, since a self-hoster has no
-   account. A phone two parents share should say whose settings these are, and
-   the account page is three taps away. For an address on DINKYDASH_ADMIN_EMAILS
-   the bar also carries the one link there is to the operator's page;
-   `tests/test_admin.py` asserts nobody else is shown it. #}
-<div class="identity">
-    <h1 class="wordmark">DinkyDash</h1>
-    {% if address %}<div class="who">{{ address }}</div>{% endif %}
-</div>
-{% if admin %}<a class="action muted" href="{{ url_for('admin.growth_page') }}">View admin</a>{% endif %}
+<div class="identity"><h1 class="wordmark">DinkyDash</h1></div>
 {# The dashboard link is "View dashboard" by another name, so it waits with it and
    opens its own tab for the same reason — see the button. #}
 {% if not setting_up %}<a class="action muted" href="{{ board_link }}" target="_blank" rel="noopener">Dashboard</a>{% endif %}
 {% endblock %}
 
 {% block content %}
-{% if status.state == 'lapsed' %}
-<div class="flash error" role="alert">
-    {{ status.detail }}
-    <a href="{{ url_for('billing.home') }}">Open Subscription to resume updates.</a>
-</div>
-{% endif %}
 {% if family_name_is_default %}
 {# Nothing to dismiss: it leaves on its own, the moment `settings.system` saves
    a real name — the same way the set-up checklist above it does. #}
@@ -162,19 +147,13 @@
 
 {% if screen %}
 {# Steps one and two are done: a dashboard written now would be theirs. The link,
-   and the button that writes it without waiting for the worker's next pass.
+   and the button that writes it without waiting for the next scheduled tick.
    With no calendar yet they wait behind a choice the parent makes on purpose,
    because the calendar is what makes the screen worth leaving up. #}
 {% set screen_card %}
     {% with screen_link = screen.link, screen_qr = screen.qr %}
     {% include "settings/_screen_link.html" %}
     {% endwith %}
-    {% if cloud %}
-    <div class="hint">
-        <strong>Anyone with this link can see your dashboard.</strong> There is no password on it, which
-        is what lets a screen show it without signing in. You can change it later under The screen.
-    </div>
-    {% endif %}
     <form class="inline-form" method="post" action="{{ url_for('settings.generate_now') }}" data-pending="Writing your daily headline…">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="btn" type="submit">Write first daily headline</button>
@@ -213,7 +192,7 @@
         {% if calendars_on %}
         <form class="inline-form" method="post" action="{{ url_for('settings.refresh_now') }}" data-pending="Refreshing your calendars…">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button class="btn" type="submit" {{ 'disabled' if status.state == 'lapsed' }}>{{ icons.refresh() }} Refresh calendars</button>
+            <button class="btn" type="submit">{{ icons.refresh() }} Refresh calendars</button>
         </form>
         {% else %}
         {# Nothing to refresh, so the slot offers the thing that would give it
@@ -233,17 +212,9 @@
             <a class="btn outline" href="{{ board_link }}" target="_blank" rel="noopener">{{ icons.screen() }} View dashboard</a>
             <form class="inline-form" method="post" action="{{ url_for('settings.generate_now') }}" data-pending="Writing your daily headline…">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn outline" type="submit" {{ 'disabled' if status.state == 'lapsed' }}>Rewrite daily headline</button>
+                <button class="btn outline" type="submit">Rewrite daily headline</button>
             </form>
         </div>
-        {% if cloud %}
-        {# The link and the QR code, from the card a parent looks at for them.
-           They were the ninth row down, under a title that reads like "Preview
-           the screens" two rows later, and were not found there. Hosted only:
-           a self-hoster's dashboard is at `/` on the host they are already on, and
-           the Colours page says so. #}
-        <a class="btn outline" href="{{ url_for('settings.screen') }}">{{ icons.link() }} Screen link &amp; QR code</a>
-        {% endif %}
     </div>
 </div>
 {% endif %}
@@ -328,13 +299,10 @@
 <div>
     <div class="label">Your dashboard</div>
     <div class="card">
-        {# Hosted, this page is where the screen link lives, and the row has to
-           say so — the wall link is the finish line of the whole product and
-           it used to be filed under "Colours". #}
         <a class="row" href="{{ url_for('settings.screen') }}">
             <div class="row-main">
-                <div class="row-title">{{ "The screen" if cloud else "Colours" }}</div>
-                <div class="row-sub">{{ config.theme | capitalize }}{{ " · the link and QR code for the dashboard" if cloud }}</div>
+                <div class="row-title">Colours</div>
+                <div class="row-sub">{{ config.theme | capitalize }}</div>
             </div>{{ icons.chevron() }}
         </a>
         <a class="row" href="{{ url_for('settings.refresh') }}">
@@ -358,28 +326,6 @@
     </div>
 </div>
 
-{# Hosted only. A self-hoster has no account to delete and nothing to export —
-   their data is a YAML file and two JSON files, in a directory they chose. #}
-{% if cloud %}
-<div>
-    <div class="label">Your account</div>
-    <div class="card">
-        <a class="row" href="{{ url_for('billing.home') }}">
-            <div class="row-main">
-                <div class="row-title">Subscription</div>
-                <div class="row-sub">Your trial, payments and cancellation</div>
-            </div>{{ icons.chevron() }}
-        </a>
-        <a class="row" href="{{ url_for('settings.account') }}">
-            <div class="row-main">
-                <div class="row-title">Your data</div>
-                <div class="row-sub">Download it, or delete everything</div>
-            </div>{{ icons.chevron() }}
-        </a>
-    </div>
-</div>
-{% endif %}
-
 {# The permanent way in. The pill at the foot of every page can be waved away
    for good, so the offer has to exist somewhere it cannot be lost. #}
 {% if feedback_enabled() %}
@@ -394,14 +340,6 @@
         </a>
     </div>
 </div>
-{% endif %}
-
-{# Only hosted. Self-hosted has no accounts, so there is nothing to sign out of. #}
-{% if cloud %}
-<form method="post" action="{{ url_for('auth.logout') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <button class="btn outline" type="submit">Sign out</button>
-</form>
 {% endif %}
 
 {% if setting_up %}

@@ -38,6 +38,5 @@ If you can live with those, it's a good shared-space screen. If you need per-tea
 
 ## Getting started
 
-**Hosted** — paste your team's calendar link and open the dashboard on whatever screen is nearest. Free for 14 days, and we don't ask for a card. [Start a trial](https://app.dinkydash.co/login).
 
 **Self-hosted** — MIT-licensed and free for ever. It runs on anything that can serve a web page: an old laptop, a spare PC, a Raspberry Pi. [The setup guide](/getting-started/) has the commands, and you'll want your own Anthropic key, which costs well under a dollar a month.

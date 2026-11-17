@@ -9,7 +9,7 @@ This guide takes you from nothing to a working family dashboard. You start on yo
 
 You don't need an Anthropic API key to try it — there's a no-key preview in step 3. You only need a key for the AI-written headline, which runs once a day.
 
-This is the self-hosting guide, and it uses a terminal. If you'd rather skip all of it, we can host the same dashboard for you: free for 14 days, then $39 a year or $6 a month. [Start free](https://app.dinkydash.co/login).
+This is the self-hosting guide, and it uses a terminal. It walks you through setting up DinkyDash on your own machine.
 
 ## What you need
 
