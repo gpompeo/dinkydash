@@ -8,6 +8,10 @@ A task's `recurrence` holds a `kind` and the fields that kind uses (see doc/prd-
 section 4.1). The occurrence index counts occurrences, never days of the year: it is the number of
 occurrences in the half-open span from the anchor up to the day. The anchor is `recurrence.start`
 when set, otherwise a fixed date, so an index never depends on the year boundary.
+
+A task also has an effective start, `start` else `created` (both on the task, not the recurrence),
+and is never due before it. That boundary only filters days: it never moves the anchor, so rotation
+and interval cadence are the same with or without it.
 """
 
 import calendar
@@ -66,8 +70,20 @@ def _every(rec: dict) -> int:
     return every if isinstance(every, int) and not isinstance(every, bool) and every >= 1 else 1
 
 
+def effective_start(task: dict) -> date | None:
+    """The first day the task may be due: its explicit `start`, else its `created` day.
+
+    None for a task with neither, which stays due on every day its rule allows. An unreadable
+    `start` counts as unset, so a bad value never hides a task.
+    """
+    return _as_date(task.get("start")) or _as_date(task.get("created"))
+
+
 def occurs_on(task: dict, day: date) -> bool:
     """Whether the task is due on `day`. A malformed rule never occurs."""
+    first = effective_start(task)
+    if first is not None and day < first:
+        return False
     rec = task.get("recurrence") or {}
     kind = rec.get("kind")
     if kind == "daily":

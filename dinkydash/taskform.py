@@ -129,6 +129,36 @@ def draft_state(form, today):
     return state
 
 
+def start_from_form(form, today, existing):
+    """The task's explicit start for a posted form, with the problem that stops it being stored.
+
+    A blank box clears it, so the creation day applies. A form with no start box leaves the stored
+    start alone.
+    """
+    if "task_start" not in form:
+        return existing, {}
+    raw = form.get("task_start", "").strip()
+    if not raw:
+        return "", {}
+    start = _iso(raw)
+    if start is None:
+        return raw, {"task_start": "The start day should look like 2026-03-15, or leave it empty."}
+    return start, {}
+
+
+def effective_start(start, created):
+    """The ISO day a task starts on: the explicit `start`, else `created`, else None."""
+    return _iso(start or "") or _iso(created or "")
+
+
+def once_problem(rec, first):
+    """A one-off scheduled before its effective start can never come up, so it is refused."""
+    if rec.get("kind") == "once" and first and rec["date"] < first:
+        return {"rec_date": f"That day is before the task starts on {first}. Choose a later "
+                            "day, or move the start day back."}
+    return {}
+
+
 def _ordinal(n):
     suffix = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
     return f"{n}{suffix}"

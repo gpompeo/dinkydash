@@ -13,7 +13,7 @@
 {% if problems %}
 <div class="problems" id="form-errors" role="alert" tabindex="-1">
     <h2>Check these fields</h2>
-    <ul>{% for name, problem in problems.items() %}<li><a href="#{{ 'f-recurrence' if name.startswith('rec_') else 'f-' ~ name ~ ('-day' if name == 'date' else '') }}">{{ problem }}</a></li>{% endfor %}</ul>
+    <ul>{% for name, problem in problems.items() %}<li><a href="#{{ 'f-task-start' if name == 'task_start' else 'f-recurrence' if name.startswith('rec_') else 'f-' ~ name ~ ('-day' if name == 'date' else '') }}">{{ problem }}</a></li>{% endfor %}</ul>
 </div>
 {% endif %}
 

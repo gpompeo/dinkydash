@@ -77,6 +77,8 @@ features:
 # Tasks come up every day (`recurrence.kind: daily`) and hand over in the order listed.
 # `assignment.mode: rotate` counts occurrences; `offset` shifts where the rotation starts.
 # Other modes: fixed (the first person listed), anyone, everyone.
+# A task is never due before its `start` (optional, YYYY-MM-DD, may be past or future), else its
+# `created` day, which the settings page records. A task with neither is due on every matching day.
 tasks:
   - id: table
     title: "Set the table"

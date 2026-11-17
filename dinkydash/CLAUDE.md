@@ -36,7 +36,7 @@ Pure modules, all taking dates and data and never reading the clock or a file: `
 (`occurs_on`, `occurrence_index`; malformed rules never occur), `streaks.py` (worked out from
 completions each time, never stored), `activity.py` (the thirty-day grid), `checkin.py` (who may tick
 which day), `pins.py` (scrypt hashes), `taskform.py` (task form state and plain-English description).
-`context.tasks_for(config, day)` resolves assignment, and rotation counts `occurrence_index` plus
+A task is never due before `recurrence.effective_start` (its `start`, else `created`; neither means no limit); the boundary lives in `occurs_on` so every surface agrees, and it never moves the occurrence anchor. `context.tasks_for(config, day)` resolves assignment, and rotation counts `occurrence_index` plus
 `assignment.offset`. `FileStore` owns `completions.json` (trimmed to 400 days on write),
 `shopping.json`, `auth.json` and `change_token()`. Shopping text never goes into a prompt.
 

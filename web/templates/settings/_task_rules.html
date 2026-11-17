@@ -52,6 +52,12 @@
 {% for key in ('rec_kind', 'rec_days', 'rec_every', 'rec_start', 'rec_day', 'rec_nth', 'rec_weekday', 'rec_date') if problems.get(key) %}
 <div class="field-error" id="error-{{ key }}">{{ problems[key] }}</div>
 {% endfor %}
+<div class="subfield start">
+    <label for="f-task-start">Start day (optional)</label>
+    <input type="date" id="f-task-start" name="task_start" value="{{ item.start }}" aria-describedby="hint-start">
+</div>
+{% if problems.get('task_start') %}<div class="field-error" id="error-task_start">{{ problems['task_start'] }}</div>{% endif %}
+<div class="hint" id="hint-start">Leave it empty and the task starts the day it was added. Choose an earlier day to fill in the past, or a later one to hold it back. Nothing already ticked is lost.</div>
 <div class="hint" id="hint-recurrence">Weekdays and Weekends are shortcuts for Monday to Friday and Saturday and Sunday. A day number the month lacks, like the 31st, falls on the month's last day.</div>
 
 {% elif kind == 'assignment' %}

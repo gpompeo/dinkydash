@@ -218,6 +218,8 @@ def task_form(config, task):
     return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
             "choices": chosen, "names": [by_id[i] for i in chosen],
             "rec": taskform.recurrence_state(task.get("recurrence"), today),
+            "start": taskform._iso(task.get("start") or "") or "",
+            "created": task.get("created") or "",
             "when": taskform.describe(task.get("recurrence"), today),
             "mode": assignment_mode if assignment_mode in taskform.MODES else taskform.ROTATE}
 
@@ -242,6 +244,12 @@ def task_from_form(config, existing, submitted):
     assignment["people"] = known_person_ids(config, submitted.get("choices"))
     task.update({"title": submitted["title"], "emoji": submitted.get("emoji", ""),
                  "recurrence": submitted["recurrence"], "assignment": assignment})
+    if submitted.get("start"):
+        task["start"] = submitted["start"]
+    else:
+        task.pop("start", None)
+    if not existing and submitted.get("created"):
+        task["created"] = submitted["created"]
     return task
 
 
@@ -251,14 +259,21 @@ def read_rules(form, submitted, item, stored, today):
     A post with no `rec_kind` is not from the editor's controls, so the task keeps what it has.
     `submitted["rec"]` is what the form redisplays; `submitted["recurrence"]` is what is stored.
     """
+    stored_start = (stored or {}).get("start") or ""
+    submitted["start"], problems = taskform.start_from_form(form, today, stored_start)
+    submitted["created"] = (stored or {}).get("created") or (today.isoformat() if stored is None else "")
     if "rec_kind" not in form:
         stored = stored or {}
         submitted["recurrence"] = stored.get("recurrence") or {"kind": "daily"}
         submitted["mode"] = item.get("mode") or taskform.ROTATE
         submitted["rec"] = item.get("rec")
-        return {}
+        return problems
     submitted["rec"] = taskform.draft_state(form, today)
-    submitted["recurrence"], problems = taskform.recurrence_from_form(form, today)
+    submitted["recurrence"], rule_problems = taskform.recurrence_from_form(form, today)
+    problems.update(rule_problems)
+    if not rule_problems and "task_start" not in problems:
+        first = taskform.effective_start(submitted["start"], submitted["created"])
+        problems.update(taskform.once_problem(submitted["recurrence"], first))
     assignment_mode = form.get("mode", "")
     if assignment_mode not in taskform.MODES:
         problems["mode"] = "Choose whose job it is."
