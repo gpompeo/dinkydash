@@ -141,11 +141,11 @@ class TestWhatTheServerAccepts:
     CHORE = "/settings/recurring/table123"
 
     def save(self, client, emoji):
-        return client.post(self.CHORE, data={"title": "Set the table", "emoji": emoji, "choices": ["Mia"]})
+        return client.post(self.CHORE, data={"title": "Set the table", "emoji": emoji, "choices": ["mia12345"]})
 
     def test_any_emoji_saves(self, client, config_path):
         assert self.save(client, "🦩").status_code == 302
-        [chore] = saved(config_path, "recurring")
+        [chore] = saved(config_path, "tasks")
         assert chore["emoji"] == "🦩"
 
     @pytest.mark.parametrize("emoji", [
@@ -157,7 +157,7 @@ class TestWhatTheServerAccepts:
     def test_a_long_one_is_still_one(self, client, config_path, emoji):
         assert len(emoji) <= LONGEST_EMOJI
         assert self.save(client, emoji).status_code == 302
-        assert saved(config_path, "recurring")[0]["emoji"] == emoji
+        assert saved(config_path, "tasks")[0]["emoji"] == emoji
 
     @pytest.mark.parametrize("value", ["dog", "🐶 dog", "häh", "日本語", "!!!", "🐶🐱",
                                        "🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁"])
@@ -168,11 +168,11 @@ class TestWhatTheServerAccepts:
         assert "Choose one emoji." in page
         assert 'href="#f-emoji"' in page
         assert 'data-dirty-guard="changed"' in page
-        assert "emoji" not in saved(config_path, "recurring")[0]
+        assert not saved(config_path, "tasks")[0].get("emoji")
 
     def test_none_is_still_none(self, client, config_path):
         assert self.save(client, "").status_code == 302
-        assert saved(config_path, "recurring")[0]["emoji"] == ""
+        assert saved(config_path, "tasks")[0]["emoji"] == ""
 
 
 # -- what one emoji is ---------------------------------------------------------------

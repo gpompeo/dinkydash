@@ -28,6 +28,10 @@ ICONS = [
 ]
 
 
+# The warm off-white the settings UI and the phone page paint behind themselves.
+PAGE_COLOUR = "#fffaf5"
+
+
 def response(**fields):
     """A manifest as a response: the shared keys, plus what the caller sets."""
     manifest = {

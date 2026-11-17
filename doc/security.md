@@ -70,12 +70,16 @@ repository and its issues.
   quotes the line it choked on, which is an appointment. `tests/test_secrets_and_headers.py` fails
   if any of that regresses.
 
-## Self-hosted has no authentication
+## Self-hosted has no authentication by default
 
-Anyone who can reach the port can edit the config. That is the same trust model as the file it
+Unless `DINKYDASH_PARENT_PASSWORD` is set (`web/parent.py`: a signed 30-day session, per-caller rate limit, CSRF on every form, refusing to start without `DINKYDASH_SECRET_KEY`), anyone who can reach the port can edit the config. That is the same trust model as the file it
 writes, so keep port 5000 on a trusted LAN and never expose it to the public internet. The README
 says so in a callout under **Quickstart**. Cloud mode cannot inherit this — see
 [hosted-mode.md](hosted-mode.md).
+
+With sign-in on, the phone page (`/h`, `web/routes/phone.py`) lets a family member pick their name and type a PIN if a parent set one. PINs are four to eight digits, hashed with `scrypt` (`dinkydash/pins.py`), compared in constant time and kept in `auth.json` beside the config (mode 0600, gitignored, never in `config.yaml`). Wrong PINs share the sign-in rate limit (ten in fifteen minutes per caller). A person with no PIN can be picked by anyone who reaches the page; that is the meaning of optional.
+
+With sign-in on, `/` redirects to sign-in and the wall screen opens `/s/<token>` (`web/routes/wall.py`). The token is a bearer credential: random, made the first time a parent opens Settings, Wall screen link, kept in `auth.json` and rotated there. The page is `noindex` and `no-store`, never echoes the token, and answers a wrong one with a 404; misses (not requests) share a limit of thirty an hour per caller. `auth.NoTokens` scrubs `/s/...` from the request logs.
 
 ## The safety net, and what it does not cover
 

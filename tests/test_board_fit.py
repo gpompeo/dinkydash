@@ -15,6 +15,7 @@ the root would otherwise be unreadably small.
 import os
 import re
 import threading
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -22,6 +23,7 @@ from flask import render_template
 from werkzeug.serving import make_server
 
 from dinkydash.store import FileStore
+from dinkydash.board import build_view
 from web import create_app
 
 REPO = Path(__file__).resolve().parents[1]
@@ -293,7 +295,16 @@ def origin(tmp_path_factory):
     config = folder / "config.yaml"
     config.write_text('family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\ntheme: light\n')
     app = create_app(FileStore(config))
-    pages = {"side": SIDE_HEAVY, "busy": BUSY, "packed": PACKED, "light": LIGHT, "empty": EMPTY, "twelve": TWELVE}
+    day = date(2026, 10, 14)
+    tasks = [{"id": f"task-{i}", "title": f"Task {i}", "recurrence": {"kind": "daily"},
+              "assignment": {"mode": "fixed", "people": ["mia"]}} for i in range(25)]
+    completions = [{"task_id": f"task-{i}", "person_id": "mia", "date": day.isoformat(),
+                    "completed_at": f"2026-10-14T09:00:{24-i:02d}+00:00"} for i in range(24)]
+    task_view = build_view({"timezone": "UTC", "people": [{"id": "mia", "name": "Mia",
+                                                           "date_of_birth": "2017-03-15"}],
+                            "tasks": tasks}, None, day, completions=completions)
+    pages = {"side": SIDE_HEAVY, "busy": BUSY, "packed": PACKED, "light": LIGHT,
+             "empty": EMPTY, "twelve": TWELVE, "task-overflow": task_view}
 
     @app.route("/fixture/<name>")
     def fixture(name):
@@ -394,6 +405,25 @@ class TestATallSideColumn:
         assert data["hidden"] == 0
         assert data["moreHidden"] is True
         assert data["fontSize"] >= 13
+
+    @pytest.mark.parametrize("width,height", [(800, 480), (1280, 720), (1024, 768)])
+    def test_yesterday_then_oldest_completed_tasks_are_shed(self, browser, origin, width, height):
+        page = browser.new_page(viewport={"width": width, "height": height})
+        try:
+            data = settle(page, f"{origin}/fixture/task-overflow")
+            assert data["over"] == []
+            result = page.evaluate("""() => ({
+                yesterday: document.querySelector('.yesterday').classList.contains('shed'),
+                hidden: Array.from(document.querySelectorAll('.chore.done.shed'))
+                    .map(row => Number(row.dataset.shedRank)).sort((a, b) => a - b),
+                openHidden: document.querySelectorAll('.chore:not(.done).shed').length,
+            })""")
+            assert result["yesterday"]
+            assert len(result["hidden"]) > 0
+            assert result["hidden"] == list(range(len(result["hidden"])))
+            assert result["openHidden"] == 0
+        finally:
+            page.close()
 
 
 class TestALightDayIsUnchanged:

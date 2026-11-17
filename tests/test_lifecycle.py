@@ -84,8 +84,12 @@ def hosted(pg_pool, pg_family, monkeypatch):
     monkeypatch.setattr(anthropic, "Anthropic", lambda: model)
     store = PostgresStore(pg_pool, pg_family)
     store.save_config({"family_name": "Invented family", "timezone": "Europe/Berlin",
-                       "brief_time": "00:00", "people": [],
-                       "recurring": [{"title": "Set the table", "choices": ["Alex", "Sam"]}],
+                       "brief_time": "00:00", "people": [{"id": "alex", "name": "Alex", "date_of_birth": "2015-05-05"},
+                                  {"id": "sam", "name": "Sam", "date_of_birth": "2017-07-07"}],
+                       "tasks": [{"id": "t1", "title": "Set the table",
+                                  "recurrence": {"kind": "daily"},
+                                  "assignment": {"mode": "rotate", "people": ["alex", "sam"],
+                                                 "offset": 0}}],
                        "special_dates": [{"title": "A holiday", "date": "12/25"}],
                        "calendars": [{"label": "Family", "enabled": True,
                                       "url": "https://example.com/private-xxxx/basic.ics"}]})

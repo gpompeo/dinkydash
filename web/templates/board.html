@@ -383,6 +383,16 @@
             box-shadow: var(--chore-2-edge);
             color: var(--chore-2-fg);
         }
+        .chore.done { opacity: 0.55; }
+        .chore.done .chore-title { text-decoration: line-through; }
+        .chore-tick { width: 1.1em; height: 1.1em; flex-shrink: 0; margin-right: 0.5rem; }
+        .chore-streak { font-size: 0.85em; font-weight: 700; margin-left: 0.6rem; white-space: nowrap; }
+        .chore.shed, .yesterday.shed { display: none; }
+        .streaks { margin-top: 0.7rem; font-size: 1.05rem; font-weight: 700; color: var(--text-muted); }
+        .streaks > span + span { margin-left: 1rem; }
+        .yesterday { margin-top: 1.1rem; }
+        .yesterday-row { font-size: 1.15rem; line-height: 1.25; color: var(--text-muted); }
+        .yesterday-row + .yesterday-row { margin-top: 0.35rem; }
         .chore-emoji { font-size: 1.6rem; flex-shrink: 0; margin-right: 0.6rem; }
 
         .countdowns { display: flex; flex-direction: column; }
@@ -407,6 +417,18 @@
         .countdown strong { color: var(--text); font-weight: 650; }
         .countdown.today strong { color: var(--accent); }
         .countdown-emoji { font-size: 1.55rem; flex-shrink: 0; line-height: 1.15; }
+
+        .shopping { display: flex; flex-direction: column; }
+        .shopping > * + * { margin-top: 0.45rem; }
+        .shop-item, .shop-more {
+            font-size: 1.4rem;
+            line-height: 1.25;
+            color: var(--text);
+            min-width: 0;
+            overflow-wrap: break-word;
+        }
+        .shop-qty, .shop-more { color: var(--text-muted); }
+        .shop-item.shed { display: none; }
 
         /* The full-screen message, for an account whose access is over. */
         .waiting {
@@ -494,7 +516,7 @@
    a real reload. `data-today` is only on a dashboard that is *for* a day — the
    ended screen has no date on it, and a frozen one says its dates are paused
    — so only those escalate to "Showing Thursday's dashboard". #}
-<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}">
+<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}"{% if changes_url %} data-changes="{{ changes_url }}"{% endif %}>
 
 {% if view.state == 'ended' %}
 <div class="waiting">
@@ -555,17 +577,34 @@
         </div>
 
         <div class="side">
-            {% if view.chores %}
+            {% if view.tasks or view.yesterday %}
             <div>
-                <div class="label">Whose turn</div>
+                {% if view.tasks %}
+                <div class="label">Tasks</div>
                 <div class="chores">
-                    {% for chore in view.chores %}
-                    <span class="chore">
+                    {% for chore in view.tasks %}
+                    <span class="chore{{ ' done' if chore.done }}"{% if chore.done and chore.shed_rank is defined %} data-shed-rank="{{ chore.shed_rank }}"{% endif %}>
+                        {% if chore.done %}<svg class="chore-tick" viewBox="0 0 16 16" aria-label="Done" role="img"><path d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>{% endif %}
                         {% if chore.emoji %}<span class="chore-emoji">{{ chore.emoji }}</span>{% endif %}
-                        {{ chore.title }} &mdash; {{ chore.assigned_to }}
+                        <span class="chore-title">{{ chore.title }} &mdash; {{ chore.assigned_to }}</span>
+                        {% if chore.streak %}<span class="chore-streak">{{ chore.streak }} in a row</span>{% endif %}
                     </span>
                     {% endfor %}
                 </div>
+                {% endif %}
+                {% if view.streaks %}
+                <div class="streaks">
+                    {% for s in view.streaks %}<span>{{ s.name }}: {{ s.days }} {{ 'day' if s.days == 1 else 'days' }}</span>{% endfor %}
+                </div>
+                {% endif %}
+                {% if view.yesterday %}
+                <div class="yesterday">
+                    <div class="label">Yesterday, still open</div>
+                    {% for row in view.yesterday %}
+                    <div class="yesterday-row">{{ row.emoji }} {{ row.title }} &mdash; {{ row.assigned_to }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
             </div>
             {% endif %}
 
@@ -584,6 +623,18 @@
                         </span>
                     </div>
                     {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if view.shopping %}
+            <div>
+                <div class="label">Shopping</div>
+                <div class="shopping">
+                    {% for item in view.shopping %}
+                    <div class="shop-item">{{ item.text }}{% if item.quantity %} <span class="shop-qty">&times; {{ item.quantity }}</span>{% endif %}</div>
+                    {% endfor %}
+                    <div class="shop-more" data-left="{{ view.shopping_more }}"{% if not view.shopping_more %} hidden{% endif %}>{% if view.shopping_more %}+{{ view.shopping_more }} more{% endif %}</div>
                 </div>
             </div>
             {% endif %}
@@ -666,6 +717,7 @@
         for (var i = 0; i < shed.length; i++) { shed[i].classList.remove("shed"); }
         var more = document.querySelector(".agenda > .events > .more");
         if (more) { more.hidden = true; more.textContent = ""; }
+        countShopping();
     }
 
     // The last row of a list still on screen, never its first: a day with one
@@ -682,6 +734,24 @@
     // one to hide it and one to put it back.
     function candidates(board) {
         var list = [];
+        // The yesterday group goes first, then the oldest completed tasks,
+        // then the rest in the order below.
+        var yesterday = board.querySelector(".yesterday:not(.shed)");
+        if (yesterday) {
+            list.push([function () { yesterday.classList.add("shed"); },
+                       function () { yesterday.classList.remove("shed"); }]);
+        }
+        var done = board.querySelectorAll(".chore.done:not(.shed)");
+        var finished = null, oldest = Infinity;
+        for (var i = 0; i < done.length; i++) {
+            var value = done[i].getAttribute("data-shed-rank");
+            var rank = value === null ? Infinity : Number(value);
+            if (!finished || rank < oldest) { finished = done[i]; oldest = rank; }
+        }
+        if (finished) {
+            list.push([function () { finished.classList.add("shed"); },
+                       function () { finished.classList.remove("shed"); }]);
+        }
         if (!board.classList.contains("tight")) {
             list.push([function () { board.classList.add("tight"); },
                        function () { board.classList.remove("tight"); }]);
@@ -695,12 +765,27 @@
             list.push([function () { countdown.classList.add("shed"); },
                        function () { countdown.classList.remove("shed"); }]);
         }
+        var item = lastShown(board.querySelectorAll(".shop-item"));
+        if (item) {
+            list.push([function () { item.classList.add("shed"); countShopping(); },
+                       function () { item.classList.remove("shed"); countShopping(); }]);
+        }
         var event = lastShown(board.querySelectorAll(".agenda > .events > .event"));
         if (event) {
             list.push([function () { event.classList.add("shed"); countMore(); },
                        function () { event.classList.remove("shed"); countMore(); }]);
         }
         return list;
+    }
+
+    // Shopping items shed here join the ones the server already left out.
+    function countShopping() {
+        var more = document.querySelector(".shop-more");
+        if (!more) return;
+        var n = document.querySelectorAll(".shop-item.shed").length +
+                parseInt(more.getAttribute("data-left") || "0", 10);
+        more.hidden = n === 0;
+        more.textContent = n ? "+" + n + " more" : "";
     }
 
     // Each of today's hidden rows is counted on the "+N more" line, so a row
@@ -863,6 +948,38 @@
                 started = 0;
             });
     }
+
+    /* ---- following other devices ------------------------------------------
+       A phone that changes something moves a counter on the server. Asking for
+       it is cheap, so it is asked about every fifteen seconds, and a number
+       that moved sends the page through the same refresh as the timer. A failed
+       ask is silent: the timer is still running. Hidden pages do not ask. */
+
+    var POLL_SECONDS = 15;
+    var seen = null;
+    var pollTimer = null;
+
+    function poll() {
+        clearTimeout(pollTimer);
+        pollTimer = setTimeout(poll, POLL_SECONDS * 1000);
+        var url = document.body.getAttribute("data-changes");
+        if (!url || document.hidden) { return; }
+        fetch(url, {cache: "no-store", credentials: "same-origin"})
+            .then(function (response) { return response.ok ? response.text() : null; })
+            .then(function (text) {
+                var number = text === null ? NaN : parseInt(text, 10);
+                if (isNaN(number)) { return; }
+                var moved = seen !== null && number !== seen;
+                seen = number;
+                if (moved) { setTimeout(refresh, 0); }
+            })
+            .catch(function () {});
+    }
+
+    document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) { poll(); }
+    });
+    poll();
 
     function swap(next) {
         // Both live on <html>, which a swap keeps, so each has to be carried

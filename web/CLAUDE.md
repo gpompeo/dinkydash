@@ -9,7 +9,7 @@ file holds the ones that only bite here. Sizing conventions are in the root unde
 **Adding a field to a settings section.** Add a tuple to the section's `fields` list in
 `web/routes/settings.py` — `(name, label, kind, required, help)`. The list template and the edit
 form both render from it, and `parse_field` reads it back. `kind` is one of `text`, `url`, `date`,
-`monthday`, `textarea`, `checkbox`, `emoji`, `color`, `people`, `emails`. A new `kind` needs a
+`monthday`, `textarea`, `checkbox`, `emoji`, `color`, `people`, `emails`, `recurrence`, `assignment` (the last two are the task editor's radios, in `settings/_task_rules.html`, read back by `dinkydash/taskform.py`). A new `kind` needs a
 branch in `parse_field` and a branch in `web/templates/settings/edit.html`; nothing else.
 
 **Validation errors belong to fields.** `validate` maps field names to messages. The editor links
@@ -356,6 +356,15 @@ leftover space is shared — a zero basis would split that page by ratio and let
 column shrink shorter than its text. There is no note on the dashboard. Long event titles,
 chore pills and countdowns wrap (`overflow-wrap: break-word`, `min-width: 0` on the flex item).
 
+## Phone page, wall token and sign-in
+
+`web/parent.py` holds the optional sign-in (`enabled()`, `guard()`, the attempt limiter); the settings
+blueprint and `/` both call it. `routes/phone.py` serves `/h` (name picker, then `/h/<tab>`, which 404s
+while its feature is off) and `POST /h/tick`; `routes/wall.py` serves the wall at `/s/<token>`, only
+registered when a password is set. Each has its own `changes` route returning the change counter, and
+the board script polls it every 15 seconds. Every writing route checks CSRF and the access rule first.
+Task editor radios need no JavaScript (`settings/_task_rules.html`).
+
 ## Home screens and manifests
 
 **Saving a page to a home screen.** `/` and `/settings/` each serve their own web app manifest
@@ -446,3 +455,7 @@ hard way.
 - The honest check is `scrot` over SSH on the Pi itself: a real 800x480 panel, a real kiosk browser,
   no capture artifacts. The dashboard refreshes itself every 5 minutes on a default config, so a
   change takes one refresh to appear — check `refresh_minutes` before concluding it did not work.
+
+## The change counter
+
+`/changes` (wall) and `/h/changes` (phone) return `FileStore.change_token()` as a bare number, `no-store`, with the access rule of the page they serve (`board.change_counter` is the shared body). The board script polls it every 15 seconds, skips while `document.hidden`, polls at once on `visibilitychange`, and calls the existing `refresh()` when the number moves; a failed poll is silent. It polls only when `<body data-changes>` is set, which `render_board` does for stores that have `change_token`. The token page (#4) must pass its own `changes_url`.

@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: #fffaf5; color: #2d2319; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .label { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: #786658; }
+    .opt { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 0.9375rem; font-weight: 600; }
+    .opt .dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #c4b3a3; flex-shrink: 0; }
+    .opt.on .dot { border-color: #e85d24; background: radial-gradient(#e85d24 45%, #fff 50%); }
+    .sub { margin-left: 28px; display: flex; gap: 6px; flex-wrap: wrap; padding-bottom: 8px; }
+    .day { width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid #f0e6da; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.8125rem; font-weight: 800; }
+    .day.on { background: #fff1e8; border-color: #e85d24; color: #b8430f; }
+    .hint { font-size: 0.8125rem; color: #786658; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #fffaf5; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 12px; border-bottom: 1px solid #f0e6da; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c4a3a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </div>
+    <div style="font-size: 1.0625rem; font-weight: 800; flex-grow: 1;">Put the bins out</div>
+  </div>
+
+  <div style="flex-grow: 1; padding: 16px; overflow: hidden;">
+    <div style="background: #fff; border: 1px solid #f0e6da; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 14px;">
+
+      <div>
+        <div class="label">Task</div>
+        <div style="border: 1.5px solid #f0e6da; border-radius: 10px; padding: 10px 12px; font-weight: 600;">Put the bins out</div>
+      </div>
+
+      <div>
+        <div class="label">How often</div>
+        <div class="opt"><span class="dot"></span>Every day</div>
+        <div class="opt"><span class="dot"></span>Weekdays</div>
+        <div class="opt"><span class="dot"></span>Weekends</div>
+        <div class="opt on"><span class="dot"></span>Chosen days</div>
+        <div class="sub">
+          <div class="day">M</div><div class="day on">T</div><div class="day">W</div><div class="day">T</div><div class="day">F</div><div class="day">S</div><div class="day">S</div>
+        </div>
+        <div class="opt"><span class="dot"></span>Every few days</div>
+        <div class="opt"><span class="dot"></span>Monthly, on a date</div>
+        <div class="opt"><span class="dot"></span>Monthly, on a weekday</div>
+        <div class="opt"><span class="dot"></span>Once</div>
+        <div class="hint">Weekdays and Weekends are shortcuts for Monday to Friday and Saturday and Sunday. A day number the month lacks, like the 31st, falls on its last day.</div>
+      </div>
+
+      <div>
+        <div class="label">Whose job</div>
+        <div class="opt"><span class="dot"></span>One person</div>
+        <div class="opt on"><span class="dot"></span>Taking turns</div>
+        <div class="opt"><span class="dot"></span>Anyone</div>
+        <div class="opt"><span class="dot"></span>Everyone</div>
+        <div class="hint">Taking turns passes it on each time it comes up, in the order below.</div>
+      </div>
+
+      <div>
+        <div class="label">Who, in order</div>
+        <div class="opt">1. Mia &nbsp;▲ ▼</div>
+        <div class="opt">2. Theo &nbsp;▲ ▼</div>
+      </div>
+
+      <div style="height: 44px; border-radius: 12px; background: #e85d24; color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center;">Save</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

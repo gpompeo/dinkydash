@@ -24,7 +24,7 @@
                 {% elif section_name == 'pets' %}
                     {{ item.type or "Pet" }}
                 {% elif section_name == 'recurring' %}
-                    {{ item.choices | join(' → ') if item.choices else "Nobody assigned" }}
+                    {{ item.when }} &middot; {% if item.mode == 'anyone' %}Anyone{% elif item.mode == 'everyone' %}Everyone{% elif item.names %}{{ (item.names[:1] if item.mode == 'fixed' else item.names) | join(' → ') }}{% else %}Nobody assigned{% endif %}
                 {% elif section_name == 'special_dates' %}
                     {{ extras.dates[loop.index0] }}
                 {% elif section_name == 'calendars' %}

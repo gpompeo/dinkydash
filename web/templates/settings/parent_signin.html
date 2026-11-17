@@ -1,0 +1,34 @@
+{% extends "settings/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block manifest %}{% endblock %}
+{# No pill: the page it leads to would only be a redirect back to here. #}
+{% block feedback %}{% endblock %}
+
+{% block appbar %}
+<h1 class="wordmark">DinkyDash</h1>
+{% endblock %}
+
+{% block content %}
+{% if problem %}
+<div class="flash error" role="alert">{{ problem }}</div>
+{% endif %}
+
+<div class="card pad" style="display:flex;flex-direction:column;gap:0.875rem;">
+    <div>
+        <div class="card-title">Parent sign-in</div>
+        <div class="hint" style="margin-top:0.1875rem;">
+            Type the parent password to change the settings.
+        </div>
+    </div>
+    <form method="post" action="{{ url_for('parent.sign_in') }}"
+          style="display:flex;flex-direction:column;gap:0.875rem;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   autocomplete="current-password" required autofocus>
+        </div>
+        <button class="btn" type="submit">Sign in</button>
+    </form>
+</div>
+{% endblock %}

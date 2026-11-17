@@ -19,8 +19,9 @@ CONFIG = {
     "timezone": "Europe/Berlin",
     "theme": "light",
     "people": [{"id": "mia12345", "name": "Mia", "date_of_birth": "2017-03-15"}],
-    "recurring": [{"id": "job12345", "title": "Set the table",
-                   "choices": ["Mia"], "emoji": "🍽"}],
+    "tasks": [{"id": "job12345", "title": "Set the table", "emoji": "🍽",
+               "recurrence": {"kind": "daily"},
+               "assignment": {"mode": "fixed", "people": ["mia12345"]}}],
 }
 
 def payload_for_today():
@@ -213,9 +214,9 @@ class TestABoardOutOfPostgres:
         # A stored note still loads. The dashboard does not show it.
         assert "An octopus fact." not in page
 
-    def test_it_recomputes_the_chore_rather_than_reading_it(
+    def test_it_recomputes_the_task_rather_than_reading_it(
             self, client, pg_pool, pg_family):
-        # Chores are a pure function of config + date and are not in the
+        # Tasks are a pure function of config + date and are not in the
         # payload, so seeing one proves build_view ran over the database config.
         page = client.get(board_path(pg_pool, pg_family)).get_data(as_text=True)
         assert "Set the table" in page
@@ -249,13 +250,12 @@ class TestABoardOutOfPostgres:
         leaked below the storage layer — which is the thing CLAUDE.md's "every
         change must work in both" exists to prevent.
 
-        **One line is allowed to differ, and exactly one**: the `<link
-        rel=manifest>`. A wall panel reaches its manifest at
+        Compare the shared dashboard with the same storage capabilities. A wall
+        panel reaches its manifest at
         `/s/<token>/manifest.webmanifest`, because the signed-in one is behind
         the session and would hand a tablet a redirect to `/login` instead of a
-        name and an icon (DIN-42). Normalising that href rather than dropping
-        the assertion is the point — every other byte still has to match, so a
-        second divergence fails here rather than being absorbed.
+        name and an icon. File stores also support check-ins and change polling,
+        which the frozen cloud store does not.
         """
         import re
 
@@ -271,12 +271,20 @@ class TestABoardOutOfPostgres:
         today = payload_for_today()
         file_store.save_agenda(file_store.load_config(), today)
         file_store.save_brief(file_store.load_config(), today)
-        from_file = create_app(file_store).test_client().get("/").get_data(as_text=True)
         from_rows = client.get(board_path(pg_pool, pg_family)).get_data(as_text=True)
+        file_client = create_app(file_store).test_client()
+        with_checkins = file_client.get("/").get_data(as_text=True)
+        assert "Yesterday, still open" in with_checkins
+        assert "Yesterday, still open" not in from_rows
+        monkeypatch.setattr(file_store, "load_completions", None)
+        from_file = file_client.get("/").get_data(as_text=True)
 
         manifest = re.compile(r'<link rel="manifest" href="[^"]+">')
         assert manifest.search(from_file) and manifest.search(from_rows)
-        assert manifest.sub("[manifest]", from_rows) == manifest.sub("[manifest]", from_file)
+        # Self-hosted pages poll the change counter; the store behind a cloud page has none (D24).
+        polling = re.compile(r' data-changes="[^"]*"')
+        assert (polling.sub("", manifest.sub("[manifest]", from_rows))
+                == polling.sub("", manifest.sub("[manifest]", from_file)))
 
 
 class TestWhichModelRunsIsNotAHostedSetting:

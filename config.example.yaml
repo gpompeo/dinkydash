@@ -39,7 +39,7 @@ calendars:
     enabled: true
     # shared_with: ["partner@example.com"]
 
-# Birthdays here become countdowns; names here are who chores rotate between.
+# Birthdays here become countdowns; tasks name people by `id`, so a rename changes nothing.
 #
 # Mia, Theo and Biscuit are invented, and `invented: true` is how the app
 # knows: the settings page asks you to replace them, and the daily brief waits
@@ -47,13 +47,15 @@ calendars:
 # Saving a person from the settings page clears the mark; so does deleting the
 # line. A family written by hand needs no marks at all.
 people:
-  - name: "Mia"
+  - id: mia
+    name: "Mia"
     date_of_birth: "2017-03-15"
     avatar_emoji: "🦖"
     avatar_color: purple
     interests: "dinosaurs, drawing, swimming"
     invented: true
-  - name: "Theo"
+  - id: theo
+    name: "Theo"
     date_of_birth: "2019-06-20"
     avatar_emoji: "⚽"
     avatar_color: blue
@@ -66,14 +68,34 @@ pets:
     avatar_emoji: "🐕"
     invented: true
 
-# Rotated one person per day, by day of the year, in the order listed.
-recurring:
-  - title: "Set the table"
+# Modules a family can switch off. Off hides it everywhere and keeps its data.
+features:
+  tasks: true
+  special_dates: true
+  shopping: false
+
+# Tasks come up every day (`recurrence.kind: daily`) and hand over in the order listed.
+# `assignment.mode: rotate` counts occurrences; `offset` shifts where the rotation starts.
+# Other modes: fixed (the first person listed), anyone, everyone.
+tasks:
+  - id: table
+    title: "Set the table"
     emoji: "🍽"
-    choices: ["Mia", "Theo"]
-  - title: "Feed Biscuit"
+    recurrence:
+      kind: daily
+    assignment:
+      mode: rotate
+      people: [mia, theo]
+      offset: 0
+  - id: biscuit
+    title: "Feed Biscuit"
     emoji: "🦴"
-    choices: ["Theo", "Mia"]
+    recurrence:
+      kind: daily
+    assignment:
+      mode: rotate
+      people: [theo, mia]
+      offset: 0
 
 # Countdowns that come back every year. Day and month only.
 special_dates:

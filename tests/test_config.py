@@ -36,7 +36,7 @@ class TestDefaults:
         assert config["theme"] == "light"
         assert config["claude_model"] == "claude-haiku-4-5"
         assert config["pets"] == []
-        assert config["recurring"] == []
+        assert config["tasks"] == []
 
     def test_an_unknown_theme_is_corrected(self, tmp_path):
         path = tmp_path / "config.yaml"
@@ -312,36 +312,28 @@ class TestTheInventedHousehold:
         assert config_module.timezone_is_set({"timezone": "Atlantic/Reykjavik"}) is True
 
 
-class TestPeopleAndTheirChores:
-    """Chores hold names as text, so a rename or a removal has to follow them."""
+class TestRemovingAPersonFromTasks:
+    """Tasks hold person ids, so a rename needs no following; a removal does."""
 
-    def test_a_rename_follows_into_every_rotation(self):
-        home = {"recurring": [{"title": "Table", "choices": ["Mia", "Theo"]},
-                              {"title": "Dog", "choices": ["Theo", "Mia"]}]}
-        config_module.rename_in_chores(home, "Mia", "Anna")
-        assert [c["choices"] for c in home["recurring"]] == [["Anna", "Theo"], ["Theo", "Anna"]]
+    def test_a_removal_leaves_every_assignment(self):
+        home = {"tasks": [{"assignment": {"mode": "rotate", "people": ["m", "t"]}},
+                          {"assignment": {"mode": "fixed", "people": ["m"]}}]}
+        config_module.drop_from_tasks(home, "m")
+        assert [t["assignment"]["people"] for t in home["tasks"]] == [["t"], []]
 
-    def test_a_removal_leaves_every_rotation(self):
-        home = {"recurring": [{"title": "Table", "choices": ["Mia", "Theo"]},
-                              {"title": "Dog", "choices": ["Mia"]}]}
-        config_module.drop_from_chores(home, "Mia")
-        assert [c["choices"] for c in home["recurring"]] == [["Theo"], []]
-
-    def test_a_chore_with_no_rotation_survives_both(self):
-        home = {"recurring": [{"title": "Table"}]}
-        config_module.rename_in_chores(home, "Mia", "Anna")
-        config_module.drop_from_chores(home, "Mia")
-        assert home["recurring"] == [{"title": "Table"}]
+    def test_a_task_with_no_assignment_survives(self):
+        home = {"tasks": [{"title": "Table"}]}
+        config_module.drop_from_tasks(home, "m")
+        assert home["tasks"] == [{"title": "Table"}]
 
     def test_the_file_keeps_its_flow_style_lists(self, tmp_path):
-        # Edited in place: `choices: ["Mia", "Theo"]` must not come back as a
-        # block sequence the first time somebody is renamed.
         path = tmp_path / "config.yaml"
-        path.write_text('recurring:\n  - title: "Table"\n    choices: ["Mia", "Theo"]\n')
+        path.write_text("tasks:\n  - title: Table\n    assignment:\n"
+                        "      mode: rotate\n      people: [m, t]\n")
         config = config_module.load_config(path)
-        config_module.rename_in_chores(config, "Mia", "Anna")
+        config_module.drop_from_tasks(config, "m")
         config_module.save_config(config, path)
-        assert 'choices: ["Anna", "Theo"]' in path.read_text()
+        assert "people: [t]" in path.read_text()
 
 
 def test_people_names_skips_the_nameless(config_file):

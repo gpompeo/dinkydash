@@ -3,6 +3,8 @@
 Guidance for `dinkydash/` and `migrations/`. The root `CLAUDE.md` holds the rules that apply
 to every change; this file holds the ones that only bite here.
 
+`streaks.py` (`person_streak`, `best_person_streak`, `task_streak`) works out streaks from config and completions on every call; nothing stores them, and the prompt never sees them. `board.build_view(..., completions=)` adds done state, streaks and the yesterday group, and `None` (cloud) leaves the plain list.
+
 ## The storage seam
 
 Seven operations, on one object, and nothing above them knows what is behind it:
@@ -13,6 +15,8 @@ load_payload(config)         save_agenda(config, agenda)
                              save_brief(config, brief)
 recent_notes(config, days)   record_note(config, entry, keep)
 ```
+
+`FileStore` also has `load_completions(since)`, `record_completion(entry, today)`, `remove_completion(entry, today)` and `drop_person_completions(person_id)` for `completions.json` (entries `{task_id, date, person_id, completed_at}`, keyed on person ids, trimmed to 400 days on every write, replaced atomically; the date rules live in `checkin.py`), and `change_token()` (a number from the modification time and size of the config, payload, `completions.json` and `shopping.json`; never their content, so `/changes` can serve it) and `load_auth()` and `update_auth(change)` for `auth.json` (member PIN hashes, and the screen token under `screen_token`); `PostgresStore` has neither, and the phone page is not registered in cloud mode.
 
 Both implementations exist. `FileStore(config_path)` is `config.yaml` and two JSON files in one
 directory. `PostgresStore(pool, family_id)` is the same seven operations against rows, with the
@@ -94,6 +98,17 @@ fourth never reaches one family at all, so the rule that matters is untouched. `
 is where the second and third arrive, and it has both doors in one file on purpose — `is_admin`,
 the gate on the operator's page, sits beside them for the same reason: if another is ever added it
 should be as obvious as those are.
+
+## Household modules in the engine
+
+Pure modules, all taking dates and data and never reading the clock or a file: `recurrence.py`
+(`occurs_on`, `occurrence_index`; malformed rules never occur), `streaks.py` (worked out from
+completions each time, never stored), `activity.py` (the thirty-day grid), `checkin.py` (who may tick
+which day), `pins.py` (scrypt hashes), `taskform.py` (task form state and plain-English description).
+`context.tasks_for(config, day)` resolves assignment, and rotation counts `occurrence_index` plus
+`assignment.offset`. `FileStore` owns `completions.json` (trimmed to 400 days on write),
+`shopping.json`, `auth.json` and `change_token()`. `PostgresStore` has none of them: the pages that
+need them check with `getattr` and switch off in cloud mode. Shopping text never goes into a prompt.
 
 ## Signing somebody in, and signing somebody up
 
@@ -429,9 +444,12 @@ changes exactly the lines it means to.
 
 `config.example.yaml` documents every key. Two are migrated on load: a single `calendar_url` becomes
 the first entry in `calendars`, and `calendar_filter_emails` becomes that entry's `shared_with` — or
-is dropped with a warning when there is no single URL to attach it to.
+is dropped with a warning when there is no single URL to attach it to. A third, `recurring`, becomes
+`tasks` (`config.migrate_chores`): daily rotating tasks that name people by id, with an `assignment.offset`
+chosen so today's person is unchanged. The people's new ids exist only in memory until `ensure_ids`
+reports the migration (`_migrated`) and the settings UI saves once.
 
-Every item in the five edited lists — people, pets, recurring, special_dates, calendars — carries a
+Every item in the five edited lists — people, pets, tasks, special_dates, calendars — carries a
 short `id`. The settings UI addresses items by it, because a position is not an identity: delete the
 first person and everyone below renumbers onto somebody else's edit form. Ids are backfilled by
 `ensure_ids`, which the settings UI calls on load and saves once if it added any. Deliberately not

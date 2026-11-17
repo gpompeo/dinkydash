@@ -20,11 +20,12 @@ CONFIG = {
     "claude_model": "claude-haiku-4-5",
     "max_tokens": 1024,
     "people": [
-        {"name": "Mia", "date_of_birth": "2017-03-15", "interests": "dinosaurs"},
-        {"name": "Theo", "date_of_birth": "2019-06-20"},
+        {"id": "mia", "name": "Mia", "date_of_birth": "2017-03-15", "interests": "dinosaurs"},
+        {"id": "theo", "name": "Theo", "date_of_birth": "2019-06-20"},
     ],
     "pets": [{"name": "Biscuit", "type": "dog"}],
-    "recurring": [{"title": "Set the table", "emoji": "🍽", "choices": ["Mia", "Theo"]}],
+    "tasks": [{"id": "t1", "title": "Set the table", "emoji": "🍽", "recurrence": {"kind": "daily"},
+               "assignment": {"mode": "rotate", "people": ["mia", "theo"], "offset": 0}}],
     "special_dates": [{"title": "Christmas", "emoji": "🎄", "date": "12/25"}],
 }
 
@@ -126,7 +127,7 @@ class TestPrompt:
     def build(self, **kwargs):
         defaults = dict(
             config=CONFIG, today=TODAY, events_today=EVENTS[:2], events_soon=EVENTS[2:3],
-            chores=[{"title": "Set the table", "assigned_to": "Mia", "emoji": "🍽"}],
+            tasks=[{"title": "Set the table", "assigned_to": "Mia", "emoji": "🍽"}],
             countdowns=[{"title": "Christmas", "days": 113, "emoji": "🎄"}],
         )
         defaults.update(kwargs)
@@ -179,11 +180,11 @@ class TestGenerate:
         payload = generate(CONFIG, TODAY, EVENTS, client=FakeClient())
         assert len(payload["events"]) == len(EVENTS)
 
-    def test_omits_chores_and_countdowns_from_the_payload(self, client):
+    def test_omits_tasks_and_countdowns_from_the_payload(self, client):
         # They are pure functions of config + date, so the dashboard recomputes them
         # at render time rather than trusting a possibly-stale copy.
         payload = generate(CONFIG, TODAY, EVENTS, client=client)
-        assert "chores" not in payload
+        assert "tasks" not in payload
         assert "countdowns" not in payload
 
     def test_the_prompt_sees_todays_events_and_the_near_future(self, client):
@@ -214,3 +215,22 @@ class TestGenerate:
     def test_a_failed_call_propagates_rather_than_writing_a_blank_board(self):
         with pytest.raises(GenerationError):
             generate(CONFIG, TODAY, EVENTS, client=FakeClient(raises=RuntimeError("boom")))
+
+
+class TestTasksInThePrompt:
+    """The model is told what is due today and who has it, and nothing else about tasks."""
+
+    def test_due_tasks_and_their_assignees_only(self):
+        from dinkydash.context import tasks_for
+
+        config = {**CONFIG, "tasks": [
+            {"id": "t1", "title": "Set the table", "emoji": "🍽", "recurrence": {"kind": "daily"},
+             "assignment": {"mode": "fixed", "people": ["mia"], "offset": 0}},
+            {"id": "t2", "title": "Bins", "recurrence": {"kind": "weekdays", "days": [0]},
+             "assignment": {"mode": "anyone", "people": []}},
+        ]}
+        prompt = build_user_prompt(config, TODAY, [], [], tasks_for(config, TODAY), [])
+        assert "Tasks due today:\n- Set the table: Mia" in prompt
+        assert "Bins" not in prompt  # 3 September 2026 is a Thursday
+        assert "t1" not in prompt and "🍽" not in prompt
+        assert "streak" not in prompt.lower() and "done" not in prompt.lower()

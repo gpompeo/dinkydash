@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Nunito', system-ui, -apple-system, sans-serif; background: #fffaf5; color: #2d2319; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    .cell { width: 9px; height: 9px; border-radius: 2px; background: #f0e6da; }
+    .cell.done { background: #16a34a; }
+    .cell.missed { background: #fff; border: 1.5px solid #c4b3a3; }
+    .label { font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: #786658; }
+  </style>
+</helmet>
+
+<div style="width: 390px; height: 844px; background: #fffaf5; display: flex; flex-direction: column; overflow: hidden;">
+
+  <div style="display: flex; align-items: center; gap: 4px; height: 56px; padding: 0 12px; border-bottom: 1px solid #f0e6da; flex-shrink: 0;">
+    <div style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -10px;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5c4a3a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </div>
+    <div style="font-size: 1.0625rem; font-weight: 800; flex-grow: 1;">Activity</div>
+  </div>
+
+  <div style="flex-grow: 1; padding: 16px; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+
+    <div style="background: #fff; border: 1px solid #f0e6da; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px;">
+      <div class="label">Last 30 days</div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="font-size: 1.2rem;">🧒</div>
+        <div style="flex-grow: 1;">
+          <div style="font-size: 0.9375rem; font-weight: 800;">Mia</div>
+          <div style="font-size: 0.8125rem; color: #786658;">5 days in a row · best 12</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 3px; flex-wrap: wrap;">
+        <!-- one square per day, oldest first; green done, ring missed, grey nothing due -->
+        <div class="cell done"></div><div class="cell done"></div><div class="cell"></div><div class="cell missed"></div><div class="cell done"></div>
+        <div class="cell done"></div><div class="cell done"></div><div class="cell done"></div><div class="cell done"></div><div class="cell done"></div>
+      </div>
+      <div style="font-size: 0.75rem; color: #786658;">Each square is a day. Green is everything done; a ring is something left; grey is nothing due.</div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+      <div class="label">Not ticked, last 14 days</div>
+      <div style="background: #fff; border: 1px solid #f0e6da; border-radius: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px;">
+          <div style="font-size: 1.3rem;">🗑️</div>
+          <div style="flex-grow: 1;">
+            <div style="font-size: 0.9375rem; font-weight: 800;">Bins</div>
+            <div style="font-size: 0.8125rem; color: #786658;">Mia · Tuesday 3 November</div>
+          </div>
+          <div style="height: 44px; padding: 0 16px; border: 1.5px solid #e2d7c9; border-radius: 12px; display: flex; align-items: center; font-weight: 800; font-size: 0.875rem;">Tick</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

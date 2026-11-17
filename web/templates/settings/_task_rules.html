@@ -1,0 +1,68 @@
+{# The recurrence and assignment pickers. Plain radios, each kind's own controls beside it, so the
+   form needs no script. `item.rec` and `item.mode` are the starting values. #}
+{% if kind == 'recurrence' %}
+{% set rec = item.rec %}
+<div class="choices">
+    {% for value, text in task_choices.recurrence %}
+    <div class="choice">
+        <div class="checkline">
+            <input type="radio" id="rec-{{ value }}" name="rec_kind" value="{{ value }}" {{ 'checked' if rec.kind == value }}>
+            <label for="rec-{{ value }}">{{ text }}</label>
+        </div>
+        {% if value == 'days' %}
+        <div class="subfield days">
+            {% for day in task_choices.days %}
+            <span class="daybox"><input type="checkbox" id="rec-day-{{ loop.index0 }}" name="rec_days" value="{{ loop.index0 }}" {{ 'checked' if loop.index0 in rec.days }}><label for="rec-day-{{ loop.index0 }}" aria-label="{{ day }}">{{ day[:1] }}</label></span>
+            {% endfor %}
+        </div>
+        {% elif value == 'interval' %}
+        <div class="subfield">
+            <label for="f-rec-every">Every</label>
+            <input type="number" inputmode="numeric" min="1" max="365" id="f-rec-every" name="rec_every" value="{{ rec.every }}" class="short">
+            <span>days, starting</span>
+            <input type="date" id="f-rec-start" name="rec_start" value="{{ rec.start }}" aria-label="First day">
+        </div>
+        {% elif value == 'monthly_day' %}
+        <div class="subfield">
+            <label for="f-rec-day">On day</label>
+            <select id="f-rec-day" name="rec_day">
+                {% for n in range(1, 32) %}<option value="{{ n }}" {{ 'selected' if n | string == rec.day | string }}>{{ n }}</option>{% endfor %}
+            </select>
+        </div>
+        {% elif value == 'monthly_nth' %}
+        <div class="subfield">
+            <label for="f-rec-nth" class="sr-only">Which</label>
+            <select id="f-rec-nth" name="rec_nth">
+                {% for n, text in task_choices.nth %}<option value="{{ n }}" {{ 'selected' if n == rec.nth }}>{{ text }}</option>{% endfor %}
+            </select>
+            <label for="f-rec-weekday" class="sr-only">Day of the week</label>
+            <select id="f-rec-weekday" name="rec_weekday">
+                {% for day in task_choices.days %}<option value="{{ loop.index0 }}" {{ 'selected' if loop.index0 == rec.weekday }}>{{ day }}</option>{% endfor %}
+            </select>
+        </div>
+        {% elif value == 'once' %}
+        <div class="subfield">
+            <label for="f-rec-date">On</label>
+            <input type="date" id="f-rec-date" name="rec_date" value="{{ rec.date }}">
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% for key in ('rec_kind', 'rec_days', 'rec_every', 'rec_start', 'rec_day', 'rec_nth', 'rec_weekday', 'rec_date') if problems.get(key) %}
+<div class="field-error" id="error-{{ key }}">{{ problems[key] }}</div>
+{% endfor %}
+<div class="hint" id="hint-recurrence">Weekdays and Weekends are shortcuts for Monday to Friday and Saturday and Sunday. A day number the month lacks, like the 31st, falls on the month's last day.</div>
+
+{% elif kind == 'assignment' %}
+<div class="choices">
+    {% for value, text, blurb in task_choices.modes %}
+    <div class="checkline">
+        <input type="radio" id="mode-{{ value }}" name="mode" value="{{ value }}" aria-describedby="mode-{{ value }}-hint" {{ 'checked' if item.mode == value }}>
+        <label for="mode-{{ value }}">{{ text }}</label>
+    </div>
+    <div class="hint choice-hint" id="mode-{{ value }}-hint">{{ blurb }}</div>
+    {% endfor %}
+</div>
+{% if problems.get('mode') %}<div class="field-error" id="error-mode">{{ problems['mode'] }}</div>{% endif %}
+{% endif %}

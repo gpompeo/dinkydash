@@ -1,0 +1,38 @@
+{% extends "settings/base.html" %}
+{% block title %}Phone PINs{% endblock %}
+{% set back_href = url_for('settings.home') %}
+{% set back_label = 'Settings' %}
+
+{% block content %}
+<div class="note-box">
+    A PIN stops one family member picking another's name on the phone page. It's
+    {{ min_digits }} to {{ max_digits }} digits. Leave a person without one and anybody can pick
+    their name.
+</div>
+<div class="card">
+    {% for person in people %}
+    <div class="row" style="flex-direction:column;align-items:stretch;gap:0.5rem;">
+        <div class="row-main">
+            <div class="row-title">{{ person.emoji or '' }} {{ person.name }}</div>
+            <div class="row-sub">{{ 'Has a PIN' if person.id in pinned else 'No PIN' }}</div>
+        </div>
+        <form method="post" action="{{ url_for('pins.set_pin', person_id=person.id) }}"
+              style="display:flex;gap:0.5rem;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{{ '{' }}{{ min_digits }},{{ max_digits }}{{ '}' }}"
+                   maxlength="{{ max_digits }}" autocomplete="off" required
+                   aria-label="New PIN for {{ person.name }}">
+            <button class="btn outline" type="submit">{{ 'Change PIN' if person.id in pinned else 'Set PIN' }}</button>
+        </form>
+        {% if person.id in pinned %}
+        <form method="post" action="{{ url_for('pins.reset_pin', person_id=person.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn outline" type="submit">Remove PIN</button>
+        </form>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="row"><div class="row-main"><div class="row-sub">Add people first, then give them PINs here.</div></div></div>
+    {% endfor %}
+</div>
+{% endblock %}

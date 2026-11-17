@@ -28,7 +28,7 @@ of a screen showing your dashboard.
 | What | Where it comes from | Why |
 |---|---|---|
 | **Your email address** | You type it to sign in | It is the whole of the account. There is no password |
-| **Your family's details** | You type them: names, dates of birth, emoji, chores, special dates | They are what the dashboard shows |
+| **Your family's details** | You type them: names, dates of birth, emoji, tasks, special dates | They are what the dashboard shows |
 | **Your calendar links** | You paste them | To fetch the events the dashboard shows |
 | **Your calendar events** | Fetched from those links | The agenda on the dashboard |
 | **The headline** | Written by Claude once a day | The line at the top of the dashboard |
