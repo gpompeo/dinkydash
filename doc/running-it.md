@@ -65,8 +65,9 @@ token lives in `auth.json`.
 ## Phones, check-ins and the shopping list
 
 Each person opens `/h` on their own phone, picks their name and ticks off today's tasks (and
-yesterday's). A parent can set a PIN per person under **Settings → PINs**, so one child can't tick
-for another. Parents who are signed in can correct the last fourteen days on the **Activity** page.
+yesterday's). With sign-in on, a parent sets a PIN per person under **Settings → Phone PINs**,
+so one child can't tick for another. Parents who are signed in can pick anyone without a PIN and
+correct the last fourteen days on the **Activity** page. With sign-in off, anyone can pick a name.
 Streaks are worked out from the check-ins each time, never stored. The shopping list sits on the same
 page while the Shopping switch is on. Turn Tasks, Shopping or Special dates off on the settings home
 and the module disappears everywhere; its data stays where it is.

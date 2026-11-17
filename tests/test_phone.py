@@ -203,7 +203,7 @@ class TestSettingPins:
         client.post("/settings/pins/mia1/reset")
         assert "mia1" not in store.load_auth()["pins"]
         member = client_for(locked_app)
-        assert pick(member, "mia1").headers["Location"].endswith("/h")
+        assert pick(member, "mia1").status_code == 401
 
     def test_an_unknown_person_is_a_404(self, locked_app):
         assert set_pin(parent_client(locked_app), "nobody", "4821").status_code == 404
@@ -235,9 +235,68 @@ class TestSignInOn:
         assert response.status_code == 302
         assert response.headers["Location"].endswith("/h/who")
 
+    def test_a_session_from_before_sign_in_cannot_use_protected_phone_routes(
+            self, locked_app, store, monkeypatch):
+        config = store.load_config()
+        config["features"]["shopping"] = True
+        store.save_config(config)
+        monkeypatch.delenv(parent.PASSWORD_VARIABLE)
+        member = client_for(locked_app)
+        pick(member, "mia1")
+        monkeypatch.setenv(parent.PASSWORD_VARIABLE, PASSWORD)
+        set_pin(parent_client(locked_app), "mia1", "4821")
+
+        assert member.get("/h/changes").status_code == 401
+        assert member.post("/h/tick").status_code == 401
+        for path in ("/h/shopping/add", "/h/shopping/clear", "/h/shopping/item/edit",
+                     "/h/shopping/item/tick", "/h/shopping/item/delete"):
+            assert member.post(path, data={"text": "Milk"}).status_code == 401
+        assert member.get("/h").headers["Location"].endswith("/h/who")
+
+    @pytest.mark.parametrize("action", ["set_same", "change", "reset", "reset_then_set_same"])
+    def test_pin_changes_invalidate_only_that_person_even_after_restart(
+            self, locked_app, store, action):
+        guardian = parent_client(locked_app)
+        set_pin(guardian, "mia1", "4821")
+        set_pin(guardian, "sam1", "1357")
+        mia, sam = client_for(locked_app), client_for(locked_app)
+        pick(mia, "mia1", "4821")
+        pick(sam, "sam1", "1357")
+
+        if action in ("reset", "reset_then_set_same"):
+            guardian.post("/settings/pins/mia1/reset")
+            if action == "reset_then_set_same":
+                set_pin(guardian, "mia1", "4821")
+        else:
+            set_pin(guardian, "mia1", "4821" if action == "set_same" else "2468")
+
+        restarted = create_app(store)
+        mia_after, sam_after = client_for(restarted), client_for(restarted)
+        for before, after in ((mia, mia_after), (sam, sam_after)):
+            after.set_cookie("session", before.get_cookie("session").value)
+        assert mia_after.get("/h/changes").status_code == 401
+        assert sam_after.get("/h").status_code == 200
+        if action == "reset":
+            assert pick(mia_after, "mia1", "4821").status_code == 401
+        else:
+            pin = "2468" if action == "change" else "4821"
+            assert pick(mia_after, "mia1", pin).status_code == 302
+            assert mia_after.get("/h").status_code == 200
+
     def test_the_right_pin_continues(self, with_pin):
         assert pick(with_pin, "mia1", "4821").headers["Location"].endswith("/h")
         assert with_pin.get("/h").status_code == 200
+
+    def test_a_verified_member_can_use_shopping_and_the_change_counter(self, locked_app, store):
+        config = store.load_config()
+        config["features"]["shopping"] = True
+        store.save_config(config)
+        set_pin(parent_client(locked_app), "mia1", "4821")
+        member = client_for(locked_app)
+        pick(member, "mia1", "4821")
+        assert member.get("/h/changes").status_code == 200
+        assert member.post("/h/shopping/add", data={"text": "Milk"}).status_code == 302
+        assert b"Milk" in member.get("/h/shopping").data
 
     def test_a_wrong_pin_is_refused(self, with_pin):
         assert pick(with_pin, "mia1", "0000").status_code == 401
@@ -247,8 +306,11 @@ class TestSignInOn:
         assert pick(with_pin, "mia1").status_code == 401
         assert with_pin.get("/h").status_code == 302
 
-    def test_a_person_without_a_pin_just_picks_their_name(self, with_pin):
-        assert pick(with_pin, "sam1").headers["Location"].endswith("/h")
+    def test_a_person_without_a_pin_must_ask_a_parent(self, with_pin):
+        response = pick(with_pin, "sam1")
+        assert response.status_code == 401
+        assert b"Ask a parent to set a PIN" in response.data
+        assert with_pin.get("/h").status_code == 302
 
     def test_only_a_person_with_a_pin_is_asked_for_one(self, with_pin):
         page = with_pin.get("/h/who").get_data(as_text=True)
@@ -260,6 +322,8 @@ class TestSignInOn:
         assert pick(client, "mia1").headers["Location"].endswith("/h")
         # ...and is still signed in to the settings.
         assert client.get("/settings/").status_code == 200
+        assert pick(client, "sam1").headers["Location"].endswith("/h")
+        assert client.get("/h").status_code == 200
 
     def test_a_pin_left_over_from_sign_in_is_not_asked_for_when_it_is_off(
             self, locked_app, store, monkeypatch):
@@ -336,6 +400,13 @@ class TestTicking:
         store.config_path.write_text(TASK_CONFIG)
         return today_of(store)
 
+    @pytest.fixture
+    def member(self, locked_app):
+        set_pin(parent_client(locked_app), "mia1", "4821")
+        client = client_for(locked_app)
+        pick(client, "mia1", "4821")
+        return client
+
     def test_without_sign_in_anyone_ticks_anything(self, open_client, store, today):
         pick(open_client, "mia1")
         assert tick(open_client, "tk-sam", today, "sam1").status_code == 302
@@ -376,25 +447,22 @@ class TestTicking:
         assert tick(open_client, "nope", today, "mia1").status_code == 403
         assert tick(open_client, "tk-mia", today, "sam1").status_code == 403
 
-    def test_a_member_ticks_their_own_and_anyone_tasks(self, locked, store, today):
-        pick(locked, "mia1")
-        assert tick(locked, "tk-mia", today).status_code == 302
-        assert tick(locked, "tk-any", today).status_code == 302
-        assert tick(locked, "tk-all", today).status_code == 302
+    def test_a_member_ticks_their_own_and_anyone_tasks(self, member, store, today):
+        assert tick(member, "tk-mia", today).status_code == 302
+        assert tick(member, "tk-any", today).status_code == 302
+        assert tick(member, "tk-all", today).status_code == 302
         assert ticked(store) == {("tk-mia", today.isoformat(), "mia1"),
                                  ("tk-any", today.isoformat(), "mia1"),
                                  ("tk-all", today.isoformat(), "mia1")}
 
-    def test_a_member_cannot_tick_somebody_elses(self, locked, store, today):
-        pick(locked, "mia1")
-        assert tick(locked, "tk-sam", today, "sam1").status_code == 403
-        assert tick(locked, "tk-sam", today).status_code == 403
-        assert tick(locked, "tk-any", today, "sam1").status_code == 403
+    def test_a_member_cannot_tick_somebody_elses(self, member, store, today):
+        assert tick(member, "tk-sam", today, "sam1").status_code == 403
+        assert tick(member, "tk-sam", today).status_code == 403
+        assert tick(member, "tk-any", today, "sam1").status_code == 403
         assert ticked(store) == set()
 
-    def test_a_member_is_limited_to_two_days(self, locked, today):
-        pick(locked, "mia1")
-        assert tick(locked, "tk-mia", today - timedelta(days=2)).status_code == 403
+    def test_a_member_is_limited_to_two_days(self, member, today):
+        assert tick(member, "tk-mia", today - timedelta(days=2)).status_code == 403
 
     def test_a_parent_ticks_any_date_in_fourteen_days_and_no_older(self, locked_app, store, today):
         client = parent_client(locked_app)
@@ -417,9 +485,8 @@ class TestTicking:
         pick(open_client, "mia1")
         assert open_client.post("/h/tick", data={"task_id": "tk-mia", "date": "x"}).status_code == 400
 
-    def test_the_tab_shows_a_member_only_their_rows(self, locked, today):
-        pick(locked, "mia1")
-        page = locked.get("/h/tasks").get_data(as_text=True)
+    def test_the_tab_shows_a_member_only_their_rows(self, member, today):
+        page = member.get("/h/tasks").get_data(as_text=True)
         assert "Feed the fish" in page and "Empty the bins" in page
         assert "Lay the table" not in page
 

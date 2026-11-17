@@ -181,8 +181,9 @@ Acceptance:
 - With nothing configured, behaviour is unchanged for an existing install: no sign-in, same pages.
 - Switching a feature off removes it from the wall, the settings home and the phone page, and
   switching it back on restores its data.
-- With `DINKYDASH_PARENT_PASSWORD` set, `/settings` and `/h` are refused without a session, `/`
-  redirects to sign-in, and the wall works at `/s/<token>`.
+- With `DINKYDASH_PARENT_PASSWORD` set, `/settings` requires a parent session and `/h` requires a
+  selected person with a verified PIN or a parent session. `/` redirects to sign-in, and the wall
+  works at `/s/<token>`.
 - Editing the config in another browser moves the wall within the poll interval.
 
 ### Phase 2 — tasks
@@ -237,7 +238,8 @@ With it set:
 - **Parent:** signs in with the password. Settings, Activity, corrections, PIN and token
   management.
 - **Member:** a person from the People list who picks their name on the phone page and enters a PIN
-  if the parent set one. A member ticks their own tasks and "Anyone" tasks, and adds, edits, ticks
+  set by a parent. Without a PIN, they need to ask a parent to set one. A signed-in parent can pick
+  anyone without a PIN. A member ticks their own tasks and "Anyone" tasks, and adds, edits, ticks
   and deletes shopping items. A member cannot tick another person's task.
 - **Wall:** the dashboard moves to `/s/<token>`, a random token created on first use and rotatable
   from settings. `/` redirects to sign-in. The token page is `noindex` and `no-store`, makes no
@@ -246,7 +248,8 @@ With it set:
   in `auth.json`: gitignored, mode 0600, PINs hashed with the standard library's `scrypt`, compared
   in constant time. Nothing goes in `config.yaml`, which is exported and edited by hand.
 - **Session:** a signed cookie keyed on `DINKYDASH_SECRET_KEY`, thirty days on a phone, CSRF checked
-  on every writing form (the existing session code, and the test that walks the templates, apply).
+  on every writing form. Setting, changing or removing a person's PIN invalidates their member sessions,
+  including across restarts.
 - **Abuse:** failed sign-ins and screen-token misses are rate limited per IP with the existing
   in-process limiter. Tokens and PINs stay out of every log; the access-log scrubber covers the new
   routes.
