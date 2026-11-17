@@ -21,6 +21,7 @@ A **calendar** is one source of events, not the whole dashboard.
 | PompDash | The product | Preserve the capital P and D: one word, two capitals. |
 | Dashboard | The complete household display | “Dashboard”, “View dashboard”, “Set up your dashboard”, “Show on the dashboard”, “Dashboard colours”, “Name on the dashboard”. |
 | Screen | A device displaying the dashboard | Use dashboard when referring to its shared content. |
+| Screen setup | One screen's touch mode, first page and rotation | Made at Settings > The screen > Set up a screen. It is part of that screen's link, never stored on the server, so screens never affect each other. |
 | Screen link | The bearer address a screen opens when parent sign-in is enabled | Anyone with the link can view the dashboard. Replacing it invalidates the previous link. |
 | Settings | The area for configuring the household and dashboard | Available at `/settings`; optional parent sign-in protects it. |
 | Family / household | The people sharing a dashboard and its settings | One household per self-hosted installation. “Name on the dashboard” controls its displayed name. |

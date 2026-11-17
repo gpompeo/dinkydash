@@ -9,6 +9,7 @@ comments in the file survive being edited from a phone.
 """
 
 import logging
+from urllib.parse import urlencode
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
@@ -17,6 +18,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect,
 
 from dinkydash import config as config_module
 from dinkydash.config import THEME_COLOURS, theme_of
+from dinkydash import pages as pages_module
 from dinkydash import schedule, taskform
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
@@ -840,6 +842,32 @@ def screen():
         return redirect(url_for("settings.screen"))
     return render_template("settings/screen.html", config=config,
                            themes=config_module.THEMES)
+
+
+@bp.route("/screen/setup")
+def screen_setup():
+    """Make the link for one screen: touch or not, first page, rotation.
+
+    A read: the setup is in the link it makes and nowhere on the server, so
+    each screen is set up by its own link and none can alter another.
+    """
+    config = current_config()
+    setup, problems = pages_module.parse_setup(request.args)
+    shown = pages_module.available(config)
+    setup = pages_module.Setup(
+        touch=setup.touch, page=pages_module.initial_key(setup.page, shown),
+        rotate=setup.rotate, interval=setup.interval)
+    if parent.enabled():
+        from web.routes.wall import screen_token
+        base = url_for("wall.board", token=screen_token(current_store()), _external=True)
+    else:
+        base = url_for("board.index", _external=True)
+    query = pages_module.link_query(setup)
+    link = base + ("?" + urlencode(query) if query else "")
+    return render_template(
+        "settings/screen_setup.html", setup=setup, problems=problems, pages=shown,
+        link=link, minimum=pages_module.MIN_INTERVAL, maximum=pages_module.MAX_INTERVAL,
+        default_interval=pages_module.DEFAULT_INTERVAL)
 
 
 def describe_minutes(minutes):

@@ -3,10 +3,13 @@
 import os
 from datetime import timedelta
 
+from urllib.parse import urlencode
+
 from flask import (Blueprint, abort, current_app, redirect, render_template,
                    request, url_for)
 
 from dinkydash import board as board_view
+from dinkydash import pages as pages_module
 from dinkydash import config as config_module
 from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import streaks
@@ -53,6 +56,31 @@ def index():
     return render_board(current_store())
 
 
+def screen_setup(config):
+    """This screen's setup from its own link, and the pages it may show.
+
+    The link is the whole setup, so another screen on the same household is
+    unaffected and nothing is stored.
+    """
+    setup, _ = pages_module.parse_setup(request.args)
+    shown = pages_module.available(config)
+    return setup, shown, {
+        "touch": setup.touch,
+        "initial": pages_module.initial_key(setup.page, shown),
+        "rotate": setup.rotate,
+        "interval": setup.interval,
+        "main_label": next((p.label for p in shown if p.key == "main"), "Dashboard"),
+        "pages": shown,
+    }
+
+
+def setup_suffix():
+    """`?mode=touch&...` for this request's setup, or nothing at the defaults."""
+    setup, _ = pages_module.parse_setup(request.args)
+    query = pages_module.link_query(setup)
+    return "?" + urlencode(query) if query else ""
+
+
 @bp.route("/changes")
 def changes():
     """The wall's change counter: a number and nothing else, same access as `/`."""
@@ -69,11 +97,12 @@ def render_board(store, manifest_url=None, changes_url=None):
                                  completions=completions, shopping=store.load_shopping())
     if changes_url is None:
         changes_url = url_for("board.changes")
+    view["screen"] = screen_setup(config)[2]
     return render_template("board.html", view=view, changes_url=changes_url,
-                           manifest_url=manifest_url or url_for("board.manifest"))
+                           manifest_url=(manifest_url or url_for("board.manifest")) + setup_suffix())
 
 
-def manifest_for(config, url):
+def manifest_for(config, url, suffix=""):
     """A wall panel saved to a tablet's home screen: full screen, no browser.
 
     Separate from the settings manifest, and deliberately so — one is a screen
@@ -88,7 +117,7 @@ def manifest_for(config, url):
         name=config.get("family_name") or "PompDash",
         short_name=config.get("family_name") or "PompDash",
         description="Today's agenda, whose turn it is, and what is coming up.",
-        start_url=url,
+        start_url=url + suffix,
         display="fullscreen",
         background_color=colour,
         theme_color=colour,
@@ -97,7 +126,7 @@ def manifest_for(config, url):
 
 @bp.route("/manifest.webmanifest")
 def manifest():
-    return manifest_for(current_config(), url_for("board.index"))
+    return manifest_for(current_config(), url_for("board.index"), setup_suffix())
 
 
 @bp.route("/preview")

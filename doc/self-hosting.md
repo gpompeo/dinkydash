@@ -34,7 +34,9 @@ headline. You only need a key for the headline written each day.
   unset. See [security.md](security.md).
 
 Everything else, including `config.yaml`, the generated dashboard and your completions, stays in
-the files on your machine.
+the files on your machine. A screen's page setup (touch or not, first page, rotation) lives in the
+link that screen opens, and the rotation switch on a touch screen is remembered in that browser's
+own `localStorage`; neither is sent anywhere or written to the server.
 
 ## Part 1: run it on your computer
 

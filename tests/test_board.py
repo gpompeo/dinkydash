@@ -451,7 +451,7 @@ class TestTheFirstDashboard:
 
     def test_a_set_up_family_sees_its_dashboard(self, tmp_path):
         page = self.page(tmp_path, 'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n')
-        assert '<div class="board">' in page
+        assert 'class="board"' in page
         assert "The Wilsons" in page
         assert "Nothing booked in today." in page
         assert "first dashboard" not in page
@@ -466,7 +466,7 @@ class TestTheFirstDashboard:
         page = self.page(tmp_path, 'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n'
                                    'people:\n  - name: "Mia"\n    date_of_birth: "2017-03-15"\n'
                                    '    invented: true\n')
-        assert '<div class="board">' in page
+        assert 'class="board"' in page
         assert "Mia" in page
         assert "Nearly there" not in page
 

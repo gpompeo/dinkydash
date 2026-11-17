@@ -252,6 +252,18 @@ leftover space is shared — a zero basis would split that page by ratio and let
 column shrink shorter than its text. There is no note on the dashboard. Long event titles,
 chore pills and countdowns wrap (`overflow-wrap: break-word`, `min-width: 0` on the flex item).
 
+## Dashboard pages and screen setup
+
+`dinkydash/pages.py` is the registry (`REGISTRY`, `available(config)`) and the pure parsing of a screen's
+setup from its link (`mode`, `page`, `rotate`, `every`; `link_query` writes it back). Nothing is stored on
+the server: the link is the setup, so screens cannot affect each other, and the touch screen's rotation
+switch is kept in that browser's `localStorage` (`pompdash.rotate`). A new page is a `Page` appended to
+`REGISTRY` with a `template` partial; every available page renders as a hidden `body > section[data-page]`
+and `board.html`'s script shows, rotates and restores them across a refresh swap. `fit()` returns early
+while the main page is hidden, so a page sized to its own needs must do its own fitting. With one page
+nothing extra is drawn. The pager is a flex strip under the board, no `gap` (Safari 12 test), margins only.
+Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pages_browser.py`.
+
 ## Phone page, wall token and sign-in
 
 `web/parent.py` holds the optional sign-in (`enabled()`, `guard()`, the attempt limiter); the settings
