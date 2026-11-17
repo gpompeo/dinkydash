@@ -56,3 +56,19 @@ def test_the_icon_script_runs_without_the_site():
     spec.loader.exec_module(module)
     assert module.draw_mark(192).size == (192, 192)
     assert (ROOT / "web/static/icon-192.png").exists()
+
+
+def test_licence_keeps_the_original_copyright_and_permission_notice():
+    licence = (ROOT / "LICENSE").read_text()
+    assert "Copyright (c) 2021-2026 Caspar Wrede" in licence
+    assert "Permission is hereby granted, free of charge" in licence
+
+
+def test_guidance_states_the_independent_fork_policy():
+    for guide in (ROOT / "CLAUDE.md", ROOT / "README.md"):
+        text = " ".join(guide.read_text().split())
+        assert "GitHub fork" in text, guide.name
+        assert "independently" in text, guide.name
+        assert "selectively" in text or "take the ones that fit" in text, guide.name
+    assert "no obligation to stay in sync" in " ".join((ROOT / "README.md").read_text().split())
+    assert "nothing obliges the two to stay in sync" in " ".join((ROOT / "CLAUDE.md").read_text().split())

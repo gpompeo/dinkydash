@@ -162,3 +162,7 @@ Known rough edges are listed under "Known issues" in [CLAUDE.md](CLAUDE.md).
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+PompDash is a GitHub fork of [caspii/dinkydash](https://github.com/caspii/dinkydash) by Caspar Wrede and
+develops independently. Upstream changes are reviewed and taken selectively, with no obligation to
+stay in sync. The original copyright and permission notice stay in `LICENSE`.

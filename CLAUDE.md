@@ -35,6 +35,17 @@ This file holds only what applies to every change. Read the matching file *befor
 
 Work is tracked in GitHub Issues: features are vertical slices, one issue each, and PRD phases are milestones.
 
+## Fork and upstream
+
+PompDash is a GitHub fork of `caspii/dinkydash` (the `upstream` remote) and develops independently.
+
+- **Upstream is a source to read, not a branch to track.** Review its changes and take the ones that
+  fit PompDash, adapted to this code; nothing obliges the two to stay in sync, and nothing merges
+  automatically.
+- **The MIT notice and attribution stay.** `LICENSE` keeps Caspar Wrede's copyright line and the
+  permission notice, and any copied upstream code keeps them too.
+- **Issues and pull requests live on the fork** (`gpompeo/dinkydash`), never upstream; see Agent skills below.
+
 ## Never commit private data
 
 The repo and its issues are world-readable the moment something lands, and a secret in history
