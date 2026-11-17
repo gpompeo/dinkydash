@@ -53,7 +53,7 @@ Self-host the app with Docker Compose on a Linux host, including a Raspberry Pi 
 The published image supports `linux/amd64` and `linux/arm64`.
 
 ```bash
-git clone https://github.com/gpompeo/dinkydash.git
+git clone https://github.com/gpompeo/pompdash.git
 cd dinkydash
 mkdir -p data
 cp config.example.yaml data/config.yaml
@@ -77,7 +77,7 @@ first brief is generated as soon as the family configuration is set up. Change t
 `/settings` or in `data/config.yaml`.
 
 The GitHub release workflow publishes the version-tagged image and `latest` to
-[GitHub Container Registry](https://github.com/gpompeo/dinkydash/pkgs/container/dinkydash) for
+[GitHub Container Registry](https://github.com/gpompeo/pompdash/pkgs/container/pompdash) for
 both architectures. After the first release, set the GHCR package visibility to **Public** in
 GitHub's package settings if it was created as private; public access is needed for an
 unauthenticated `docker compose pull`.

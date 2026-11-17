@@ -1,6 +1,6 @@
 services:
   web:
-    image: ghcr.io/gpompeo/dinkydash:latest
+    image: ghcr.io/gpompeo/pompdash:latest
     pull_policy: always
     restart: unless-stopped
     environment:
@@ -19,7 +19,7 @@ services:
       - ./data:/data
 
   worker:
-    image: ghcr.io/gpompeo/dinkydash:latest
+    image: ghcr.io/gpompeo/pompdash:latest
     pull_policy: always
     restart: unless-stopped
     environment:

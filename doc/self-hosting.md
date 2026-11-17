@@ -47,7 +47,7 @@ own `localStorage`; neither is sent anywhere or written to the server.
 ### Step 1: Get the code
 
 ```bash
-git clone https://github.com/gpompeo/dinkydash.git
+git clone https://github.com/gpompeo/pompdash.git
 cd dinkydash
 python3 -m venv venv
 source venv/bin/activate
@@ -213,7 +213,7 @@ Clone it directly on the Pi:
 
 ```bash
 cd /home/pi
-git clone https://github.com/gpompeo/dinkydash.git
+git clone https://github.com/gpompeo/pompdash.git
 cd dinkydash
 python3 -m venv venv
 source venv/bin/activate

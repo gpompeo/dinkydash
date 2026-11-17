@@ -44,7 +44,7 @@ PompDash is a GitHub fork of `caspii/dinkydash` (the `upstream` remote) and deve
   automatically.
 - **The MIT notice and attribution stay.** `LICENSE` keeps Caspar Wrede's copyright line and the
   permission notice, and any copied upstream code keeps them too.
-- **Issues and pull requests live on the fork** (`gpompeo/dinkydash`), never upstream; see Agent skills below.
+- **Issues and pull requests live on the fork** (`gpompeo/pompdash`), never upstream; see Agent skills below.
 
 ## Never commit private data
 
@@ -147,7 +147,7 @@ venv/bin/python -m pytest tests/ -q
 
 ### Issue tracker
 
-Issues and specs live in GitHub Issues on the fork `gpompeo/dinkydash`, through the `gh` CLI; never the upstream `caspii/dinkydash`. See `doc/agents/issue-tracker.md`.
+Issues and specs live in GitHub Issues on the fork `gpompeo/pompdash`, through the `gh` CLI; never the upstream `caspii/dinkydash`. See `doc/agents/issue-tracker.md`.
 
 ### Triage labels
 
