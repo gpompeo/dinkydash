@@ -1,4 +1,4 @@
-"""The DinkyDash generation engine.
+"""The PompDash generation engine.
 
 Pure-ish: every function here takes the data it needs and returns data. No
 module reads config.yaml, looks at the clock, or writes files — the caller

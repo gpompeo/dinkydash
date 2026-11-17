@@ -1,16 +1,16 @@
-![DinkyDash — the digital family calendar for screens you already own](doc/images/social-preview.png)
+![PompDash — the digital family calendar for screens you already own](doc/images/social-preview.png)
 
-# DinkyDash
+# PompDash
 
 The digital family calendar for screens you already own — a TV, an old tablet, or a Raspberry Pi.
 
-![The DinkyDash dashboard: today's agenda, whose turn each chore is, and the countdowns](screenshot.png)
+![The PompDash dashboard: today's agenda, whose turn each chore is, and the countdowns](screenshot.png)
 
-DinkyDash merges your calendars into one agenda, works out whose turn each chore is, counts down to the next birthday, and once a day asks Claude for a headline. Then it puts the lot on a screen at home — light or dark, sized to read from across the kitchen.
+PompDash merges your calendars into one agenda, works out whose turn each chore is, counts down to the next birthday, and once a day asks Claude for a headline. Then it puts the lot on a screen at home — light or dark, sized to read from across the kitchen.
 
 ## Run it yourself
 
-DinkyDash is free and MIT-licensed. Run it on your own Linux hardware with Docker Compose,
+PompDash is free and MIT-licensed. Run it on your own Linux hardware with Docker Compose,
 including a 64-bit Raspberry Pi. The image supports `linux/arm64` and `linux/amd64`.
 
 ## What the dashboard shows

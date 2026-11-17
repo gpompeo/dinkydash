@@ -38,7 +38,7 @@ log = logging.getLogger("dinkydash")
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Generate the DinkyDash dashboard.")
+    parser = argparse.ArgumentParser(description="Generate the PompDash dashboard.")
     parser.add_argument("--config", help="path to config.yaml")
     parser.add_argument("--date", help="generate for this date (YYYY-MM-DD) instead of today")
     parser.add_argument("--tick", action="store_true",

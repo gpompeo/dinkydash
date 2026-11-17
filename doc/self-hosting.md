@@ -1,4 +1,4 @@
-# Self-hosting DinkyDash
+# Self-hosting PompDash
 
 From nothing to a working family dashboard: first on your own computer, then as a wall screen on a
 Raspberry Pi that boots into it and keeps itself up to date. It uses a terminal.
@@ -48,7 +48,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-The `venv` is a private folder for DinkyDash's Python packages, so they do not touch the rest of your system. Recent Raspberry Pi OS and macOS both block installing packages without one.
+The `venv` is a private folder for PompDash's Python packages, so they do not touch the rest of your system. Recent Raspberry Pi OS and macOS both block installing packages without one.
 
 ### Step 2: Make your config
 
@@ -62,7 +62,7 @@ cp config.example.yaml config.yaml
 family_name: "The Wilsons"
 timezone: "Europe/Berlin"     # decides when "today" rolls over
 location: "Berlin, Germany"   # optional, gives the headline a sense of place
-theme: light                  # or dark
+theme: dark                   # or light
 
 calendars:                    # as many as you like; merged into one agenda
   - label: "Alice's calendar"
@@ -155,7 +155,7 @@ Now these three pages are live:
 | `family_name` | Shown in the corner of the dashboard. |
 | `timezone` | An IANA name like `Europe/Berlin`. Decides when "today" rolls over and how event times read. Set it even on a Pi whose clock is already local — the engine works from this, not the machine clock. |
 | `location` | Your city and country. Optional; gives the headline a sense of place. |
-| `theme` | `light` or `dark`. |
+| `theme` | `dark` (the default) or `light`. One choice for the dashboard, the settings pages and the phone page; a missing or unrecognised value is dark. |
 | `calendars` | One entry per iCal feed: a `label`, a `url` (the secret iCal address) and `enabled`. Merged into one agenda. An optional `shared_with` list of email addresses shows only the events with one of those people as a guest or organiser. |
 | `people` | `name`, `date_of_birth` (YYYY-MM-DD), an `avatar_emoji`, an `avatar_color`, and `interests` that can shape the headline. |
 | `pets` | `name`, `type` and an `avatar_emoji`. |
@@ -200,7 +200,7 @@ sudo apt install -y git python3-venv chromium fonts-noto-color-emoji
 
 The emoji font is not optional — without it, every avatar and chore marker shows as an empty box.
 
-### Step 3: Copy DinkyDash onto the Pi
+### Step 3: Copy PompDash onto the Pi
 
 Clone it directly on the Pi:
 
@@ -239,7 +239,7 @@ Create `/etc/systemd/system/dinkydash.service`:
 
 ```ini
 [Unit]
-Description=DinkyDash Family Dashboard
+Description=PompDash Family Dashboard
 After=network.target
 
 [Service]
@@ -305,8 +305,8 @@ First, save this launcher as `/home/pi/run.sh`. It waits for the dashboard to an
 
 ```bash
 #!/bin/sh
-# Wait up to 60 seconds for DinkyDash to answer, then open it full screen.
-echo 'Waiting for DinkyDash...'
+# Wait up to 60 seconds for PompDash to answer, then open it full screen.
+echo 'Waiting for PompDash...'
 i=0
 while [ $i -lt 60 ]; do
     if curl -s -o /dev/null http://localhost:5000/ 2>/dev/null; then
@@ -349,7 +349,7 @@ One rough edge on Wayland: the mouse pointer does not hide itself when idle. If 
 
 #### The X11 alternative (classic tools)
 
-X11 is the older desktop. It is a little more work to switch to, but the mature tools for hiding the pointer and controlling the screen all work. This is what the DinkyDash Pi runs.
+X11 is the older desktop. It is a little more work to switch to, but the mature tools for hiding the pointer and controlling the screen all work. This is what the PompDash Pi runs.
 
 Switch the desktop to X11:
 

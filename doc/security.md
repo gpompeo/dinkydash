@@ -3,7 +3,7 @@
 Read this when handling calendar feeds, secrets, logging, third-party calls, CI or dependencies. It
 applies to the self-hosted app.
 
-DinkyDash is open source. Everything pushed is world-readable the moment it lands, so a
+PompDash is open source. Everything pushed is world-readable the moment it lands, so a
 careless commit exposes data to everyone who can read the repository.
 
 - **Nothing private goes in.** Not a key, not a real family's data, not a calendar URL.

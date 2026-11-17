@@ -13,7 +13,7 @@
         font-size: 0.8125rem; font-weight: 800;
         background: var(--warm); color: var(--accent-dark);
     }
-    .step.done .step-badge { background: rgba(22, 163, 74, 0.12); color: var(--green); }
+    .step.done .step-badge { background: rgba(var(--green-rgb), 0.14); color: var(--ok-fg); }
     .step.done .row-title { color: var(--text-mid); }
     .step + .step { border-top: 1px solid var(--border); }
     .step .row-sub { white-space: normal; }
@@ -59,7 +59,7 @@
 {% endblock %}
 
 {% block appbar %}
-<div class="identity"><h1 class="wordmark">DinkyDash</h1></div>
+<div class="identity"><h1 class="wordmark">PompDash</h1></div>
 {# The dashboard link is "View dashboard" by another name, so it waits with it and
    opens its own tab for the same reason — see the button. #}
 {% if not setting_up %}<a class="action muted" href="{{ board_link }}" target="_blank" rel="noopener">Dashboard</a>{% endif %}

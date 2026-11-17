@@ -229,7 +229,7 @@ class TestHomeScreen:
 
     def test_the_saved_settings_link_has_a_name_and_opens_at_settings(self, client):
         manifest = client.get("/settings/manifest.webmanifest").get_json(force=True)
-        assert manifest["short_name"] == "DinkyDash"
+        assert manifest["short_name"] == "PompDash"
         assert manifest["start_url"] == "/settings/"
         assert "The Wilsons" in manifest["description"]
 
@@ -258,7 +258,7 @@ class TestHomeScreen:
         # iOS reads none of the manifest; this link and the title meta are all
         # it has to go on.
         assert 'rel="apple-touch-icon"' in page
-        assert '<meta name="apple-mobile-web-app-title" content="DinkyDash">' in page
+        assert '<meta name="apple-mobile-web-app-title" content="PompDash">' in page
         assert client.get("/static/apple-touch-icon.png").status_code == 200
 
 
@@ -817,8 +817,8 @@ class TestTheGuestList:
 
 class TestCalendarLinkFeedback:
     @pytest.mark.parametrize("status, body, message", [
-        (401, b"", "isn't allowing DinkyDash"),
-        (403, b"", "isn't allowing DinkyDash"),
+        (401, b"", "isn't allowing PompDash"),
+        (403, b"", "isn't allowing PompDash"),
         (404, b"", "It may be private, out of date, or copied incorrectly."),
         (410, b"", "It may be private, out of date, or copied incorrectly."),
         (200, b"<html>Sign in to your calendar</html>", "didn't return readable calendar data"),
@@ -1097,7 +1097,7 @@ class TestRefreshingTheCalendarsByHand:
 class TestTheAppBar:
     def test_the_title_heading_and_back_link(self, client):
         page = client.get("/settings/system").get_data(as_text=True)
-        assert "<title>Family &amp; system · DinkyDash</title>" in page
+        assert "<title>Family &amp; system · PompDash</title>" in page
         assert "<h1>Family &amp; system</h1>" in page
         assert '<a class="back" href="/settings/">' in page
         assert "<span>Settings</span>" in page
@@ -1115,7 +1115,7 @@ class TestTheAppBar:
 
     def test_the_colours_page_is_called_that_in_the_tab_too(self, client):
         page = client.get("/settings/screen").get_data(as_text=True)
-        assert "<title>Colours · DinkyDash</title>" in page
+        assert "<title>Colours · PompDash</title>" in page
         assert "<h1>Colours</h1>" in page
 
 

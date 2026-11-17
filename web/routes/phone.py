@@ -21,6 +21,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect, render_templa
                    session, url_for)
 
 from dinkydash import config as config_module
+from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import checkin, pins, shopping, streaks, taskform
 from dinkydash.context import tasks_for
 from web import manifest as manifest_module
@@ -119,14 +120,15 @@ def _render(template, **context):
 @bp.route("/h/manifest.webmanifest")
 def manifest():
     """What a phone needs to save this page. Carries no family content."""
+    colour = THEME_COLOURS[theme_of(current_store().load_config())]
     return manifest_module.response(
         id=url_for("phone.home"),
-        name="DinkyDash",
-        short_name="DinkyDash",
+        name="PompDash",
+        short_name="PompDash",
         description="Tick off tasks and add to the shopping list.",
         start_url=url_for("phone.home"),
-        background_color=manifest_module.PAGE_COLOUR,
-        theme_color=manifest_module.PAGE_COLOUR,
+        background_color=colour,
+        theme_color=colour,
     )
 
 

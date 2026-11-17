@@ -35,6 +35,16 @@ def create_app(store=None):
     app.jinja_env.globals["feedback_enabled"] = feedback.enabled
     app.jinja_env.globals["parent_sign_in_on"] = parent.enabled
 
+    @app.context_processor
+    def theme():
+        """The one theme setting, for every page that extends the settings shell."""
+        from dinkydash.config import THEME_COLOURS, theme_of
+        try:
+            name = theme_of(app.config["STORE"].load_config())
+        except Exception:  # an unreadable config is reported by the route, not here
+            name = theme_of({})
+        return {"theme": name, "theme_colour": THEME_COLOURS[name]}
+
     from .session import configure as configure_session
     configure_session(app)
     from .assets import configure as configure_assets

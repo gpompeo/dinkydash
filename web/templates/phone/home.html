@@ -32,7 +32,7 @@
 {% endblock %}
 
 {% block appbar %}
-<h1 class="wordmark">DinkyDash</h1>
+<h1 class="wordmark">PompDash</h1>
 <form method="post" action="{{ url_for('phone.leave') }}" style="margin-left:auto;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button class="action muted" type="submit" style="background:none;border:0;font:inherit;">Not {{ person.name }}?</button>

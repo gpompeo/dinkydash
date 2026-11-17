@@ -8,6 +8,7 @@ from flask import (Blueprint, abort, current_app, redirect, render_template,
 
 from dinkydash import board as board_view
 from dinkydash import config as config_module
+from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import streaks
 from web import manifest as manifest_module
 from web.family import current_store
@@ -81,11 +82,11 @@ def manifest_for(config, url):
     """
     # The saved app keeps its own background until the dashboard paints, so it has
     # to match the theme or a dark dashboard flashes white on every open.
-    colour = "#17120f" if config.get("theme") == "dark" else "#ffffff"
+    colour = THEME_COLOURS[theme_of(config)]
     return manifest_module.response(
         id=url,
-        name=config.get("family_name") or "DinkyDash",
-        short_name=config.get("family_name") or "DinkyDash",
+        name=config.get("family_name") or "PompDash",
+        short_name=config.get("family_name") or "PompDash",
         description="Today's agenda, whose turn it is, and what is coming up.",
         start_url=url,
         display="fullscreen",

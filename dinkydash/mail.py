@@ -13,7 +13,7 @@ DEFAULT_TIMEOUT = 10
 # Who the mail comes from. A subdomain of the authenticated domain would need
 # its own DKIM records; the apex is what SendGrid validated.
 DEFAULT_FROM = "hello@dinkydash.co"
-DEFAULT_FROM_NAME = "DinkyDash"
+DEFAULT_FROM_NAME = "PompDash"
 
 # **Where a reply goes, which is not the `From` address.** `dinkydash.co` has no
 # MX records — it is authenticated for *sending* and nothing receives on it — so
@@ -22,7 +22,7 @@ DEFAULT_FROM_NAME = "DinkyDash"
 # from the person who was trying to tell you their link did not work.
 #
 # `keepthescore.com` is on Google Workspace and is the same person, which is
-# also what the privacy policy gives as the contact address. When DinkyDash gets
+# also what the privacy policy gives as the contact address. When PompDash gets
 # MX records of its own, this moves and the policy moves with it.
 DEFAULT_REPLY_TO = "hi@keepthescore.com"
 
@@ -179,7 +179,7 @@ def _sender():
 def _reply(reply_to):
     """The `reply_to` block. Ours carries a name; somebody else's does not.
 
-    A name is a label the sender chose for themselves, and "DinkyDash" on a
+    A name is a label the sender chose for themselves, and "PompDash" on a
     family's own address would be a mail client showing our name against their
     mailbox.
     """

@@ -177,10 +177,20 @@ renders the same dashboard rather than falling back to a system font.
 weights 500-800 with the optical-size axis kept, so a large heading draws Inter's tighter display
 cut. It is the dashboard's headline and waiting screen; in settings, the app bar title,
 `.card-title` and dialog headings. Large Inter wants negative tracking (about -0.03em at headline
-sizes, less as it gets smaller). The `DinkyDash` wordmark stays in Nunito (`h1.wordmark`), as the
+sizes, less as it gets smaller). The `PompDash` wordmark stays in Nunito (`h1.wordmark`), as the
 settings app bar does. Body text, times, chores and countdowns are Nunito. Cutting it again needs
 `fonttools`, which is a tool run once on a laptop, not a dependency:
 `instantiateVariableFont(font, {"wght": (500, 800)})`.
+
+**One theme, one palette file.** `theme` in `config.yaml` (`light` or `dark`; missing or unrecognised
+is dark, via `config.theme_of`) sets `data-theme` on `<html>` for the dashboard, the settings shell
+and the phone page, and `web/templates/_theme.html` is the only place a template names a colour:
+Tokyo Night for dark, Tokyo Night Day for light. Settings pages get `theme` from a context
+processor in `web/__init__.py`; the dashboard gets it from `build_view`. A new colour is a token
+defined in both themes there; `tests/test_theme.py` fails on a literal elsewhere, on a token
+missing from either theme, and on text or control colours below contrast (4.5:1 text, 3:1 edges).
+`THEME_COLOURS` in `config.py` repeats each `--bg` for `theme-color` and the manifests; the test
+keeps them equal. The theme picker previews each theme with a nested `data-theme`.
 
 **Depth is gradients and shadows, never blur, on the dashboard.** The page is a faint radial
 gradient, the side column and the empty-day box are raised cards (`--card`, `--card-edge`,

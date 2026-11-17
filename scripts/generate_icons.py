@@ -6,7 +6,7 @@ library. Re-run it whenever `web/static/favicon.svg` changes:
 
     venv/bin/python scripts/generate_icons.py     # requires Pillow
 
-It redraws the same mark as `web/static/favicon.svg` (2x2 dashboard grid)
+It redraws the same mark as `web/static/favicon.svg` (a "P" with a dash)
 rather than rasterising the SVG, which avoids depending on an SVG renderer.
 Keep the two in sync by hand: the shape is simple enough that this is cheaper
 than adding cairosvg to the toolchain.
@@ -23,14 +23,9 @@ import os
 
 from PIL import Image, ImageDraw
 
-ORANGE = (232, 93, 36, 255)      # --accent
-CREAM = (255, 250, 245, 255)     # --bg
-DOTS = [
-    (232, 93, 36, 255),          # --accent
-    (124, 92, 191, 255),         # --purple
-    (22, 163, 74, 255),          # --green
-    (59, 130, 246, 255),         # --blue
-]
+NIGHT = (26, 27, 38, 255)        # --bg, dark theme
+BLUE = (122, 162, 247, 255)      # --accent, dark theme
+PURPLE = (187, 154, 247, 255)    # --purple, dark theme
 
 # Supersampling factor. The mark is drawn large and downscaled with LANCZOS,
 # which is what keeps the rounded corners clean at 16px.
@@ -38,8 +33,8 @@ SS = 8
 BASE = 128
 
 # An Android maskable icon may be cropped to a circle of 80% of the width, so
-# the grid has to sit inside that. At 0.72 the grid spans 50% of the width and
-# its corners land at 70% — inside the safe circle with room to spare.
+# the mark has to sit inside that. At 0.72 the mark spans about 48% of the
+# width and its corners land well inside the safe circle.
 MASKABLE_GRID = 0.72
 
 
@@ -49,7 +44,7 @@ def draw_mark(size, radius=26, grid=1.0):
     `radius` is the corner rounding in 128ths; pass 0 for a full-bleed square,
     which is what iOS and Android adaptive icons want — they apply their own
     mask, and rounded corners inside a rounded mask read as a shrunken icon.
-    `grid` shrinks the four tiles about the centre without moving the edge.
+    `grid` shrinks the lettering about the centre without moving the edge.
     """
     px = size * SS
     scale = px / BASE
@@ -64,18 +59,18 @@ def draw_mark(size, radius=26, grid=1.0):
         return s(64 + (v - 64) * grid)
 
     if radius:
-        d.rounded_rectangle([0, 0, px - 1, px - 1], radius=s(radius), fill=ORANGE)
+        d.rounded_rectangle([0, 0, px - 1, px - 1], radius=s(radius), fill=NIGHT)
     else:
-        d.rectangle([0, 0, px - 1, px - 1], fill=ORANGE)
+        d.rectangle([0, 0, px - 1, px - 1], fill=NIGHT)
 
-    cells = [(20, 20), (68, 20), (20, 68), (68, 68)]
-    for i, (x, y) in enumerate(cells):
-        d.rounded_rectangle(
-            [g(x), g(y), g(x + 40) - 1, g(y + 40) - 1], radius=s(9 * grid), fill=CREAM
-        )
-        # Dots read as colour at 32px+ and blur harmlessly at 16px.
-        cx, cy, r = g(x + 20), g(y + 20), s(8 * grid)
-        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=DOTS[i])
+    # The stem, then the bowl as a ring (a filled disc with the background
+    # punched out), then the dash. Same numbers as the SVG.
+    d.rounded_rectangle([g(34), g(22), g(52) - 1, g(106) - 1], radius=s(9 * grid), fill=BLUE)
+    cx, cy = g(70), g(52)
+    for radius_128, colour in ((30, BLUE), (12, NIGHT)):
+        r = s(radius_128 * grid)
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=colour)
+    d.rounded_rectangle([g(62), g(94), g(100) - 1, g(106) - 1], radius=s(6 * grid), fill=PURPLE)
 
     return img.resize((size, size), Image.LANCZOS)
 

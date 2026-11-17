@@ -87,7 +87,7 @@ class TestComposing:
         assert "self-hosted" in body
 
     def test_the_subject_names_the_sender_so_a_mailbox_can_thread(self):
-        assert feedback.subject_for() == "DinkyDash feedback (self-hosted)"
+        assert feedback.subject_for() == "PompDash feedback (self-hosted)"
 
     def test_line_endings_are_normalised_and_the_words_are_not_touched(self):
         assert feedback.clean("  one\r\ntwo  ") == "one\ntwo"

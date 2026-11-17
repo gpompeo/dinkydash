@@ -358,9 +358,9 @@ class TestTheme:
         view = build_view(dict(CONFIG, theme="dark"), payload("2026-09-03"), TODAY)
         assert view["theme"] == "dark"
 
-    def test_an_unknown_theme_falls_back_to_light(self):
+    def test_an_unknown_theme_falls_back_to_dark(self):
         view = build_view(dict(CONFIG, theme="neon"), payload("2026-09-03"), TODAY)
-        assert view["theme"] == "light"
+        assert view["theme"] == "dark"
 
 
 class TestLocations:

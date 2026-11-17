@@ -1,10 +1,10 @@
 # Finding your calendar link
 
-DinkyDash reads calendars over iCal, the sharing format every calendar app speaks. Google Calendar,
+PompDash reads calendars over iCal, the sharing format every calendar app speaks. Google Calendar,
 Apple iCloud Calendar, Outlook and Cozi all give you an iCal link, and any of them works. Add one
 feed per person and they merge into a single agenda.
 
-This is a link, not a login. DinkyDash never signs in to your Google, Apple or Microsoft account: it
+This is a link, not a login. PompDash never signs in to your Google, Apple or Microsoft account: it
 fetches the link on a schedule and can only read.
 
 **Treat the link like a password.** The long random string in it is the login. Whoever holds the
@@ -49,7 +49,7 @@ https://calendar.google.com/calendar/ical/you%40gmail.com/private-xxxx/basic.ics
 webcal://p00-caldav.icloud.com/published/2/xxxxxxxxxxxx
 ```
 
-- **Paste it as Apple gives it to you.** DinkyDash converts `webcal://` to `https://` and leaves the
+- **Paste it as Apple gives it to you.** PompDash converts `webcal://` to `https://` and leaves the
   rest alone. A plain `http://` link is refused, because it would send the address across the
   network in the clear.
 - "Public" means a long random address, not a listed page. Anyone holding it can read the calendar.

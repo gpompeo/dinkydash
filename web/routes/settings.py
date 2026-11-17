@@ -16,6 +16,7 @@ from flask import (Blueprint, abort, current_app, flash, redirect,
                    render_template, request, url_for)
 
 from dinkydash import config as config_module
+from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import schedule, taskform
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
@@ -492,14 +493,14 @@ def manifest():
     family = config.get("family_name")
     return manifest_module.response(
         id=url_for("settings.home"),
-        name="DinkyDash settings",
+        name="PompDash settings",
         # What fits under the icon. Not "Settings" — that is already an app.
-        short_name="DinkyDash",
+        short_name="PompDash",
         description=f"Change what {family} sees on the dashboard." if family
                     else "Change what the dashboard shows.",
         start_url=url_for("settings.home"),
-        background_color=manifest_module.PAGE_COLOUR,
-        theme_color=manifest_module.PAGE_COLOUR,
+        background_color=THEME_COLOURS[theme_of(config)],
+        theme_color=THEME_COLOURS[theme_of(config)],
     )
 
 
@@ -725,7 +726,7 @@ def check_feed(item, config):
     except FeedError as exc:
         if exc.status_code in (401, 403, 404, 410) or exc.invalid_data:
             if exc.status_code in (401, 403):
-                message = "This calendar isn't allowing DinkyDash to read it."
+                message = "This calendar isn't allowing PompDash to read it."
             elif exc.status_code in (404, 410):
                 message = ("We couldn't find a calendar at this link. It may be private, "
                            "out of date, or copied incorrectly.")
@@ -835,7 +836,7 @@ def screen():
         if theme in config_module.THEMES:
             config["theme"] = theme
             save(config)
-            flash(f"Dashboard set to {theme}.", "ok")
+            flash(f"Colours set to {theme}.", "ok")
         return redirect(url_for("settings.screen"))
     return render_template("settings/screen.html", config=config,
                            themes=config_module.THEMES)

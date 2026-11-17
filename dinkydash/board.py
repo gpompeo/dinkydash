@@ -25,7 +25,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
-from .config import feature_on
+from .config import THEME_COLOURS, feature_on, theme_of
 from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
 from . import shopping as shopping_module
@@ -193,8 +193,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     without one every stale dashboard counts as late, which is what a caller
     rendering a fixed day (the frozen dashboard, a test) wants.
     """
-    theme = config.get("theme", "light")
-    theme = theme if theme in ("light", "dark") else "light"
+    theme = theme_of(config)
 
     # A switched-off feature is absent from the view, not hidden by the
     # template, so no later card can show what it owns. Special dates owns the
@@ -208,6 +207,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     view = {
         "family_name": config.get("family_name", ""),
         "theme": theme,
+        "theme_colour": THEME_COLOURS[theme],
         # The times are already written for this family below; the template
         # still needs to know which clock, because "12:00 pm" is wider than
         # "12:00" and the agenda's time column is a fixed width.

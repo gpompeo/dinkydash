@@ -18,7 +18,7 @@ FEEDBACK_TO = "DINKYDASH_FEEDBACK_TO"
 # wrote is worse than telling them it did not fit.
 LONGEST = 4000
 
-SUBJECT = "DinkyDash feedback"
+SUBJECT = "PompDash feedback"
 
 
 def enabled():

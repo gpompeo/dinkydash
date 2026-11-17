@@ -26,7 +26,7 @@ DEFAULTS = {
     # time *is*, the other how it is written.
     "clock": DEFAULT_CLOCK,
     "location": "",
-    "theme": "light",
+    "theme": "dark",
     "calendars": [],
     "people": [],
     "pets": [],
@@ -45,6 +45,21 @@ DEFAULTS = {
 }
 
 THEMES = ("light", "dark")
+# A missing or unrecognised value resolves to this; a saved "light" or "dark"
+# keeps its meaning. One setting drives the dashboard, the settings UI and the
+# phone page.
+DEFAULT_THEME = "dark"
+
+# The page colour of each theme, for the browser chrome (`theme-color`) and a
+# saved app's splash. They are the `--bg` tokens in web/templates/_theme.html,
+# and tests/test_theme.py keeps the two in step.
+THEME_COLOURS = {"dark": "#1a1b26", "light": "#e1e2e7"}
+
+
+def theme_of(config):
+    """The theme a page is drawn in: the saved choice, else the default."""
+    setting = (config or {}).get("theme")
+    return setting if setting in THEMES else DEFAULT_THEME
 
 # The modules a family can switch off. Switching one off hides what it owns and
 # keeps its data, so the data keys stay in the config whatever these say.
@@ -173,7 +188,7 @@ def with_defaults(raw):
         )
 
     if config.get("theme") not in THEMES:
-        config["theme"] = "light"
+        config["theme"] = DEFAULT_THEME
 
     # Each switch is coerced to a real boolean for the same reason as the
     # theme: a hand-edited file can hold anything, and a missing switch takes

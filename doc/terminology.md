@@ -2,11 +2,11 @@
 
 Checked against the application on 11 September 2026. This is the reference for
 product copy, help pages, emails, accessibility labels, design mockups and images.
-Use British English and sentence case, except for the product name **DinkyDash**.
+Use British English and sentence case, except for the product name **PompDash**.
 
 ## The dashboard
 
-**Dashboard** is the name of the complete DinkyDash display: the agenda, chore turns,
+**Dashboard** is the name of the complete PompDash display: the agenda, chore turns,
 countdowns and headline. It replaces the former product term **board**.
 Use **dashboard** in prose and **Dashboard** at the start of a heading or button.
 
@@ -18,7 +18,7 @@ A **calendar** is one source of events, not the whole dashboard.
 
 | Term | Meaning | Current interface and usage |
 |---|---|---|
-| DinkyDash | The product | Preserve the capital D in both parts. |
+| PompDash | The product | Preserve the capital P and D: one word, two capitals. |
 | Dashboard | The complete household display | “Dashboard”, “View dashboard”, “Set up your dashboard”, “Show on the dashboard”, “Dashboard colours”, “Name on the dashboard”. |
 | Screen | A device displaying the dashboard | Use dashboard when referring to its shared content. |
 | Screen link | The bearer address a screen opens when parent sign-in is enabled | Anyone with the link can view the dashboard. Replacing it invalidates the previous link. |

@@ -1,4 +1,4 @@
-# DinkyDash configuration
+# PompDash configuration
 # Copy this file to config.yaml and make it yours. The settings UI at
 # /settings writes this same file, and keeps your comments. It also adds a
 # short `id` to each person, pet, chore, date and calendar the first time you
@@ -19,8 +19,8 @@ clock: "24h"
 # Optional. Gives the daily headline a bit of local flavour.
 location: "Berlin, Germany"
 
-# light or dark.
-theme: light
+# dark (the default) or light: one choice for the dashboard, settings and phone page.
+theme: dark
 
 # One entry per iCal feed; they are merged into a single agenda.
 # Google, Apple iCloud and Outlook all publish an iCal link:

@@ -82,7 +82,7 @@
             if (navigator.share && (!navigator.canShare || navigator.canShare({url: address}))) {
                 share.hidden = false;
                 share.addEventListener('click', function () {
-                    navigator.share({title: 'DinkyDash dashboard', url: address}).catch(function () {});
+                    navigator.share({title: 'PompDash dashboard', url: address}).catch(function () {});
                 });
             }
             box.querySelector('.screen-actions').hidden = false;

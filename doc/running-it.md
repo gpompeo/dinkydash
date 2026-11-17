@@ -1,4 +1,4 @@
-# Running DinkyDash day to day
+# Running PompDash day to day
 
 What the dashboard does on its own, what the two buttons in the settings UI do, and what to
 check when something looks wrong.
@@ -111,7 +111,7 @@ something shorter than that. A redraw that cannot reach the server — for examp
 
 ## Keeping settings on your phone
 
-Save `/settings` to your phone's home screen and it opens like an app, with the DinkyDash icon and
+Save `/settings` to your phone's home screen and it opens like an app, with the PompDash icon and
 name rather than a bare URL. On an iPhone: **Share** → **Add to Home Screen**. On Android: the **⋮**
 menu → **Add to home screen**. The settings page offers this itself the first time, until you say no.
 
@@ -132,7 +132,7 @@ Where the link lives, per provider:
 | **Apple iCloud** | iCloud Calendar → share the calendar → **Public Calendar** → Copy Link. A `webcal://` link is fine — it is converted for you |
 | **Outlook / Microsoft 365** | Settings → Calendar → **Shared calendars** → **Publish a calendar**, permission **Can view all details**, then copy the **ICS** link |
 
-Nothing here signs you in to an account. DinkyDash fetches the link on a schedule and can only read.
+Nothing here signs you in to an account. PompDash fetches the link on a schedule and can only read.
 [Calendar links](calendar-links.md) has the full steps and the gotchas.
 
 Add one feed per person. A feed that stops answering is reported on the settings home page and is

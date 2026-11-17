@@ -21,7 +21,7 @@
 <html lang="en" data-theme="{{ view.theme }}" data-clock="{{ view.clock }}">
 <head>
     <meta charset="utf-8">
-    <title>{{ view.family_name or "DinkyDash" }}</title>
+    <title>{{ view.family_name or "PompDash" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     {# The page refreshes itself from the script at the foot of the body, which
@@ -37,71 +37,20 @@
    "save to home screen" gets a sign-in redirect instead of a name. #}
 <link rel="manifest" href="{{ manifest_url }}">
     <link rel="apple-touch-icon" href="{{ static_url('apple-touch-icon.png') }}">
-    <meta name="apple-mobile-web-app-title" content="{{ view.family_name or 'DinkyDash' }}">
+    <meta name="apple-mobile-web-app-title" content="{{ view.family_name or 'PompDash' }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="{{ '#17120f' if view.theme == 'dark' else '#fdf8f2' }}">
+    <meta name="theme-color" content="{{ view.theme_colour }}">
     {% include "_fonts.html" %}
+    {% set follow_system = false %}{% include "_theme.html" %}
     <style>
-        /* Light is the default palette; dark redefines the same tokens so every
-           rule below is written once. */
+        /* The palette is in _theme.html, shared with the settings UI and the
+           phone page; this block holds only what is the dashboard's own. */
         :root {
-            --bg: #fdf8f2;
-            /* Depth comes from gradients and shadows only. No blur and no
-               filter: a Pi paints each of these once and then leaves it. */
-            --page: radial-gradient(130% 70% at 50% -10%, #fffefb 0%, #fdf8f2 60%, #faf3ea 100%);
-            --card: linear-gradient(180deg, #ffffff 0%, #fffbf7 100%);
-            --card-edge: rgba(74, 48, 28, 0.08);
-            --card-lift: inset 0 1px 0 rgba(255, 255, 255, 0.85),
-                         0 1px 2px rgba(74, 48, 28, 0.05),
-                         0 4px 10px -2px rgba(74, 48, 28, 0.07),
-                         0 14px 32px -10px rgba(74, 48, 28, 0.12);
-            --chore-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
-            --chore-1-edge: inset 0 0 0 1px rgba(180, 67, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(74, 48, 28, 0.06);
-            --chore-2-edge: inset 0 0 0 1px rgba(107, 79, 168, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(74, 48, 28, 0.06);
-            --box: #fff5ec;
-            --text: #2d2319;
-            --text-mid: #5c4a3a;
-            --text-muted: #786658;
-            --text-faint: #786658;
-            --accent: #b44314;
-            --chore-1-bg: rgba(232, 93, 36, 0.1);
-            --chore-1-fg: #b44314;
-            --chore-2-bg: rgba(124, 92, 191, 0.1);
-            --chore-2-fg: #6b4fa8;
-            --warn-bg: #fdf6e7;
-            --warn-fg: #b45309;
-            --stale-box: #faf6f1;
             /* The agenda's time column. It does not shrink, so it is sized for
                the widest time that clock can write, and today and tomorrow
                share the left edge it sets. */
             --time-column: 5.2rem;
-        }
-
-        [data-theme="dark"] {
-            --bg: #17120f;
-            --page: radial-gradient(130% 70% at 50% -10%, #1f1814 0%, #17120f 60%, #130f0c 100%);
-            --card: linear-gradient(180deg, #2a211b 0%, #231b16 100%);
-            --card-edge: rgba(255, 255, 255, 0.06);
-            --card-lift: inset 0 1px 0 rgba(255, 255, 255, 0.05),
-                         0 1px 2px rgba(0, 0, 0, 0.3),
-                         0 14px 32px -10px rgba(0, 0, 0, 0.5);
-            --chore-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
-            --chore-1-edge: inset 0 0 0 1px rgba(255, 122, 69, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --chore-2-edge: inset 0 0 0 1px rgba(157, 125, 222, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --box: #241c17;
-            --text: #f6efe7;
-            --text-mid: #cbb9a7;
-            --text-muted: #9d8a78;
-            --text-faint: #9d8a78;
-            --accent: #ff7a45;
-            --chore-1-bg: rgba(255, 122, 69, 0.16);
-            --chore-1-fg: #ffa477;
-            --chore-2-bg: rgba(157, 125, 222, 0.2);
-            --chore-2-fg: #bda3ee;
-            --warn-bg: #3a2c14;
-            --warn-fg: #f2b968;
-            --stale-box: #221b16;
         }
 
         /* The suffix is a smaller span, so the column is the width of "12:00"
@@ -968,7 +917,7 @@
     function swap(next) {
         // Both live on <html>, which a swap keeps, so each has to be carried
         // across by hand or the new body is drawn with the old chrome.
-        root.setAttribute("data-theme", next.documentElement.getAttribute("data-theme") || "light");
+        root.setAttribute("data-theme", next.documentElement.getAttribute("data-theme") || "dark");
         root.setAttribute("data-clock", next.documentElement.getAttribute("data-clock") || "24h");
         document.title = next.title;
         var colour = document.querySelector('meta[name="theme-color"]');

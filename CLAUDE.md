@@ -4,7 +4,7 @@ Guidance for Claude Code and GitHub Copilot. `AGENTS.md` is a symlink to this fi
 
 ## Overview
 
-DinkyDash is a family dashboard for a screen on the wall. A daily cron job calls the Claude API to
+PompDash is a family dashboard for a screen on the wall. A daily cron job calls the Claude API to
 write a headline; the Flask app renders that alongside today's agenda, whose turn each chore is,
 and the countdowns — all recomputed from `config.yaml` at render time.
 
