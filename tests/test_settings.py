@@ -1318,3 +1318,14 @@ class TestTaskEditor:
         self.add(client, rec_kind="weekends", mode="anyone")
         html = client.get("/settings/tasks").get_data(as_text=True)
         assert "Weekends" in html and "Anyone" in html
+
+
+class TestHomeLinksToScreenSetup:
+    def test_the_home_page_links_to_the_screen_setup_builder(self, client):
+        page = client.get("/settings/").get_data(as_text=True)
+        assert 'href="/settings/screen/setup"' in page
+        assert client.get("/settings/screen/setup").status_code == 200
+
+    def test_the_colours_page_does_not_carry_the_link(self, client):
+        page = client.get("/settings/screen").get_data(as_text=True)
+        assert "/settings/screen/setup" not in page

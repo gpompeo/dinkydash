@@ -155,8 +155,8 @@ class TestSetupPage:
         html = client.get("/settings/screen/setup").get_data(as_text=True)
         assert 'value="week"' in html and 'value="hidden"' not in html
 
-    def test_it_is_linked_from_the_screen_page(self, client):
-        assert "/settings/screen/setup" in client.get("/settings/screen").get_data(as_text=True)
+    def test_it_is_linked_from_the_settings_home(self, client):
+        assert "/settings/screen/setup" in client.get("/settings/").get_data(as_text=True)
 
     def test_with_sign_in_the_link_is_the_wall_address(self, store, monkeypatch):
         monkeypatch.setenv("DINKYDASH_PARENT_PASSWORD", "correct horse battery")

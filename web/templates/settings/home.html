@@ -326,6 +326,18 @@
     </div>
 </div>
 
+<div>
+    <div class="label">Screens</div>
+    <div class="card">
+        <a class="row" href="{{ url_for('settings.screen_setup') }}">
+            <div class="row-main">
+                <div class="row-title">Screen setup</div>
+                <div class="row-sub">Touch controls, page rotation and the link a screen opens</div>
+            </div>{{ icons.chevron() }}
+        </a>
+    </div>
+</div>
+
 {# The permanent way in. The pill at the foot of every page can be waved away
    for good, so the offer has to exist somewhere it cannot be lost. #}
 {% if feedback_enabled() %}
