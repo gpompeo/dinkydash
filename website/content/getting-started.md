@@ -123,12 +123,14 @@ calendars:                    # as many as you like; merged into one agenda
     enabled: true
 
 people:
-  - name: "Alice"
+  - id: alice
+    name: "Alice"
     date_of_birth: "2015-03-15"
     avatar_emoji: "🦖"
     avatar_color: purple
     interests: "drawing, dinosaurs"
-  - name: "Bob"
+  - id: bob
+    name: "Bob"
     date_of_birth: "2017-06-20"
     avatar_emoji: "⚽"
     avatar_color: blue
@@ -139,13 +141,15 @@ pets:
     type: "dog"
     avatar_emoji: "🐕"
 
-recurring:                    # rotated one person per day, in this order
+tasks:                        # people are named by their id
   - title: "Set the table"
     emoji: "🍽"
-    choices: ["Alice", "Bob"]
+    recurrence: {kind: daily}
+    assignment: {mode: rotate, people: [alice, bob]}
   - title: "Feed Buddy"
     emoji: "🦴"
-    choices: ["Bob", "Alice"]
+    recurrence: {kind: daily}
+    assignment: {mode: rotate, people: [bob, alice]}
 
 special_dates:                # repeat every year, so no year to set
   - title: "Christmas"
@@ -208,7 +212,7 @@ Now these three pages are live:
 | `calendars` | One entry per iCal feed: a `label`, a `url` (the secret iCal address) and `enabled`. Merged into one agenda. An optional `shared_with` list of email addresses shows only the events with one of those people as a guest or organiser. |
 | `people` | `name`, `date_of_birth` (YYYY-MM-DD), an `avatar_emoji`, an `avatar_color`, and `interests` that can shape the headline. |
 | `pets` | `name`, `type` and an `avatar_emoji`. |
-| `recurring` | Chores that rotate one person per day, in the order you list under `choices`. |
+| `tasks` | Jobs with a `recurrence` (daily, weekly and so on) and an `assignment`: who does it, by person `id`, in rotation or fixed. |
 | `special_dates` | Countdowns to yearly events, as `MM/DD` with no year. |
 | `claude_model` | `claude-haiku-4-5` costs roughly $0.13 a month at one dashboard a day. `claude-sonnet-5` writes better for about three times that. |
 | `max_tokens` | Maximum length of the AI response. |

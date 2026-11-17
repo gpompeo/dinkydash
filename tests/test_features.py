@@ -15,9 +15,13 @@ timezone: "Europe/Berlin"
 people:
   - name: "Mia"
     date_of_birth: "2017-03-15"
-recurring:
-  - title: "Set the table"
-    choices: ["Mia"]
+tasks:
+  - id: tbl12345
+    title: "Set the table"
+    recurrence:
+      kind: daily
+    assignment:
+      mode: anyone
 special_dates:
   - title: "Christmas"
     date: "12/25"

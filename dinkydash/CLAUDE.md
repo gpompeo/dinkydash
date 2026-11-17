@@ -202,10 +202,10 @@ changes exactly the lines it means to.
 
 `config.example.yaml` documents every key. Two are migrated on load: a single `calendar_url` becomes
 the first entry in `calendars`, and `calendar_filter_emails` becomes that entry's `shared_with` — or
-is dropped with a warning when there is no single URL to attach it to. A third, `recurring`, becomes
-`tasks` (`config.migrate_chores`): daily rotating tasks that name people by id, with an `assignment.offset`
-chosen so today's person is unchanged. The people's new ids exist only in memory until `ensure_ids`
-reports the migration (`_migrated`) and the settings UI saves once.
+is dropped with a warning when there is no single URL to attach it to. A `recurring` chore list is
+not migrated: `with_defaults` raises `ConfigError` for the key, because converting it needs a
+decision a loader cannot make and dropping it would lose the family's chores. Every caller sees the
+error before anything is written; `doc/upgrading.md` says how to move to `tasks`.
 
 Every item in the five edited lists — people, pets, tasks, special_dates, calendars — carries a
 short `id`. The settings UI addresses items by it, because a position is not an identity: delete the

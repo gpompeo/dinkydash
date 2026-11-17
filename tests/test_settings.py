@@ -28,11 +28,17 @@ people:
   - name: "Ines"
     date_of_birth: "2022-01-09"
 
-recurring:
+tasks:
   - title: "Set the table"
-    choices: ["Mia", "Theo"]
+    recurrence:
+      kind: daily
+    assignment:
+      mode: anyone
   - title: "Feed the dog"
-    choices: ["Theo", "Mia"]
+    recurrence:
+      kind: daily
+    assignment:
+      mode: anyone
 """
 
 
@@ -364,10 +370,15 @@ pets:
     name: "Biscuit"
     type: "dog"
     invented: true
-recurring:
+tasks:
   - id: job12345
     title: "Set the table"
-    choices: ["Mia", "Theo"]
+    recurrence:
+      kind: daily
+    assignment:
+      mode: rotate
+      people: [mia12345, theo1234]
+      offset: 0
 """
 
 
@@ -1222,7 +1233,8 @@ class TestRotationPostsPersonIds:
         client.get("/settings/tasks")
         first = ids_for(config_path, "tasks")[0]
         response = client.post(f"/settings/tasks/{first}",
-                               data={"title": "Set the table", "choices": ["", "nobody"]})
+                               data={"title": "Set the table", "rec_kind": "daily", "mode": "rotate",
+                                     "choices": ["", "nobody"]})
         assert response.status_code == 200
         assert "Choose at least one person." in response.get_data(as_text=True)
 

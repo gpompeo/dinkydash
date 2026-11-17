@@ -102,10 +102,8 @@ tasks:               # replaces `recurring`
       people: [<person id>, ...]
 ```
 
-`recurring` is migrated on load by `with_defaults`: each chore becomes a daily task with
-`assignment.mode: rotate`, its names converted to person ids, and a rotation offset chosen so the
-person on duty on the day of the upgrade is unchanged. Rotation then counts occurrences, so it
-differs from the old day-of-year rule at the year boundary, where the old rule restarted.
+`recurring` is not read: `with_defaults` raises `ConfigError` for it and nothing is written (see
+`doc/upgrading.md`). Rotation counts occurrences, from `assignment.offset`.
 
 Shopping items and completions are not config: they change too often and grow without bound.
 
@@ -188,7 +186,7 @@ Acceptance:
 
 ### Phase 2 — tasks
 
-- `tasks` config, the `recurring` migration, the recurrence engine, assignment modes.
+- `tasks` config, the recurrence engine, assignment modes.
 - Completions storage, check-in on the phone, streaks, the wall card, the yesterday group.
 - The Activity page and parent corrections.
 - Glossary, README and settings copy updated in the same change (section 9).
@@ -282,7 +280,7 @@ New tests live in `tests/`, one file per module:
 
 - `test_recurrence.py` — every kind, month ends, leap day, last weekday in 4- and 5-week months,
   daylight-saving days.
-- `test_task_migration.py` — `recurring` to `tasks`, same person on the day of the upgrade.
+- `test_legacy_chores.py` — `recurring` is refused without writing; a current config round-trips.
 - `test_streaks.py` — rename, delete, skipped days, today open versus done, anyone tasks.
 - `test_completions_store.py` — add, remove, trim at 400 days, atomic write.
 - `test_shopping.py` — caps, ticking, twenty-four-hour clear.

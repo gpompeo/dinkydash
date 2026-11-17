@@ -57,9 +57,6 @@ AVATAR_COLORS = ("purple", "blue", "green", "pink", "orange", "amber", "teal")
 # The lists the settings UI edits. Every item in them carries a stable `id`.
 LIST_KEYS = ("people", "pets", "tasks", "special_dates", "calendars")
 
-# Set on a config whose legacy shape was migrated in memory and not yet written back.
-MIGRATED = "_migrated"
-
 # Limits on what a family can add. Enforced where a task is saved, so a hand-edited file can
 # exceed them without breaking the dashboard.
 MAX_TASKS = 40
@@ -109,6 +106,17 @@ def config_path():
     return Path(os.environ.get("DINKYDASH_CONFIG", "config.yaml")).expanduser()
 
 
+class ConfigError(ValueError):
+    """The config file is in a shape this version does not read; the message says what to do."""
+
+
+LEGACY_CHORES_MESSAGE = (
+    "config.yaml has a `recurring` chore list, which this version does not read. Nothing has "
+    "been changed. Re-enter each chore as an entry under `tasks` (see config.example.yaml), then "
+    "delete `recurring`. doc/upgrading.md describes the supported format."
+)
+
+
 def load_config(path=None):
     """Load config.yaml, applying defaults and migrating old shapes."""
     path = Path(path) if path else config_path()
@@ -120,7 +128,6 @@ def load_config(path=None):
 def save_config(config, path=None):
     """Write config.yaml atomically, preserving comments and key order."""
     path = Path(path) if path else config_path()
-    config.pop(MIGRATED, None)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), suffix=".tmp")
     try:
         with os.fdopen(fd, "w") as f:
@@ -133,23 +140,18 @@ def save_config(config, path=None):
     log.info("Wrote %s", path)
 
 
-def with_defaults(raw, today=None):
+def with_defaults(raw):
     """Fill in defaults and migrate older shapes in place.
 
-    `today` is the day a legacy `recurring` list is migrated on; it defaults to today on the
-    family's own clock. It only matters while `recurring` is still present.
+    Raises `ConfigError` for a `recurring` chore list: it has no safe automatic reading, and
+    dropping it would delete the family's chores without a word.
     """
     config = raw
-    legacy_chores = config.pop("recurring", None)
+    if "recurring" in config:
+        raise ConfigError(LEGACY_CHORES_MESSAGE)
     for key, value in DEFAULTS.items():
         if config.get(key) is None:
             config[key] = [] if isinstance(value, list) else value
-    if legacy_chores and not config["tasks"]:
-        config["tasks"] = migrate_chores(config, legacy_chores, today or today_for(config))
-        # Not yet on disk, and the people's new ids exist only in this copy: `ensure_ids` reports
-        # it so the settings UI saves the result once, and the ids stay the same from then on.
-        config[MIGRATED] = True
-        log.info("Migrated recurring into tasks[]")
 
     # A single calendar_url becomes the first entry in `calendars`, and the
     # global calendar_filter_emails that went with it becomes that entry's
@@ -189,51 +191,6 @@ def with_defaults(raw, today=None):
         config["clock"] = DEFAULT_CLOCK
 
     return config
-
-
-def migrate_chores(config, chores, today):
-    """Daily rotating tasks from the old `recurring` list, with `today`'s turn unchanged.
-
-    The old rule picked `choices[day of year % len(choices)]`. A task rotates on its occurrence
-    index instead, so each task carries an `offset` chosen to put the same person on duty today.
-    From then on the two rules differ only where the old one restarted, at the year boundary.
-    People are referred to by id from here on, so people get ids first; a name that matches nobody
-    is dropped from the rotation.
-    """
-    from .recurrence import occurrence_index
-
-    people = [p for p in config.get("people") or [] if isinstance(p, dict)]
-    taken = {p.get("id") for p in people}
-    for person in people:
-        if not person.get("id"):
-            _add_id(person, new_id(taken))
-            taken.add(person["id"])
-    ids = {}
-    for person in people:
-        ids.setdefault(person.get("name"), person["id"])
-
-    tasks, task_ids = [], set()
-    for chore in chores:
-        if len(tasks) >= MAX_TASKS:
-            break
-        if not isinstance(chore, dict) or not chore.get("title"):
-            continue
-        choices = [c for c in chore.get("choices") or [] if isinstance(c, str)]
-        on_duty = choices[today.timetuple().tm_yday % len(choices)] if choices else None
-        rotation = [ids[name] for name in choices if name in ids]
-        task = {
-            "id": chore.get("id") or new_id(task_ids),
-            "title": str(chore["title"])[:MAX_TITLE_LENGTH],
-            "emoji": chore.get("emoji", ""),
-            "recurrence": {"kind": "daily"},
-            "assignment": {"mode": "rotate", "people": rotation, "offset": 0},
-        }
-        if rotation and on_duty in ids:
-            here = occurrence_index(task, today)
-            task["assignment"]["offset"] = (rotation.index(ids[on_duty]) - here) % len(rotation)
-        task_ids.add(task["id"])
-        tasks.append(task)
-    return tasks
 
 
 def feature_on(config, name):
@@ -340,7 +297,7 @@ def ensure_ids(config):
     Deliberately not part of load_config — loading must not rewrite the file,
     and the engine never looks at ids. The settings UI calls this and saves.
     """
-    added = bool(config.pop(MIGRATED, False))
+    added = False
     for key in LIST_KEYS:
         items = config.get(key) or []
         taken = {item.get("id") for item in items if isinstance(item, dict)}

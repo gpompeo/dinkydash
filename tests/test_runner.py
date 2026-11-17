@@ -29,7 +29,6 @@ calendars: []
 people:
   - name: "Mia"
     date_of_birth: "2017-03-15"
-recurring: []
 special_dates: []
 data_file: "dashboard_data.json"
 content_history_file: "content_history.json"

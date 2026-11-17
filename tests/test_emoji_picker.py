@@ -41,10 +41,13 @@ pets:
     name: "Biscuit"
     type: "dog"
     avatar_emoji: "🦩"
-recurring:
+tasks:
   - id: table123
     title: "Set the table"
-    choices: ["Mia"]
+    recurrence:
+      kind: daily
+    assignment:
+      mode: anyone
 special_dates:
   - id: xmas1234
     title: "Christmas"

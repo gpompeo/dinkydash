@@ -542,8 +542,8 @@ class TestTheFactOfTheDayIsNotShown:
         path.write_text(
             'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n'
             'people:\n  - name: "Mia"\n    date_of_birth: "2017-03-15"\n'
-            'recurring:\n  - title: "Set the table"\n    emoji: "🍽"\n'
-            '    choices: ["Mia"]\n'
+            'tasks:\n  - id: tbl12345\n    title: "Set the table"\n    emoji: "🍽"\n'
+            '    recurrence:\n      kind: daily\n    assignment:\n      mode: anyone\n'
         )
         (tmp_path / "dashboard_data.json").write_text(json.dumps(payload(
             "2026-09-03",

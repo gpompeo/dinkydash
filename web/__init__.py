@@ -4,6 +4,7 @@ import os
 
 from flask import Flask
 
+from dinkydash.config import ConfigError
 from dinkydash.mode import validate
 
 SINGLE = "single"
@@ -56,6 +57,11 @@ def create_app(store=None):
         from .routes.wall import admin_bp as wall_admin_bp, bp as wall_bp
         app.register_blueprint(wall_bp)
         app.register_blueprint(wall_admin_bp, url_prefix="/settings/wall")
+
+    @app.errorhandler(ConfigError)
+    def unreadable_config(error):
+        """Say what to fix: an unreadable config is the owner's to repair, not a server fault."""
+        return str(error), 500, {"Content-Type": "text/plain; charset=utf-8"}
 
     @app.after_request
     def no_referrer(response):

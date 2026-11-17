@@ -70,6 +70,9 @@ def main(argv=None):
         log.error("No config found at %s. Copy config.example.yaml to config.yaml.",
                   store.config_path)
         return 1
+    except config_module.ConfigError as exc:
+        log.error("%s", exc)
+        return 1
 
     if args.tick:
         with only_one_tick(store.base / LOCK_FILE) as mine:
