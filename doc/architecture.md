@@ -34,7 +34,7 @@ are the only files under `dinkydash/` that open files.
 - `dinkydash/prompt.py`, `claude_client.py`, `generate.py`: headline generation.
 - `web/__init__.py`, `family.py`, `session.py`: app factory, store access and CSRF/session handling.
 - `web/routes/`: dashboard, settings, optional sign-in, phone, wall token and activity routes.
-- `website/`: a separate marketing site and image generators; not required by the dashboard.
+- `scripts/generate_icons.py`: redraws the home-screen icons in `web/static/` from the favicon mark.
 
 ## Storage and payload
 

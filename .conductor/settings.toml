@@ -4,7 +4,7 @@
 # Workspaces may share a copied configuration.
 run_mode = "nonconcurrent"
 
-# The development requirements cover the app, website and tests.
+# The development requirements cover the app and tests.
 setup = """
 set -e
 python3 -m venv venv
@@ -13,7 +13,7 @@ venv/bin/pip install -q -r requirements-dev.txt
 venv/bin/python sample_board.py
 """
 
-# Both Flask apps are supervised by dev.py.
+# dev.py supervises the Flask app.
 [scripts.run.dev]
 command = "venv/bin/python dev.py"
 default = true

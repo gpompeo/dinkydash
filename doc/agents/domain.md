@@ -19,7 +19,7 @@ Single-context repo:
 ├── doc/terminology.md      ← the glossary
 ├── doc/voice.md
 ├── doc/adr/               ← decisions, created when the first one is recorded
-└── dinkydash/ web/ website/
+└── dinkydash/ web/
 ```
 
 ## Use the glossary's vocabulary

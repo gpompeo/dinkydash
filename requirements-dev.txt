@@ -12,12 +12,6 @@ pytest==9.1.1
 # the fit tests skip, and the rest of the suite does not need one.
 playwright==1.64.0
 
-# The marketing site renderer (jinja2, markdown, pyyaml) and
-# the two one-off image scripts, website/generate_favicon.py and
-# website/generate_social_preview.py (Pillow — the latter also wants Chrome,
-# which pip cannot install and which nothing else here needs). Build-time only,
-# never imported by the dashboard or the engine.
-jinja2==3.1.6
-markdown==3.10.3
-pyyaml==6.0.3
+# The one-off icon script, scripts/generate_icons.py (Pillow). Never imported
+# by the dashboard or the engine.
 Pillow==12.3.0

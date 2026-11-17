@@ -257,7 +257,7 @@ With it set:
 ## 8. Privacy and safety
 
 - Task titles and today's assignees go to the model, as chore titles do now. Shopping items,
-  completions and streaks do not. The privacy page and sub-processor list are unchanged, and a test
+  completions and streaks do not. The "What leaves your machine" notes in `doc/self-hosting.md` are unchanged, and a test
   fails if a shopping string or a completion reaches a prompt.
 - User-entered text (titles, quantities, names) is escaped by the template engine; no new `|safe`.
 - Every new writing route checks CSRF and the access rule in section 7 before it reads the body.
@@ -304,7 +304,7 @@ These were not discussed and are defaults to confirm or change in the relevant i
 
 ## 12. Roadmap (not in these phases)
 
-- Tell the headline about streaks and completions, with the privacy-page change that implies.
+- Tell the headline about streaks and completions, with the privacy-notes change that implies.
 - Shopping autocomplete from a ninety-day history.
 - Touch interaction on the wall screen.
 - Push updates (SSE) behind the same page hook.

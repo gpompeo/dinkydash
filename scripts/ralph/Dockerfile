@@ -21,7 +21,7 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /tmp/requirements
-COPY requirements.txt requirements-dev.txt requirements-site.txt ./
+COPY requirements.txt requirements-dev.txt ./
 RUN python -m venv /opt/venv \
  && pip install --no-cache-dir -r requirements-dev.txt
 

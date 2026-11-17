@@ -1,12 +1,10 @@
-![DinkyDash — the digital family calendar for screens you already own](website/images/social-preview.png)
+![DinkyDash — the digital family calendar for screens you already own](doc/images/social-preview.png)
 
 # DinkyDash
 
 The digital family calendar for screens you already own — a TV, an old tablet, or a Raspberry Pi.
 
 ![The DinkyDash dashboard: today's agenda, whose turn each chore is, and the countdowns](screenshot.png)
-
-Website: [dinkydash.co](https://dinkydash.co)
 
 DinkyDash merges your calendars into one agenda, works out whose turn each chore is, counts down to the next birthday, and once a day asks Claude for a headline. Then it puts the lot on a screen at home — light or dark, sized to read from across the kitchen.
 
@@ -84,8 +82,9 @@ both architectures. After the first release, set the GHCR package visibility to 
 GitHub's package settings if it was created as private; public access is needed for an
 unauthenticated `docker compose pull`.
 
-The getting-started guide has provider-specific directions for finding Google, iCloud and Outlook
-iCal links, plus Raspberry Pi kiosk/screen setup.
+[Calendar links](doc/calendar-links.md) has provider-specific directions for finding Google, iCloud,
+Outlook and Cozi iCal links, and [self-hosting](doc/self-hosting.md) covers the Raspberry Pi
+kiosk and screen setup.
 
 > **Keep the app on a trusted network.** Without a parent password, anyone who can reach the
 > port can view the dashboard and edit its settings. You can enable parent sign-in with
@@ -100,25 +99,22 @@ iCal links, plus Raspberry Pi kiosk/screen setup.
 | What you want | Where it is |
 |---|---|
 | Self-host with Docker Compose | [Quickstart](#quickstart) |
-| Find calendar links and set up a Raspberry Pi screen | [dinkydash.co/getting-started](https://dinkydash.co/getting-started/) |
+| Find calendar links for Google, iCloud, Outlook and Cozi | [`doc/calendar-links.md`](doc/calendar-links.md) |
+| Install without Docker, and set up a Raspberry Pi screen | [`doc/self-hosting.md`](doc/self-hosting.md) |
 | Every config key, with comments | [`config.example.yaml`](config.example.yaml) |
 | Living with it: the daily cycle, the two buttons, what to check when something looks wrong | [`doc/running-it.md`](doc/running-it.md) |
 | Coming from an older version | [`doc/upgrading.md`](doc/upgrading.md) |
 | Working on the code | [`CLAUDE.md`](CLAUDE.md) |
 | Product terms and UI wording | [`doc/terminology.md`](doc/terminology.md) |
 
-The install and Pi guides live on the website rather than here, so there is one copy of each
-to keep right.
-
 ## Local development
 
-Conductor's **dev** action, or `venv/bin/python dev.py`, starts the self-hosted dashboard and the
-separate marketing site on loopback. See [local development](doc/development.md) for setup and ports.
+Conductor's **dev** action, or `venv/bin/python dev.py`, starts the self-hosted dashboard on loopback. See [local development](doc/development.md) for setup and ports.
 
 ## Running the tests
 
 ```bash
-pip install -r requirements-dev.txt   # adds pytest and the website build; not needed on the Pi
+pip install -r requirements-dev.txt   # adds pytest and Pillow for the icon script; not needed on the Pi
 python -m pytest tests/ -q
 ```
 

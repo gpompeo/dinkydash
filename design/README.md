@@ -13,7 +13,7 @@ before the templates get written.
 ## Format
 
 Each `*.dc.html` file is one artboard — a self-contained HTML page laid out at a
-fixed pixel size, styled with inline styles lifted from `website/templates/`
+fixed pixel size, styled with inline styles taken from the app's templates
 (Nunito, `#fffaf5` ground, `#e85d24` accent, `#f0e6da` borders). `canvas.json`
 positions them on a shared canvas and carries the annotations explaining each
 design decision.

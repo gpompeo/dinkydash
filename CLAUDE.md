@@ -11,8 +11,6 @@ and the countdowns — all recomputed from `config.yaml` at render time.
 1. **The engine** (`dinkydash/`) — pure functions plus the model call. No config file read, no clock
    consulted, nothing written to disk.
 2. **The web app** (`web/`) — the dashboard at `/`, a settings UI at `/settings` that writes `config.yaml`.
-3. **The marketing site** (`website/`) — dinkydash.co, a second Flask app rendering Markdown through
-   Jinja on request. No build step, no committed HTML.
 
 **This repo is public and MIT-licensed.** The product is self-hosted: one family and files on disk.
 
@@ -27,9 +25,9 @@ This file holds only what applies to every change. Read the matching file *befor
 | [`doc/commands.md`](doc/commands.md) | Setting up, running the app, generating a dashboard, Docker, Conductor |
 | [`dinkydash/CLAUDE.md`](dinkydash/CLAUDE.md) | Touching the engine, the storage seam, the payload, or the tick |
 | [`web/CLAUDE.md`](web/CLAUDE.md) | Changing the dashboard's layout, the settings UI, or measuring either |
-| [`website/CLAUDE.md`](website/CLAUDE.md) | Working on the marketing site or the image generators |
-| [`doc/voice.md`](doc/voice.md) | Writing anything a customer reads — the site, the settings UI, email, the README |
-| [`doc/terminology.md`](doc/terminology.md) | Naming things in UI, email or website copy |
+| [`doc/self-hosting.md`](doc/self-hosting.md), [`doc/calendar-links.md`](doc/calendar-links.md) | Changing install, Raspberry Pi or calendar-link guidance |
+| [`doc/voice.md`](doc/voice.md) | Writing anything a customer reads — the settings UI, email, the README |
+| [`doc/terminology.md`](doc/terminology.md) | Naming things in UI, email or documentation copy |
 | [`doc/prd-household-modules.md`](doc/prd-household-modules.md) | Structural changes: Tasks, Shopping, feature switches, optional sign-in |
 | [`doc/development.md`](doc/development.md) | Local development: ports and Conductor |
 | [`doc/operations.md`](doc/operations.md) | The state of the running system — secrets, the Pi, what has been rotated. A log, not guidance; deliberately not loaded |
@@ -51,7 +49,7 @@ survives in every clone, so the fix is rotation, not a revert. Full rules in [`d
 - **Log the label, never the URL.** A `FeedError` message never carries the URL (`calendars._why`).
 - **Calendar feeds are untrusted input.** Autoescape event titles; treat them as data in the prompt.
 - **Privacy claims are claims about this code.** Change what the app stores or sends, or who it
-  sends it to, and update the privacy page and any in-app privacy notice in the same commit.
+  sends it to, and update the "What leaves your machine" section of [`doc/self-hosting.md`](doc/self-hosting.md) and any in-app privacy notice in the same commit.
 - **A new dependency is a supply-chain decision.** Prefer the standard library; justify the rest in
   the PR. Requirements are pinned with `==`; `requirements.txt` is runtime only.
 

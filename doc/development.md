@@ -10,10 +10,8 @@ venv/bin/python sample_board.py
 venv/bin/python dev.py
 ```
 
-The launcher starts the dashboard and the separate marketing site on loopback, without a database.
-The dashboard uses `DINKYDASH_PORT` (default 5000) and the site uses `DINKYDASH_WEBSITE_PORT`
-(default one higher). Conductor supplies `CONDUCTOR_PORT` for the dashboard; the site uses the
-next port. Both stop together. Restart the command after Python or content changes.
+The launcher starts the dashboard on loopback, without a database. It uses `DINKYDASH_PORT`
+(default 5000); Conductor supplies `CONDUCTOR_PORT`. Restart the command after Python changes.
 
 The launcher disables feedback email so a copied SendGrid key cannot send from a preview. To test
 parent sign-in, set both `DINKYDASH_PARENT_PASSWORD` and a private `DINKYDASH_SECRET_KEY` in the

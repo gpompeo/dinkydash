@@ -89,7 +89,7 @@ stay its own target inside a row sits above it the way `.move` does.
 
 **The feedback pill is offered only when `web.feedback.enabled()` finds a mail key.**
 The route composes one message to `feedback.recipient()` via SendGrid. The message is never
-logged, and the privacy page must describe this optional flow.
+logged, and `doc/self-hosting.md` must describe this optional flow.
 
 **A route gets its store from `web.family.current_store()`.** It returns the `FileStore`
 configured for this app. The optional parent sign-in and wall token guard routes separately;
@@ -168,10 +168,7 @@ would change that, which DIN-60 keeps open.
 (`nunito-latin.woff2`, `nunito-latin-ext.woff2`, covering weights 200-1000 so every weight the dashboard
 asks for comes out of one download). `web/templates/_fonts.html` holds the `@font-face` rules and the
 reasoning, inline in every page's head with a preload of the Latin file — a stylesheet cost each page
-one more round trip before the font could start; `website/static/` has its own copy plus the italic
-pair the marketing site uses. Editing
-either means editing both — they are separate deployables on purpose, and `website/` never runs on
-the dashboard. The files are byte-for-byte what Google was serving, so the metrics did not change; what
+one more round trip before the font could start; the files are byte-for-byte what Google was serving, so the metrics did not change; what
 changed is that a screen at `/s/<token>` no longer tells Google that URL, and a Pi with no internet
 renders the same dashboard rather than falling back to a system font.
 
@@ -181,7 +178,7 @@ weights 500-800 with the optical-size axis kept, so a large heading draws Inter'
 cut. It is the dashboard's headline and waiting screen; in settings, the app bar title,
 `.card-title` and dialog headings. Large Inter wants negative tracking (about -0.03em at headline
 sizes, less as it gets smaller). The `DinkyDash` wordmark stays in Nunito (`h1.wordmark`), as the
-site's nav does. Body text, times, chores and countdowns are Nunito. Cutting it again needs
+settings app bar does. Body text, times, chores and countdowns are Nunito. Cutting it again needs
 `fonttools`, which is a tool run once on a laptop, not a dependency:
 `instantiateVariableFont(font, {"wght": (500, 800)})`.
 
@@ -189,7 +186,7 @@ site's nav does. Body text, times, chores and countdowns are Nunito. Cutting it 
 gradient, the side column and the empty-day box are raised cards (`--card`, `--card-edge`,
 `--card-lift`), and the chore pills carry a sheen and an inset edge. Every one of them is a token
 with a dark value beside the light one. A Pi paints a gradient or a shadow once and leaves it;
-`backdrop-filter` it repaints, which is why only the settings app bar and the site's nav use it.
+`backdrop-filter` it repaints, which is why only the settings app bar uses it.
 
 It re-fits on `document.fonts.ready` as well as on resize, and that is not optional. Nunito and Inter arrive
 after the first paint and sets taller lines than the system fallback, so a size measured before it
@@ -262,11 +259,11 @@ URL — the dashboard full screen for a tablet used as the panel, the settings U
 They must keep **different `id`s**: share one and the phone treats them as a single app, so saving
 the dashboard would replace the settings icon. iOS reads none of the manifest; its icon and label come
 from the `apple-touch-icon` link and `apple-mobile-web-app-title` in the page head, which is why
-both are set on both pages. The PNGs in `web/static/` are drawn by `website/generate_favicon.py`,
-which renders the same mark as the favicon at every size the site and the app need — the outputs
+both are set on both pages. The PNGs in `web/static/` are drawn by `scripts/generate_icons.py`,
+which renders the same mark as the favicon at every size the app needs — the outputs
 are committed, so Pillow stays out of `requirements.txt` (it is declared in `requirements-dev.txt`).
-**Editing `favicon.svg` means re-running that script**, or the `.ico` and the PNGs keep serving the
-old mark: `website/static/favicon.ico` sat two weeks behind its own SVG that way. The settings page offers this once and
+**Editing `favicon.svg` means re-running that script**, or the PNGs keep serving the
+old mark. The settings page offers this once and
 remembers a "Not now" in `localStorage`; it hides itself when already running from a home screen.
 Note that Chrome's own install prompt needs https, so on a home network it never fires and the
 written steps are what people see.

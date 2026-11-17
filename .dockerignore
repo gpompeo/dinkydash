@@ -16,7 +16,6 @@ generate.log
 .tick.lock
 venv/
 tests/
-website/
 design/
 doc/
 migrations/

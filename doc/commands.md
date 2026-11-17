@@ -10,7 +10,7 @@ Conductor configuration) is in [development.md](development.md).
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # pytest + the website build; not deployed to the Pi
+pip install -r requirements-dev.txt   # pytest and Pillow; not deployed to the Pi
 cp config.example.yaml config.yaml
 ```
 
@@ -45,13 +45,11 @@ state, or move it aside entirely to see the dashboard before its first brief.
 ## Run
 
 ```bash
-venv/bin/python dev.py              # dashboard + marketing site on loopback
+venv/bin/python dev.py              # dashboard on loopback
 python app.py                       # dashboard; or: flask run --host=0.0.0.0
-FLASK_APP=website.site flask run --port 5001   # marketing site
 ```
 
 The dashboard is at `/`, settings at `/settings`, and screen-size previews at `/preview`.
-The separate marketing site renders `content/*.md` through `website/templates/` on request.
 
 ## Docker Compose (self-hosted)
 

@@ -1,6 +1,6 @@
-"""Run the self-hosted dashboard and marketing site for local development.
+"""Run the self-hosted dashboard for local development.
 
-Both servers bind to loopback and are stopped together. Restart after code changes.
+The server binds to loopback. Restart after code changes.
 Feedback mail is disabled so a copied production key cannot send from a preview.
 """
 
@@ -35,15 +35,11 @@ def configure():
 
     if "CONDUCTOR_PORT" in os.environ:
         dashboard = port("CONDUCTOR_PORT", 5000)
-        website = dashboard + 1
     else:
         dashboard = port("DINKYDASH_PORT", 5000)
-        website = port("DINKYDASH_WEBSITE_PORT", dashboard + 1)
-    if website > 65535 or website == dashboard:
-        raise RuntimeError("Dashboard and website need distinct ports between 1 and 65535.")
 
     os.environ["SENDGRID_API_KEY"] = ""
-    return {"Dashboard": dashboard, "Website": website}
+    return {"Dashboard": dashboard}
 
 
 def serve(name, port, ready):
@@ -53,12 +49,8 @@ def serve(name, port, ready):
     try:
         from werkzeug.serving import make_server
 
-        if name == "Dashboard":
-            from web import create_app
-            app = create_app()
-        else:
-            from website.site import create_site_app
-            app = create_site_app()
+        from web import create_app
+        app = create_app()
         with make_server(HOST, port, app, threaded=True) as server:
             ready.send(True)
             ready.close()
@@ -97,20 +89,19 @@ def supervise(ports):
         while not stopping:
             for name, process, reader in children:
                 if process.exitcode is not None:
-                    raise RuntimeError(f"{name} exited unexpectedly (status {process.exitcode}); stopping both apps.")
+                    raise RuntimeError(f"{name} exited unexpectedly (status {process.exitcode}); stopping.")
                 if name in pending and reader.poll():
                     try:
                         reader.recv()
                     except EOFError:
-                        raise RuntimeError(f"{name} failed during startup; stopping both apps.") from None
+                        raise RuntimeError(f"{name} failed during startup; stopping.") from None
                     pending.remove(name)
                     if not pending:
                         print(f"Dashboard: http://{HOST}:{ports['Dashboard']}/", flush=True)
-                        print(f"Website:   http://{HOST}:{ports['Website']}/", flush=True)
-                        print("Restart this command after code/content changes. "
-                              "Ctrl-C stops both apps.", flush=True)
+                        print("Restart this command after code changes. "
+                              "Ctrl-C stops the app.", flush=True)
             if pending and time.monotonic() >= deadline:
-                raise RuntimeError(f"Startup timed out: {', '.join(sorted(pending))}; stopping both apps.")
+                raise RuntimeError(f"Startup timed out: {', '.join(sorted(pending))}; stopping.")
             time.sleep(0.1)
         return 0
     finally:

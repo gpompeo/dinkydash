@@ -1,100 +1,47 @@
----
-title: Self-Hosting DinkyDash
-seo_title: "Self-Hosting DinkyDash: Run the Family Dashboard Yourself"
-template: page.html
-description: Set up DinkyDash from scratch — first on your computer, then as a permanent wall dashboard on a Raspberry Pi running the current Raspberry Pi OS.
----
+# Self-hosting DinkyDash
 
-This guide takes you from nothing to a working family dashboard. You start on your own computer, see the dashboard, then move it onto a Raspberry Pi that shows it on the wall and keeps itself up to date.
+From nothing to a working family dashboard: first on your own computer, then as a wall screen on a
+Raspberry Pi that boots into it and keeps itself up to date. It uses a terminal.
 
-You don't need an Anthropic API key to try it — there's a no-key preview in step 3. You only need a key for the AI-written headline, which runs once a day.
+Docker Compose is the shortest route and is in the [README quickstart](../README.md#quickstart).
+This guide is the same app run without containers, plus the Raspberry Pi kiosk setup. Day-to-day
+running is in [running-it.md](running-it.md).
 
-This is the self-hosting guide, and it uses a terminal. It walks you through setting up DinkyDash on your own machine.
+You don't need an Anthropic API key to try it: step 3 of part 1 shows the dashboard with a canned
+headline. You only need a key for the headline written each day.
 
 ## What you need
 
 - **Python 3.11 or newer.**
-- **One or more calendar links** in iCal format. Google Calendar, Apple iCloud Calendar, Outlook and Cozi all give you one — see [find your calendar link](#find-your-calendar-link) below for the steps. Treat that link like a password: anyone who has it can read that calendar.
-- **An Anthropic API key** ([get one here](https://platform.claude.com/settings/keys)) — only for the daily headline. You can run the whole dashboard without it first.
-- **A Raspberry Pi** with a small screen, for the permanent version. A Pi 4 with 2GB of RAM and the official 7-inch display (800×480) is the easy path. Hardware details are on the [Raspberry Pi build guide](/raspberry-pi-family-calendar/). A Pi is not the only option — the dashboard is a web page, so an [old iPad](/ipad-calendar-display/), an [Android tablet](/android-tablet-calendar-display/), a [smart TV](/smart-tv-calendar-display/) or a [Fire TV](/fire-tv-calendar-display/) will show it too.
+- **One or more calendar links** in iCal format. Google Calendar, Apple iCloud Calendar, Outlook and
+  Cozi all give you one; the steps are in [calendar-links.md](calendar-links.md). Treat the link
+  like a password: anyone who has it can read that calendar.
+- **An Anthropic API key** ([get one here](https://platform.claude.com/settings/keys)), only for
+  the daily headline.
+- **A screen.** A Raspberry Pi 4 with 2GB of RAM and the official 7-inch display (800x480) is the
+  easy path; see [the hardware notes](#hardware-for-a-raspberry-pi-screen). The dashboard is a web
+  page, so an old tablet, a smart TV or a Fire TV that can open a URL will show it too.
 
----
+## What leaves your machine
 
-<h2 id="find-your-calendar-link">Find your calendar link</h2>
+- **Calendar feeds** are fetched from the links you paste in. Nothing signs in to an account.
+- **The daily headline** sends the Anthropic API the family name and location, each person's
+  name, age and interests, pet names, today's event titles, times and locations, the next few days'
+  event titles, today's tasks and the countdowns (`dinkydash/prompt.py`). Without
+  `ANTHROPIC_API_KEY` the run is refused and nothing is sent.
+- **Feedback** from the settings page exists only if `SENDGRID_API_KEY` is set. It goes to
+  `DINKYDASH_FEEDBACK_TO`, or to the default support address in `dinkydash/mail.py` when that is
+  unset. See [security.md](security.md).
 
-DinkyDash reads calendars over iCal, the sharing format every calendar app speaks. **Google Calendar, Apple iCloud Calendar, Outlook and Cozi all give you an iCal link**, and any of them works. Add one per person and they merge into a single agenda.
+Everything else, including `config.yaml`, the generated dashboard and your completions, stays in
+the files on your machine.
 
-This is a link, not a login. DinkyDash never signs in to your Google, Apple or Microsoft account — it fetches the link on a schedule, and can only read.
-
-Each provider has a page of its own here, with the steps in full, what the address looks like, and what to do when it stops working. The short version is below.
-
-### Google Calendar
-
-1. Open [Google Calendar](https://calendar.google.com/) in a browser on a computer. The phone apps do not expose this.
-2. In the left sidebar, hover over the calendar, then open its menu (⋮) → **Settings and sharing**.
-3. Scroll down to **Integrate calendar**.
-4. Copy the address under **Secret address in iCal format**.
-
-If the address ever leaks, **Reset** on that same screen issues a new one and kills the old. On a work or school account an administrator can switch secret addresses off altogether — if the section is missing, that is why, and a personal calendar is the way round it.
-
-→ [Google Calendar's iCal link, in full](/google-calendar-ical-link/)
-
-### Apple iCloud Calendar
-
-1. Open [iCloud Calendar](https://www.icloud.com/calendar/) in a browser and sign in. You can also do this from the Calendar app on a Mac, iPhone or iPad.
-2. Hover over the calendar in the sidebar and click the **information icon** (ⓘ) next to its name.
-3. Switch on **Public Calendar**, then press **Copy**.
-4. **Paste it as it is.** A `webcal://` link is converted to `https://` for you — the rest of the address stays exactly as it is. Links have to be https; a plain `http://` feed is refused, because it would send the secret address across the network in the clear.
-
-"Public" here means a long random address rather than a listed page, but anyone holding it can read that calendar — keep it to yourself. Turning sharing off and on again issues a *different* link, and the old one stops working, so the dashboard will need the new one.
-
-→ [The iCloud calendar link, in full](/icloud-calendar-link/)
-
-### Outlook and Microsoft 365
-
-1. Open [Outlook on the web](https://outlook.live.com/calendar/) and go to **Settings** (the gear) → **Calendar** → **Shared calendars**.
-2. Under **Publish a calendar**, choose the calendar you want.
-3. Set the permission to **Can view all details**. The lesser options hide event titles, and titles are what the dashboard shows.
-4. Press **Publish**. Two links appear — copy the **ICS** one, not the HTML one.
-
-→ [Publishing an Outlook calendar, in full](/outlook-calendar-ics-link/)
-
-### Cozi
-
-1. Sign in to [Cozi](https://my.cozi.com/) in a browser and open **Settings**.
-2. In the calendar section, open **Shared Cozi Calendars**.
-3. Switch the family member you want from **Unshared** to **Shared**.
-4. Press **View or send Cozi URL**, then **Copy Cozi URL**.
-
-Each family member is a separate feed, so share each one you want and add them all. Cozi Gold is not needed for this.
-
-→ [Cozi on a wall display, in full](/cozi-calendar-display/)
-
-### Then paste it in
-
-Put the link in `config.yaml` under `calendars:` (step 2 below), or add it later from the settings page: **Settings → Calendars → Add a calendar**, then press **Test calendar link** to confirm it works before you save.
-
-Whichever provider it came from, treat the link like a password. Anyone who has it can read that calendar, for as long as it exists, and there is no way to see who has.
-
-<h3 id="personal-calendar">A personal calendar with work in it</h3>
-
-You do not need a separate family calendar. If your own calendar also holds work meetings and private appointments, paste it anyway, then fill in **Only show events shared with** on that calendar with the other parent's email address. Only the events they are invited to, or that they organised, reach the dashboard. Everything else stays off it, and is never sent to Claude.
-
-Two things to get right:
-
-- **Use the address on the invitation.** Google, Apple and Outlook all record guests by email address, so it has to be the one you actually invite them with. If they have two, list both with a comma between them.
-- **Press Test calendar link before you save.** With a guest list filled in, it says how many events get through out of how many, and warns you if none do. That usually means the address is not the one on the invitations, or that nothing in the next fortnight has been shared yet.
-
-Each calendar has its own list, so the school calendar, which has no guests, is left alone. Saving a calendar clears whatever was fetched from it before, so nothing from before the guest list lingers; the dashboard picks it up again at the next refresh, or straight away if you press **Refresh calendars**. In `config.yaml` the same setting is `shared_with`, a list of addresses under that calendar.
-
----
-
-## Part 1 — Run it on your computer
+## Part 1: run it on your computer
 
 ### Step 1: Get the code
 
 ```bash
-git clone https://github.com/caspii/dinkydash.git
+git clone https://github.com/gpompeo/dinkydash.git
 cd dinkydash
 python3 -m venv venv
 source venv/bin/activate
@@ -163,7 +110,7 @@ claude_model: "claude-haiku-4-5"
 max_tokens: 1024
 ```
 
-The example URL above is deliberately fake. Paste your own iCal address in its place — [find your calendar link](#find-your-calendar-link) has the steps for Google, Apple, Outlook and Cozi. Add one calendar entry per person, and they all merge into a single agenda.
+The example URL above is deliberately fake. Paste your own iCal address in its place — [calendar links](calendar-links.md) has the steps for Google, Apple, Outlook and Cozi. Add one calendar entry per person, and they all merge into a single agenda.
 
 ### Step 3: See the dashboard with no API key
 
@@ -219,7 +166,7 @@ Now these three pages are live:
 
 The settings page adds a short `id` to each person, pet, chore, date and calendar the first time you open it. Leave those alone — they are how the page tells one entry from another.
 
-**Upgrading an old config?** A single `calendar_url` becomes the first entry in `calendars` automatically, and a `calendar_filter_emails` list moves onto that entry as its `shared_with`. Photos are gone; the dashboard uses an emoji and a colour.
+**Upgrading an old config?** See [upgrading](upgrading.md).
 
 #### Editing from your phone
 
@@ -227,13 +174,13 @@ Everything on the dashboard is editable at `/settings`. Three things worth knowi
 
 - **A saved dashboard is from the last run.** Editing a chore or a person shows up on the next page load, but the headline is only rewritten once a day. Press **Rewrite daily headline** on the settings home page to get fresh copy immediately. Each press is one API call.
 - **Adding a calendar checks the link.** Paste an iCal address and press **Test calendar link**. It tells you how many events it found and what the next one is, so you are not left guessing whether the URL works.
-- **A personal calendar can keep its private side.** Fill in **Only show events shared with** on that calendar, and only the events the other parent is on reach the dashboard. See [a personal calendar with work in it](#personal-calendar) above.
+- **A personal calendar can keep its private side.** Fill in **Only show events shared with** on that calendar, and only the events the other parent is on reach the dashboard. See [a personal calendar with work in it](calendar-links.md#a-personal-calendar-with-work-in-it).
 
 The dashboard shows up straight away, before anything is generated: until the first headline's written, it uses one worked out from the day. After that it's either today's dashboard or a stale one after a failed or missing run. When the headline is late, the times, turns and countdowns are still today's. The headline is one worked out from the day, and the dashboard says so.
 
 ---
 
-## Part 2 — Put it on a Raspberry Pi
+## Part 2: put it on a Raspberry Pi
 
 This turns a Pi with a small screen into a wall dashboard that boots straight into the dashboard and refreshes itself. The examples use the username `pi` and the folder `/home/pi`. If you chose a different username in Raspberry Pi Imager, substitute it everywhere.
 
@@ -259,7 +206,7 @@ Clone it directly on the Pi:
 
 ```bash
 cd /home/pi
-git clone https://github.com/caspii/dinkydash.git
+git clone https://github.com/gpompeo/dinkydash.git
 cd dinkydash
 python3 -m venv venv
 source venv/bin/activate
@@ -520,3 +467,25 @@ tail -f /home/pi/dinkydash/generate.log   # calendar fetches and headlines
 ```
 
 Once it is set up, the family gets a fresh dashboard every day, and there is nothing to tap and nothing to maintain.
+
+## Hardware for a Raspberry Pi screen
+
+| Model | Verdict |
+|---|---|
+| **Pi 4 (2GB)** | The sweet spot. Runs Chromium in kiosk mode comfortably and is easy to find second-hand. |
+| **Pi 5** | Works and boots faster, but costs more and runs hotter for a mostly idle job. |
+| **Pi Zero 2 W** | Chromium is a heavy browser and the Zero struggles. Workable if you are patient. |
+| **Pi 3** | Fine if you already own one. Slow to boot, but it only boots once. |
+
+2GB of RAM is enough: the dashboard is one page that refreshes itself, with no database.
+
+The layout targets **800x480**, the resolution of the official Raspberry Pi 7" Touch Display, which
+connects over DSI (one ribbon cable, no HDMI) and is powered from the Pi. Any HDMI monitor works too:
+the layout scales to fit, and a bigger screen reads better from across a room. Touch is optional;
+the dashboard is read-only on the wall and everything is edited from a phone at `/settings`.
+
+A Pi 4 with the 7" display draws under 10 watts. The backlight schedule in step 8 cuts that
+overnight.
+
+Use a MicroSD card of 16GB or more, a USB-C power supply, and a case or stand. On Raspberry Pi OS
+Bookworm and later the boot configuration is `/boot/firmware/config.txt`, not `/boot/config.txt`.

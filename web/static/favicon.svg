@@ -1,8 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <!-- The DinkyDash mark: a 2x2 dashboard grid, warm orange (#e85d24) on cream
-       (#fffaf5). One mark across the whole project — the marketing site's
-       favicon, and the home-screen icons beside this file, are the same shape.
-       Change one and change all three; `website/generate_favicon.py` draws the
+       (#fffaf5). The home-screen icons beside this file are the same shape.
+       Change the mark and re-run `scripts/generate_icons.py`, which draws the
        raster copies. -->
   <rect width="128" height="128" rx="26" ry="26" fill="#e85d24"/>
   <g fill="#fffaf5">

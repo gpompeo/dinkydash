@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
 """One-off generator for every raster icon a browser can't take from the SVG.
 
-Run by hand, not by the site — the outputs are committed, so serving needs no
-image library. Re-run this only if `static/favicon.svg` changes:
+Run by hand: the outputs are committed, so running the app needs no image
+library. Re-run it whenever `web/static/favicon.svg` changes:
 
-    python3 generate_favicon.py     # requires Pillow
+    venv/bin/python scripts/generate_icons.py     # requires Pillow
 
-It redraws the same mark as `static/favicon.svg` and `../web/static/favicon.svg`
-(2x2 dashboard grid, site palette) rather than rasterising the SVG, which avoids
-depending on an SVG renderer. Keep the three in sync by hand — the shape is
-simple enough that this is cheaper than adding cairosvg to the toolchain.
+It redraws the same mark as `web/static/favicon.svg` (2x2 dashboard grid)
+rather than rasterising the SVG, which avoids depending on an SVG renderer.
+Keep the two in sync by hand: the shape is simple enough that this is cheaper
+than adding cairosvg to the toolchain.
 
-Writes, for the marketing site:
-    static/favicon.ico              16/32/48/64 — the /favicon.ico browsers guess at
-    static/apple-touch-icon.png     180x180 — iOS home screen
-
-and, for the app itself (the settings UI and the dashboard, saved to a phone or a
-tablet home screen from `/settings/manifest.webmanifest`):
-    ../web/static/apple-touch-icon.png    180 — iOS, full bleed: iOS rounds it itself
-    ../web/static/icon-192.png            192 — Android, rounded like the favicon
-    ../web/static/icon-512.png            512 — Android, the install and splash icon
-    ../web/static/icon-maskable-512.png   512 — Android adaptive, drawn inside the safe circle
+Writes, to `web/static/`, for the settings UI and the dashboard saved to a
+phone or tablet home screen from `/settings/manifest.webmanifest`:
+    apple-touch-icon.png    180 - iOS, full bleed: iOS rounds it itself
+    icon-192.png            192 - Android, rounded like the favicon
+    icon-512.png            512 - Android, the install and splash icon
+    icon-maskable-512.png   512 - Android adaptive, drawn inside the safe circle
 """
 
 import os
@@ -85,22 +81,9 @@ def draw_mark(size, radius=26, grid=1.0):
 
 
 def main():
-    here = os.path.dirname(os.path.abspath(__file__))
-    out = os.path.join(here, 'static')
-    app = os.path.join(os.path.dirname(here), 'web', 'static')
-    os.makedirs(out, exist_ok=True)
-
-    # Pillow's ICO writer derives every size from the one image it is given and
-    # silently drops any size larger than the source — so hand it the largest
-    # render, not the smallest.
-    sizes = [16, 32, 48, 64]
-    draw_mark(max(sizes)).save(
-        os.path.join(out, 'favicon.ico'),
-        format='ICO',
-        sizes=[(s, s) for s in sizes],
-    )
-
-    draw_mark(180).save(os.path.join(out, 'apple-touch-icon.png'), format='PNG')
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    app = os.path.join(root, 'web', 'static')
+    os.makedirs(app, exist_ok=True)
 
     app_icons = [
         ('apple-touch-icon.png', draw_mark(180, radius=0)),
@@ -111,8 +94,6 @@ def main():
     for name, img in app_icons:
         img.save(os.path.join(app, name), format='PNG')
 
-    print(f"Wrote favicon.ico ({', '.join(str(s) for s in sizes)}) "
-          f"and apple-touch-icon.png (180) to {out}")
     print(f"Wrote {', '.join(name for name, _ in app_icons)} to {app}")
 
 

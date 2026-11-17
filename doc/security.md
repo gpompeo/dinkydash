@@ -1,7 +1,7 @@
 # Security and privacy rules
 
 Read this when handling calendar feeds, secrets, logging, third-party calls, CI or dependencies. It
-applies to the self-hosted app and the separate website.
+applies to the self-hosted app.
 
 DinkyDash is open source. Everything pushed is world-readable the moment it lands, so a
 careless commit exposes data to everyone who can read the repository.
@@ -21,7 +21,7 @@ removes it, so the fix is rotation, not a revert.
   and in `config.example.yaml` are visibly fake (`private-xxxx`); keep new ones that way, because
   `.gitleaks.toml` has a rule for the real shape and CI fails on it.
 - **Real family data.** Names, dates of birth and children's faces are the entire content of this
-  app. Screenshots for the README or the marketing site come from `python sample_board.py`, which
+  app. Screenshots for the README or the documentation come from `python sample_board.py`, which
   invents people. Tests invent people too.
 - **Secrets come from the environment**, never a literal in code or config. `.env` is not in git and
   there is a copy wherever the app runs, so rotating a key means editing each copy where it
@@ -49,11 +49,11 @@ repository and its issues.
   connects to the address it checked, keeping the hostname for TLS and `Host`; ignores environment
   proxies; and caps the body at 10 MB. `FeedRefused` subclasses `FeedError`, so one bad URL is a
   failed feed, not a failed tick. Tests: `test_feed_safety.py`, `test_feed_transport.py`.
-- **Calendar contents go to Anthropic** for the headline, and the privacy page and the blurb
-  beside the calendar field say so. **Those pages are
-  claims about this code**: change what the app stores, sends, or sends it to, and change the
-  policy in the same commit. Anything new that sends data to a third party is named on the privacy
-  page and any in-app privacy notice in the same commit.
+- **Calendar contents go to Anthropic** for the headline, and the "What leaves your machine"
+  section of [self-hosting.md](self-hosting.md) and the blurb beside the calendar field say so.
+  **Those are claims about this code**: change what the app stores, sends, or sends it to, and change
+  them in the same commit. Anything new that sends data to a third party is named in that section
+  and in any in-app privacy notice in the same commit.
 - **Log the label, never the URL** (`fetch_events` logs `entry["label"]`). **Ticks log metadata,
   never generated family text.** Access-log redaction covers malformed and encoded screen URLs too
   (`tests/test_private_logs.py`).
@@ -90,4 +90,4 @@ that is public and permanent, and the reason the rules above exist.
 
 **Requirements are pinned with `==`** to what CI passes. Bump deliberately; `anthropic` must stay at
 1.x or later for `output_config`. **`requirements.txt` is runtime only** — what a Pi installs.
-`website/` and tooling dependencies go in `requirements-dev.txt`.
+Tooling dependencies go in `requirements-dev.txt`.

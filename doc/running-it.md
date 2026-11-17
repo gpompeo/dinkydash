@@ -4,7 +4,7 @@ What the dashboard does on its own, what the two buttons in the settings UI do, 
 check when something looks wrong.
 
 Setting it up for the first time? Use the
-[getting started guide](https://dinkydash.co/getting-started/).
+[self-hosting guide](self-hosting.md).
 
 ## What happens each day
 
@@ -133,8 +133,7 @@ Where the link lives, per provider:
 | **Outlook / Microsoft 365** | Settings → Calendar → **Shared calendars** → **Publish a calendar**, permission **Can view all details**, then copy the **ICS** link |
 
 Nothing here signs you in to an account. DinkyDash fetches the link on a schedule and can only read.
-The [getting started guide](https://dinkydash.co/getting-started/#find-your-calendar-link) has the
-full steps and the gotchas.
+[Calendar links](calendar-links.md) has the full steps and the gotchas.
 
 Add one feed per person. A feed that stops answering is reported on the settings home page and is
 skipped rather than emptying the dashboard.
@@ -188,5 +187,4 @@ the turns and countdowns on it are then a day old. It goes away by itself the mo
 
 Trouble getting a Raspberry Pi to *boot* into the dashboard — Chromium starting before Flask,
 a keyring dialog, a blanking screen, blocked Wi-Fi — is covered under
-[Troubleshooting](https://dinkydash.co/getting-started/#troubleshooting) in the getting
-started guide.
+[Troubleshooting](self-hosting.md#troubleshooting) in the self-hosting guide.

@@ -1,7 +1,7 @@
 # Product terminology
 
-Checked against the application and website on 11 September 2026. This is the reference for
-product copy, help pages, emails, accessibility labels, design mockups and marketing images.
+Checked against the application on 11 September 2026. This is the reference for
+product copy, help pages, emails, accessibility labels, design mockups and images.
 Use British English and sentence case, except for the product name **DinkyDash**.
 
 ## The dashboard
@@ -76,4 +76,4 @@ must not silently change a saved export format, a working link or an import.
 
 When adding or changing a concept, update its entry here in the same change. Check the actual
 labels in `web/routes/settings.py`, `web/setup.py` and `web/templates/`, then check sign-in
-emails, website text, metadata, image captions and screenshots for the same wording.
+emails, documentation text, metadata, image captions and screenshots for the same wording.

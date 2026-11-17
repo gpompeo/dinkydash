@@ -1,4 +1,4 @@
-"""Exercise the local dashboard and website launcher without a database."""
+"""Exercise the local dashboard launcher without a database."""
 
 import os
 from pathlib import Path
@@ -19,18 +19,18 @@ def test_configuration_uses_environment_ports_without_database(monkeypatch, tmp_
     monkeypatch.delenv("DINKYDASH_SECRET_KEY", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setenv("SENDGRID_API_KEY", "a-copied-key")
-    assert dev.configure() == {"Dashboard": 5300, "Website": 5301}
+    assert dev.configure() == {"Dashboard": 5300}
     assert not os.environ.get("SENDGRID_API_KEY")
 
 
 def test_invalid_port_is_refused(monkeypatch, tmp_path):
     monkeypatch.setattr(dev, "ROOT", tmp_path)
-    monkeypatch.setenv("CONDUCTOR_PORT", "65535")
+    monkeypatch.setenv("CONDUCTOR_PORT", "65536")
     with pytest.raises(RuntimeError):
         dev.configure()
 
 
-def test_launcher_serves_dashboard_and_website_without_database(tmp_path):
+def test_launcher_serves_the_dashboard_without_database(tmp_path):
     with socket.socket() as first:
         first.bind(("127.0.0.1", 0))
         port = first.getsockname()[1]
@@ -38,27 +38,19 @@ def test_launcher_serves_dashboard_and_website_without_database(tmp_path):
     config.write_text("family_name: Test\n")
     root = Path(__file__).resolve().parents[1]
     env = {**os.environ, "DINKYDASH_CONFIG": str(config), "DINKYDASH_PORT": str(port),
-           "DINKYDASH_WEBSITE_PORT": "0", "DINKYDASH_MODE": "single",
+           "DINKYDASH_MODE": "single",
            "DINKYDASH_PARENT_PASSWORD": "", "DATABASE_URL": ""}
-    with socket.socket() as second:
-        second.bind(("127.0.0.1", 0))
-        website_port = second.getsockname()[1]
-    if website_port == port:
-        pytest.skip("could not allocate two distinct ports")
-    env["DINKYDASH_WEBSITE_PORT"] = str(website_port)
     log = tmp_path / "dev.log"
     with log.open("w") as output:
         process = subprocess.Popen([sys.executable, "dev.py"], cwd=root, env=env,
                                    stdout=output, stderr=subprocess.STDOUT)
     try:
         deadline = time.monotonic() + 20
-        while time.monotonic() < deadline and "Website:   http://" not in log.read_text():
+        while time.monotonic() < deadline and "Dashboard: http://" not in log.read_text():
             assert process.poll() is None, log.read_text()
             time.sleep(0.05)
-        assert "Website:   http://" in log.read_text(), log.read_text()
+        assert "Dashboard: http://" in log.read_text(), log.read_text()
         with urlopen(f"http://127.0.0.1:{port}/") as response:
-            assert response.status == 200
-        with urlopen(f"http://127.0.0.1:{website_port}/") as response:
             assert response.status == 200
     finally:
         process.terminate()
