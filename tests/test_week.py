@@ -275,7 +275,7 @@ class TestTheView:
 
 class TestThePage:
     def test_it_is_registered_in_the_navigation(self):
-        assert [p.key for p in pages.REGISTRY] == ["main", "week"]
+        assert [p.key for p in pages.REGISTRY][:2] == ["main", "week"]
         assert pages.REGISTRY[1].template == "_week.html"
 
     def test_it_needs_a_calendar_to_show(self):

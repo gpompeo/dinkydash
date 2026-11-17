@@ -270,6 +270,12 @@ hides trailing events of a column that overflows and counts them in its `+N more
 early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
 Tests: `tests/test_week.py`, `tests/test_week_browser.py`.
 
+The **shopping page** (`_shopping.html`, `board.build_view` `shopping_page`) is read-only and registered with
+`feature="shopping"`, so a switched-off module drops it from navigation and rotation while `shopping.json`
+stays. It lists unbought items from `shopping.current` (capped at `MAX_SHOPPING_PAGE`, the rest counted);
+`fitShopping()` hides what the screen cannot hold into the same `+N more`. Phone edits arrive through
+`change_token`. Tests: `tests/test_shopping_page.py`, `tests/test_shopping_page_browser.py`.
+
 ## Phone page, wall token and sign-in
 
 `web/parent.py` holds the optional sign-in (`enabled()`, `guard()`, the attempt limiter); the settings

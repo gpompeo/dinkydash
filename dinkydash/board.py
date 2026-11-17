@@ -48,6 +48,10 @@ MAX_WEEK_EVENTS = 6
 # The wall's shopping card names this many unbought items, then counts the rest.
 MAX_SHOPPING = 8
 
+# The shopping page is the whole screen, so it names more; past this it counts.
+# The page sheds further to what its screen holds.
+MAX_SHOPPING_PAGE = 30
+
 # Nothing pushes to the dashboard, so it reloads itself on a timer. Five minutes is
 # the ceiling — it is a panel on a wall, not a page anyone is watching — and
 # reloading faster than the calendars are fetched only shows the same thing
@@ -252,6 +256,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
         "countdowns": countdowns,
         "shopping": [],
         "shopping_more": 0,
+        "shopping_page": {"items": [], "more": 0},
         "events": [],
         "tomorrow": [],
         "headline": "",
@@ -270,11 +275,13 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
 
     if shopping and now is not None and feature_on(config, "shopping"):
         # Bought items are for the phone; the wall asks what is still to get.
-        unbought = [i for i in shopping_module.current(shopping, now)
+        unbought = [{"text": i["text"], "quantity": i.get("quantity") or ""}
+                    for i in shopping_module.current(shopping, now)
                     if not i.get("bought_at")]
-        view["shopping"] = [{"text": i["text"], "quantity": i.get("quantity") or ""}
-                            for i in unbought[:MAX_SHOPPING]]
+        view["shopping"] = unbought[:MAX_SHOPPING]
         view["shopping_more"] = max(0, len(unbought) - MAX_SHOPPING)
+        view["shopping_page"] = {"items": unbought[:MAX_SHOPPING_PAGE],
+                                 "more": max(0, len(unbought) - MAX_SHOPPING_PAGE)}
 
     if feature_on(config, "tasks"):
         add_checkins(view, config, tasks, today, completions)

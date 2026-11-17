@@ -557,6 +557,45 @@
         .week-more[hidden], .week-event.shed { display: none; }
         .week-none { font-weight: 600; }
 
+        /* ---- shopping page ----------------------------------------------
+           What is still to get, in as many columns as the width holds. The
+           list clips rather than scrolls: the server caps it and fitShopping()
+           hides what the screen cannot hold, counting it in "+N more". */
+        .page[data-page="shopping"]:not([hidden]) { display: flex; flex-direction: column; }
+        .shop-page { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .shop-page > * + * { margin-top: 1rem; }
+        .shop-page-list {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            list-style: none;
+            margin: 0;
+            padding: 0.2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+            grid-auto-rows: min-content;
+            grid-column-gap: 0.9rem;
+            column-gap: 0.9rem;
+            align-content: start;
+            align-items: start;
+        }
+        .shop-page-item {
+            display: flex;
+            align-items: baseline;
+            min-width: 0;
+            padding: 0.55rem 0.2rem;
+            border-bottom: 1px solid var(--card-edge);
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        .shop-page-mark { width: 1.1rem; height: 1.1rem; flex-shrink: 0; margin-right: 0.6rem; align-self: center; color: var(--accent); }
+        .shop-page-text { min-width: 0; overflow-wrap: break-word; font-weight: 650; }
+        .shop-page-qty { flex-shrink: 0; margin-left: 0.5rem; color: var(--text-muted); }
+        .shop-page-item.shed { display: none; }
+        .shop-page-more, .shop-page-empty { font-size: 1.4rem; font-weight: 700; color: var(--text-muted); }
+        .shop-page-more[hidden] { display: none; }
+        .shop-page-empty { margin-top: 2rem; }
+
         /* The touch controls sit under the page in their own strip, so they
            never cover content and the fit script counts them in its height. */
         .pager {
@@ -940,13 +979,32 @@
         }
     }
 
+    // The shopping list clips like a week column: what the screen cannot hold
+    // is hidden from the end and joins the server's own count. The first item
+    // always stays.
+    function fitShopping() {
+        var list = document.querySelector(".page:not([hidden]) .shop-page-list");
+        if (!list) return;
+        var rows = list.querySelectorAll(".shop-page-item");
+        var more = document.querySelector(".page:not([hidden]) .shop-page-more");
+        var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+        for (var r = 0; r < rows.length; r++) { rows[r].classList.remove("shed"); }
+        if (more) { more.hidden = !left; more.textContent = left ? "+" + left + " more" : ""; }
+        var hidden = 0;
+        for (var k = rows.length - 1; k > 0 && list.scrollHeight > list.clientHeight + 1; k--) {
+            rows[k].classList.add("shed");
+            hidden++;
+            if (more) { more.hidden = false; more.textContent = "+" + (left + hidden) + " more"; }
+        }
+    }
+
     function fit() {
         // Let a phone viewer enlarge the dashboard without shrinking it back.
         if (window.visualViewport && window.visualViewport.scale > 1) return;
         // Fitting is the main dashboard's; measuring while another page is
         // shown would size the type to that page instead.
         var shown = document.querySelector(".board");
-        if (shown && shown.hidden) { fitWeek(); return; }
+        if (shown && shown.hidden) { fitWeek(); fitShopping(); return; }
         var room = window.innerHeight;
         clearShed();
         // A comfortable day fits at or above the floor and stops here. The

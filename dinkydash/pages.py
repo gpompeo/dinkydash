@@ -48,6 +48,7 @@ def _has_calendar(config):
 REGISTRY = (
     Page(MAIN, "Dashboard"),
     Page("week", "Week", when=_has_calendar, template="_week.html"),
+    Page("shopping", "Shopping", feature="shopping", template="_shopping.html"),
 )
 
 

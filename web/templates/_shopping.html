@@ -1,0 +1,24 @@
+{# The shopping page: what is still to get, read-only. Everything here comes
+   from view.shopping_page (dinkydash/board.py), unbought items only. Item text
+   and quantities are household input, so they are only ever printed through
+   autoescape. Edits are made on the phone. #}
+<div class="shop-page" data-shopping-page>
+    <div class="head shop-page-head">
+        <div class="family">{{ view.family_name }}</div>
+        <div class="date">Shopping</div>
+    </div>
+    {% if view.shopping_page["items"] %}
+    <ul class="shop-page-list">
+        {% for item in view.shopping_page["items"] %}
+        <li class="shop-page-item">
+            <svg class="shop-page-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            <span class="shop-page-text">{{ item.text }}</span>{% if item.quantity %}
+            <span class="shop-page-qty">&times; {{ item.quantity }}</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    <div class="shop-page-more" data-left="{{ view.shopping_page.more }}"{% if not view.shopping_page.more %} hidden{% endif %}>{% if view.shopping_page.more %}+{{ view.shopping_page.more }} more{% endif %}</div>
+    {% else %}
+    <div class="shop-page-empty">Nothing to get</div>
+    {% endif %}
+</div>
