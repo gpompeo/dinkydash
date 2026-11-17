@@ -1,0 +1,61 @@
+{% extends "settings/base.html" %}
+{% block title %}Set up a screen{% endblock %}
+{% set back_href = url_for('settings.screen') %}
+{% set back_label = 'The screen' %}
+
+{% block content %}
+<div class="note-box">
+    Each screen has its own link, and the link is its whole setup. Make one here, open it on that
+    screen, and the others are not affected. Nothing on this page is saved.
+</div>
+
+{% if problems %}
+<ul class="problems" role="alert">
+    {% for name, message in problems.items() %}<li>{{ message }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<form method="get" class="card pad" style="display:flex;flex-direction:column;gap:1rem;">
+    <fieldset class="field" aria-describedby="mode-hint">
+        <legend>How the screen is used</legend>
+        <label><input type="radio" name="mode" value="static"{{ ' checked' if not setup.touch }}> No touch &mdash; a wall panel or TV</label>
+        <label><input type="radio" name="mode" value="touch"{{ ' checked' if setup.touch }}> Touch &mdash; swipe and tap to change page</label>
+        <div class="hint" id="mode-hint">A touch screen gets page buttons and a switch for rotation. Anything else only shows or rotates.</div>
+    </fieldset>
+
+    {% if pages | length > 1 %}
+    <div class="field">
+        <label for="page">First page</label>
+        <select id="page" name="page">
+            {% for page in pages %}<option value="{{ page.key }}"{{ ' selected' if page.key == setup.page }}>{{ page.label }}</option>{% endfor %}
+        </select>
+    </div>
+    {% else %}
+    <div class="hint">The main dashboard is the only page so far. Choosing a first page and rotating appear here when there is more than one.</div>
+    {% endif %}
+
+    <div class="field">
+        <label><input type="checkbox" name="rotate" value="1"{{ ' checked' if setup.rotate }}> Rotate between pages</label>
+    </div>
+
+    <div class="field">
+        <label for="every">Seconds on each page</label>
+        <input type="number" id="every" name="every" inputmode="numeric" min="{{ minimum }}" max="{{ maximum }}" step="1"
+               value="{{ request.args.get('every', default_interval) if problems.every else setup.interval }}"
+               {% if problems.every %}aria-invalid="true" aria-describedby="every-error"{% endif %}>
+        {% if problems.every %}<div class="field-error" id="every-error">{{ problems.every }}</div>{% endif %}
+        <div class="hint">{{ default_interval }} unless you choose. From {{ minimum }} to {{ maximum }}.</div>
+    </div>
+
+    <button class="btn" type="submit">Make the link</button>
+</form>
+
+<div class="card">
+    <div class="row">
+        <div class="row-main">
+            <div class="row-title">Link for this screen</div>
+            <div class="row-sub" style="word-break:break-all;user-select:all;">{{ link }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

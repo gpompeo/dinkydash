@@ -58,6 +58,11 @@ against.
 `web/templates/settings/home.html`. The list, edit, delete and reorder routes are generic and need
 no changes.
 
+**Renaming a section's URL.** Keep the old name in `LEGACY_SECTION_NAMES` in `web/routes/settings.py`.
+It resolves to the current name before the view runs, so forms already open on a screen still
+post to it, and the feature switch, sign-in guard and CSRF check are the ones the current URL has.
+Never redirect a legacy POST: it would drop the form or write twice.
+
 **Edits stay protected until Save.** Mark editable forms with `data-dirty-guard` for the shared
 `settings.js` navigation warning. Set it to `changed` when redisplaying an unsaved draft after
 a calendar test or validation error. Only dirty forms attach `beforeunload`, so unchanged pages
@@ -82,105 +87,13 @@ cursor, and on a list page the link stretches over the whole row (`a.row-main::a
 avatar and the pill open the item the way the home page's rows already did; anything that must
 stay its own target inside a row sits above it the way `.move` does.
 
-**The feedback pill is drawn on every page of the signed-in area, and its condition is
-"is there anywhere to send it".** `settings/_feedback.html` is a link to `/settings/feedback`
-docked to the foot of the shell, dismissible for good in `localStorage` — so the settings home
-also carries a row to the same page, because an offer that can be waved away has to exist
-somewhere it cannot be lost. Three kinds of page drop the `{% block feedback %}`: the sign-in
-pages, which have no session for the page it leads to; `/admin`, which carries no script of any
-kind; and the feedback page itself. The dashboard is outside the shell and could never have it.
-**Not a mode check** — `web.feedback.enabled()` asks whether a mail key is set, so a Pi with no
-mail provider is offered nothing rather than a button that fails, and the same function gates the
-route, which 404s. Nothing is stored: `web/feedback.py` composes one email to
-`feedback.recipient()` with the family's own address as the reply-to, carrying the words, that
-address and the family id and nothing from the dashboard. **Where it lands is movable and the
-address the app prints is not**: `DINKYDASH_FEEDBACK_TO` routes messages to a mailbox somebody
-actually reads, while `mail.support_address()` stays the reply-to on our own mail, the contact in
-the legal pages and what the form offers when a send fails. The privacy policy describes the
-mailbox a message arrives in, so moving one means reading the other. **What somebody wrote is
-never logged**, on the way out or on the way to a failure. `tests/test_feedback.py` holds each of those.
+**The feedback pill is offered only when `web.feedback.enabled()` finds a mail key.**
+The route composes one message to `feedback.recipient()` via SendGrid. The message is never
+logged, and `doc/self-hosting.md` must describe this optional flow.
 
-**A route gets its store from `web.family.current_store()`, never from `app.config`.** In single
-mode that is the one `FileStore` the process was built with. In cloud mode it is a `PostgresStore`
-built for this request from the family on the session, cached on `g`, over the process-wide pool.
-A route that reads `app.config["STORE"]` directly works in single mode and serves `None` in cloud
-mode, which is the failure that looks like a bug in something else.
-
-**Poking at cloud mode locally: `dev.py` serves a session cookie without `Secure`; anything else
-serves it with, and every client disagrees about what that means over `http://localhost`.** Cloud
-mode is https-only, so `create_app` marks the cookie `Secure`. `dev.py` clears that flag on its own
-dashboard process, which binds to loopback, so every client below signs in there — Safari
-included — and its `/login` page has a **DEV ONLY** sign-in box that needs no email. A cloud
-app started any other way keeps the flag, and gets four different answers:
-
-| Client | Sends a `Secure` cookie to `http://localhost`? |
-|---|---|
-| Chrome (89+), Firefox (75+) | Yes — loopback is treated as a secure context |
-| **Safari** | **No.** There is no loopback exception, so the preview cannot sign in at all |
-| `curl` | Sometimes, depending on version |
-| `requests` | Never |
-
-The failure looks identical in all the failing cases and looks nothing like a cookie problem: GETs
-redirect to `/login` and POSTs come back 400 from the CSRF check, because there is no session to
-hold a token. **Run the preview through `dev.py`**, and drive `app.test_client()` in
-process for anything scripted — it has no cookie policy and exercises the same code. An hour went
-into the `requests` half of that.
-
-**A route that touches a store needs `session.guard`**, and the dashboard blueprint's `before_request`
-is where that is decided. `board.healthz` is the one exemption and it is load-bearing: App
-Platform's health check arrives with no cookie, and a 302 there fails it three times and rolls the
-release back. It is also the only route that reads nothing, so it needs no family.
-
-**`web/routes/screen.py` is the other exemption, and it is a separate blueprint for that reason.**
-`/s/<token>` has no session by design — a wall panel cannot sign in — so it is not behind `guard()`
-and never should be. What replaces the session is the token, resolved by `family.store_for_token`;
-what replaces the guard is that the two routes there are GETs that reach a dashboard. The board
-GET also records a screen size when a refresh sends `X-Viewport` (DIN-149); the manifest stays a read.
-Registered only in cloud mode, like `auth`. **In cloud mode `/` is a redirect**, so anything that
-links to a dashboard — the "View dashboard" button, `/preview`'s
-iframes — uses `web.urls.board_path()`. Build absolute credential URLs with
-`web.urls.absolute_url(path)`: it uses HTTPS and the configured `DINKYDASH_APP_HOST`, with the
-request host as a development fallback. The login-link CLI shares the origin policy and accepts
-an explicit local `--base-url`. QR codes are drawn by `settings/_screen_link.html`, included by
-`/settings/screen` and by the last step of the set-up checklist, and nowhere else.
-
-**`web/routes/admin.py` is the third blueprint only cloud mode registers, and its gate is a list.**
-`/admin` (DIN-37) shows signups and activations by week, how many families have an active paid
-subscription, and the newest accounts to the operator and
-to nobody else: `guard()` first, so a signed-out visitor is sent to `/login` like everywhere else,
-then `family.is_admin()`, which compares the signed-in account's address with
-`DINKYDASH_ADMIN_EMAILS` and answers a miss with a 404 — never a 403, and an unset list is nobody.
-Everything on it comes from `dinkydash/growth.py`: signup and activation counts that read no
-family row, a paying count that aggregates lifecycle status, Stripe subscription status and the
-stored plan interval, and a roster
-that reads the address, the bookkeeping columns and the sizes that family's screens have reported,
-and never the config — `tests/test_admin.py` puts a
-named child and a labelled calendar on a family and asserts neither reaches the page. The chart is
-inline SVG drawn from numbers the route works out (`admin.chart`), because arithmetic in a
-template is arithmetic nobody tests. Its
-two series colours are the shell's own `--accent` and `--purple`, checked as a pair on the card's
-white with the dataviz palette validator (CVD ΔE 24.7, both above 3:1); a third series means
-running it again, not picking a colour. `tests/test_admin.py` covers the gate, the bounds on
-`?weeks=` and the drawing.
-
-**Three more panels hold the same bound** (DIN-71): a daily total of calls charged against the
-breaker (`growth.spend_by_day`, `global_model_spend`, no family id) beside today's count against
-the ceiling `PostgresBudget.allow` is currently enforcing (`budget.today_status`); counts of
-families trialling, lapsing within `growth.LAPSING_SOON_DAYS` days and already lapsed
-(`growth.trial_health`, from `families.status` and `trial_ends_at`); and `calendar_health` rows
-counted by `last_fetch_status` (`growth.calendar_health`), with the worst current run of
-consecutive failures shown only once something has counted one above zero — until then the panel
-is the last result per feed as aggregate counts, nothing about duration. None of the three takes
-or renders a family id, a calendar id, or a calendar's URL.
-
-**The settings home's app bar says who is signed in, and is the one place `/admin` is linked
-from.** Under the title sits the account's address — hosted only, there is nobody signed in on a
-Pi — and for an address on `DINKYDASH_ADMIN_EMAILS` a "View admin" action beside "Dashboard".
-Both come from `family.current_address()`, which reads the account's row at most once per
-request and answers None in single mode without touching a pool, so a self-hoster with the
-variable set still gets a page. `is_admin()` compares that address and takes no argument, so
-nothing a request carries can reach the comparison; `tests/test_admin.py` asserts the link is
-shown to the listed address and to nobody else, in either mode.
+**A route gets its store from `web.family.current_store()`.** It returns the `FileStore`
+configured for this app. The optional parent sign-in and wall token guard routes separately;
+the token is a bearer credential and must be redacted from access logs.
 
 **The app bar lives in `settings/base.html`.** Pages set `back_href` and `back_label` for
 the back link; the heading reuses the `title` block. Settings home and sign-in pages override
@@ -190,44 +103,21 @@ hidden Save button before "Test calendar link" so Enter saves.
 **Every form that writes needs one hidden field.** `<input type="hidden" name="csrf_token"
 value="{{ csrf_token() }}">`, right inside the `<form>`. `csrf_token()` is a Jinja global set up by
 `web/session.py`, so no route has to remember to pass anything — but a form without the field is a
-400, in both modes, and `tests/test_auth.py` walks the templates and fails on one. There is
+400, and the CSRF tests walk the templates and fail on one. There is
 deliberately no switch to turn the check off; the test client in `tests/conftest.py` fills the field
 in the way a browser does.
 
 **The settings home has two personalities**, decided by `web/setup.py`. Until the family is set up
 and its first dashboard written, the top of the page is a checklist — who lives here, time zone, a
 calendar, the screen — and the daily controls (Refresh calendars, View dashboard, Rewrite daily headline) are not
-offered at all; after that it is the day's status card. A hosted family is created with an invented
-household in it so the dashboard has something to show (DIN-41), each person and pet marked
-`invented: true`, and step one names what is still marked. Saving the item from the edit form
-clears the mark; renaming a person follows into the chores that name them, and removing one drops
-them from those rotations. **The signal is the config, not the mode** — a freshly cloned Pi running
-the untouched example file is in the same state — so there is no `cloud` branch in it, and it
-leaves on its own. Nothing to dismiss and nothing remembered. The engine asks the same question
-(`config.is_set_up`) before writing a brief, so the page and the tick cannot disagree. The time
+offered at all; after that it is the day's status card. Invented example people and pets carry
+`invented: true`. Saving an item clears its mark. `config.is_set_up` gives the same answer to the
+page and to the tick. The time
 zone step reads the phone's own zone with `Intl.DateTimeFormat` and offers it as one tap to
 `POST /settings/timezone`, which refuses any name `zoneinfo` does not know.
 
-**Two chromes, one base.** `settings/base.html` is the phone-shaped shell for everything a person
-signs into — the settings pages and, in cloud mode, `auth/login.html` and `auth/sent.html`. The
-manifest link in its `<head>` is a `{% block manifest %}` so the login page can drop it: the
-manifest route is behind the login, and asking for it from outside would only ever be a redirect.
-
-**Fathom is not part of the shell.** `web/templates/_fathom.html` is included by the three
-public sign-in pages and by the one-shot page that counts a new account. `FATHOM_SITE_ID`
-unset draws nothing. The settings pages, billing, `/admin` and the dashboard do not include
-it, and a new page under the shell must not either — the counter stops at the door.
-
-**`cloud` is the template global for the mode**, not Flask's `config`. The settings pages pass the
-*family's* config dict under that name and shadow the app's, which is why `create_app` sets a
-separate `cloud` boolean — the Sign out button on the settings home is the first thing to use it.
-
-Hosted refreshes and feed checks take the same account-access check as generation. Hiding a
-button is not enforcement. `current_access()` supplies the settings status; the token route
-resolves access for its own family and passes it to `render_board`. Lapsed dashboards hold the last
-brief's date for 30 days, then show only the ended message, with the same no-store headers and
-reload timer. Export, deletion and settings remain accessible. Exports include both all retained
-`generations` and the separate recent `content_history`; the latter alone omits older briefs.
+**The settings shell** is shared by the settings pages and parent sign-in. The dashboard is
+outside this shell. `web.feedback.enabled()` gates the optional feedback route on its mail key.
 
 ## The dashboard's layout
 
@@ -278,10 +168,7 @@ would change that, which DIN-60 keeps open.
 (`nunito-latin.woff2`, `nunito-latin-ext.woff2`, covering weights 200-1000 so every weight the dashboard
 asks for comes out of one download). `web/templates/_fonts.html` holds the `@font-face` rules and the
 reasoning, inline in every page's head with a preload of the Latin file — a stylesheet cost each page
-one more round trip before the font could start; `website/static/` has its own copy plus the italic
-pair the marketing site uses. Editing
-either means editing both — they are separate deployables on purpose, and `website/` never runs on
-the dashboard. The files are byte-for-byte what Google was serving, so the metrics did not change; what
+one more round trip before the font could start; the files are byte-for-byte what Google was serving, so the metrics did not change; what
 changed is that a screen at `/s/<token>` no longer tells Google that URL, and a Pi with no internet
 renders the same dashboard rather than falling back to a system font.
 
@@ -290,16 +177,26 @@ renders the same dashboard rather than falling back to a system font.
 weights 500-800 with the optical-size axis kept, so a large heading draws Inter's tighter display
 cut. It is the dashboard's headline and waiting screen; in settings, the app bar title,
 `.card-title` and dialog headings. Large Inter wants negative tracking (about -0.03em at headline
-sizes, less as it gets smaller). The `DinkyDash` wordmark stays in Nunito (`h1.wordmark`), as the
-site's nav does. Body text, times, chores and countdowns are Nunito. Cutting it again needs
+sizes, less as it gets smaller). The `PompDash` wordmark stays in Nunito (`h1.wordmark`), as the
+settings app bar does. Body text, times, chores and countdowns are Nunito. Cutting it again needs
 `fonttools`, which is a tool run once on a laptop, not a dependency:
 `instantiateVariableFont(font, {"wght": (500, 800)})`.
+
+**One theme, one palette file.** `theme` in `config.yaml` (`light` or `dark`; missing or unrecognised
+is dark, via `config.theme_of`) sets `data-theme` on `<html>` for the dashboard, the settings shell
+and the phone page, and `web/templates/_theme.html` is the only place a template names a colour:
+Tokyo Night for dark, Tokyo Night Day for light. Settings pages get `theme` from a context
+processor in `web/__init__.py`; the dashboard gets it from `build_view`. A new colour is a token
+defined in both themes there; `tests/test_theme.py` fails on a literal elsewhere, on a token
+missing from either theme, and on text or control colours below contrast (4.5:1 text, 3:1 edges).
+`THEME_COLOURS` in `config.py` repeats each `--bg` for `theme-color` and the manifests; the test
+keeps them equal. The theme picker previews each theme with a nested `data-theme`.
 
 **Depth is gradients and shadows, never blur, on the dashboard.** The page is a faint radial
 gradient, the side column and the empty-day box are raised cards (`--card`, `--card-edge`,
 `--card-lift`), and the chore pills carry a sheen and an inset edge. Every one of them is a token
 with a dark value beside the light one. A Pi paints a gradient or a shadow once and leaves it;
-`backdrop-filter` it repaints, which is why only the settings app bar and the site's nav use it.
+`backdrop-filter` it repaints, which is why only the settings app bar uses it.
 
 It re-fits on `document.fonts.ready` as well as on resize, and that is not optional. Nunito and Inter arrive
 after the first paint and sets taller lines than the system fallback, so a size measured before it
@@ -340,8 +237,7 @@ dashboard itself, with turns, countdowns and agenda worked out from the config, 
 worked out from the day, and no banner because no line is late. That holds while the family is
 still setting up, which is what lets the settings home preview the dashboard from the first second.
 It refreshes every minute rather than five, so the model's line reaches the wall soon after
-[Two cadences, one tick](../dinkydash/CLAUDE.md#two-cadences-one-tick) writes it. The only
-full-screen message is the ended-access one.
+[Two cadences, one tick](../dinkydash/CLAUDE.md#two-cadences-one-tick) writes it.
 
 In two-column mode the body is a grid of agenda and side column, and both stretch to the
 height left under the headline. The breakpoint is `min-aspect-ratio: 5/4` and `min-width:
@@ -355,6 +251,30 @@ The empty box is `flex: 0 0 auto`, the height of its words, so tomorrow sits und
 leftover space is shared — a zero basis would split that page by ratio and let the side
 column shrink shorter than its text. There is no note on the dashboard. Long event titles,
 chore pills and countdowns wrap (`overflow-wrap: break-word`, `min-width: 0` on the flex item).
+
+## Dashboard pages and screen setup
+
+`dinkydash/pages.py` is the registry (`REGISTRY`, `available(config)`) and the pure parsing of a screen's
+setup from its link (`mode`, `page`, `rotate`, `every`; `link_query` writes it back). Nothing is stored on
+the server: the link is the setup, so screens cannot affect each other, and the touch screen's rotation
+switch is kept in that browser's `localStorage` (`pompdash.rotate`). A new page is a `Page` appended to
+`REGISTRY` with a `template` partial; every available page renders as a hidden `body > section[data-page]`
+and `board.html`'s script shows, rotates and restores them across a refresh swap. `fit()` returns early
+while the main page is hidden, so a page sized to its own needs must do its own fitting. With one page
+nothing extra is drawn. The pager is a flex strip under the board, no `gap` (Safari 12 test), margins only.
+Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pages_browser.py`.
+
+The **week page** (`_week.html`, `board.week_view`) is the first registered page: seven columns, read-only,
+available while a calendar is switched on. Its columns are fixed by the screen, so `fitWeek()` in `board.html`
+hides trailing events of a column that overflows and counts them in its `+N more`; it runs from `fit()`'s
+early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
+Tests: `tests/test_week.py`, `tests/test_week_browser.py`.
+
+The **shopping page** (`_shopping.html`, `board.build_view` `shopping_page`) is read-only and registered with
+`feature="shopping"`, so a switched-off module drops it from navigation and rotation while `shopping.json`
+stays. It lists unbought items from `shopping.current` (capped at `MAX_SHOPPING_PAGE`, the rest counted);
+`fitShopping()` hides what the screen cannot hold into the same `+N more`. Phone edits arrive through
+`change_token`. Tests: `tests/test_shopping_page.py`, `tests/test_shopping_page_browser.py`.
 
 ## Phone page, wall token and sign-in
 
@@ -373,11 +293,11 @@ URL — the dashboard full screen for a tablet used as the panel, the settings U
 They must keep **different `id`s**: share one and the phone treats them as a single app, so saving
 the dashboard would replace the settings icon. iOS reads none of the manifest; its icon and label come
 from the `apple-touch-icon` link and `apple-mobile-web-app-title` in the page head, which is why
-both are set on both pages. The PNGs in `web/static/` are drawn by `website/generate_favicon.py`,
-which renders the same mark as the favicon at every size the site and the app need — the outputs
+both are set on both pages. The PNGs in `web/static/` are drawn by `scripts/generate_icons.py`,
+which renders the same mark as the favicon at every size the app needs — the outputs
 are committed, so Pillow stays out of `requirements.txt` (it is declared in `requirements-dev.txt`).
-**Editing `favicon.svg` means re-running that script**, or the `.ico` and the PNGs keep serving the
-old mark: `website/static/favicon.ico` sat two weeks behind its own SVG that way. The settings page offers this once and
+**Editing `favicon.svg` means re-running that script**, or the PNGs keep serving the
+old mark. The settings page offers this once and
 remembers a "Not now" in `localStorage`; it hides itself when already running from a home screen.
 Note that Chrome's own install prompt needs https, so on a home network it never fires and the
 written steps are what people see.
@@ -389,16 +309,7 @@ address bar and, on an iPhone, no Back button, so the way out was to force-quit 
 Safari tab every self-reload adds a history entry, so Back needed one tap per reload spent looking.
 Its own tab is a way back the dashboard never has to draw: a tab to close, an in-app sheet with Done on
 iOS, a custom tab with an X on Android. **Do not answer this with a Settings control on the dashboard.**
-A tablet set up in the same tab would keep it on the wall, because the reload keeps the URL; and
-hosted, a tap on it from a panel with no session lands on `/login`, which has no reload timer, so
-the wall stays there. `tests/test_settings.py` asserts the tab and the dashboard's lack of a way back.
-
-**Copy and Share beside the screen link are the browser's own** — `navigator.clipboard` and
-`navigator.share`, in `settings/_screen_link.html`. Nothing is fetched and nothing leaves the page
-except by the person's hand. Share needs https, so a Pi on plain http gets Copy alone, by way of
-the selection; without JavaScript neither button is drawn and the text is still one tap to select.
-Hosted, the daily card also carries a **Screen link & QR code** button to `/settings/screen`: the
-link is the finish line of the product, and as the ninth row down it was not found.
+A tablet set up in the same tab would keep it on the wall, because the reload keeps the URL. `tests/test_settings.py` asserts the tab and the dashboard's lack of a way back.
 
 ## Static files, and moving between pages
 
@@ -420,9 +331,7 @@ cache can ever match. Put a cookie on a static response and the year silently st
 { navigation: auto }` turns the cut into a 150 ms fade (Chrome 126+, Safari 18.2+). The
 `speculationrules` block has Chrome (121+) fetch and render whichever `/settings/` link the pointer
 hovers or a finger touches down on, so the tap lands on a page that is already there. **Every page
-under `/settings/` is a read on GET, and has to stay one**: a prerender runs the page. The data
-export is the one link that is not a page, and it is excluded by name — a new link that downloads,
-charges or writes on GET goes in the same `not` clause. Forms are not links and are never
+under `/settings/` is a read on GET, and has to stay one**: a prerender runs the page. A link that downloads or writes on GET must be excluded from prerendering. Forms are not links and are never
 speculated. The dashboard is outside the pattern on purpose: it reloads itself, and `/preview` renders
 it three times over.
 

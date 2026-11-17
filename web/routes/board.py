@@ -1,29 +1,20 @@
-"""The dashboard itself, plus a preview harness for the target screen sizes.
-
-**Where the dashboard lives is the one thing mode changes here**, and it changes
-because of authentication rather than layout. Single mode serves it at `/`:
-one family, no session, and the URL somebody types into a Pi's kiosk browser.
-Cloud mode cannot, because a wall panel has no way to sign in — so there the
-dashboard is at `/s/<token>` (`web/routes/screen.py`) and `/` is the front door of
-the signed-in area, redirecting to the settings.
-
-`render_board` and `manifest_for` below are what the two routes share, so the
-dashboard is one piece of code reached two ways rather than two that drift.
-"""
+"""The dashboard and preview harness for the target screen sizes."""
 
 import os
 from datetime import timedelta
+
+from urllib.parse import urlencode
 
 from flask import (Blueprint, abort, current_app, redirect, render_template,
                    request, url_for)
 
 from dinkydash import board as board_view
+from dinkydash import pages as pages_module
 from dinkydash import config as config_module
+from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import streaks
-from web import CLOUD
 from web import manifest as manifest_module
 from web.family import current_store
-from web.session import guard
 from web.urls import board_path
 
 bp = Blueprint("board", __name__)
@@ -34,35 +25,20 @@ PREVIEW_SIZES = [
     ("Old iPad", 1024, 768),
 ]
 
-# **`/healthz` must answer with no session, or every deploy rolls itself back.**
-# App Platform's health check arrives with no cookie and on a hostname nobody
-# signed in on; a 302 to `/login` there fails the check three times and the
-# platform reverts the release. It is also the one route that reads nothing, so
-# there is no family for it to need.
-OPEN_IN_CLOUD_MODE = {"board.healthz"}
-
+OPEN_WITHOUT_SIGN_IN = {"board.healthz"}
 
 @bp.before_request
 def _needs_a_family():
-    """Cloud mode: the dashboard is a family's dashboard, so it needs a session.
-
-    Single mode has one family and no session, and `guard()` returns None there
-    — this is the same code in both modes, deciding differently.
-    """
-    if request.endpoint in OPEN_IN_CLOUD_MODE:
+    """Protect dashboard routes when parent sign-in is enabled."""
+    if request.endpoint in OPEN_WITHOUT_SIGN_IN:
         return None
-    # Single mode with sign-in on: the wall uses `/s/<token>` (web/routes/wall.py).
+    # With sign-in on, the wall uses `/s/<token>`.
     from web import parent
-    return guard() or parent.guard()
+    return parent.guard()
 
 
 def change_counter(store):
-    """The store's change token as a bare number, `no-store`, or a 404.
-
-    Shared by the wall and the phone page, each behind its own access rule. A
-    store with no `change_token` (cloud mode) has nothing to count, and the
-    page then never polls.
-    """
+    """The store's change token as a bare number, with no caching."""
     token = getattr(store, "change_token", None)
     if token is None:
         abort(404)
@@ -76,17 +52,33 @@ def current_config():
 
 @bp.route("/")
 def index():
-    """The dashboard, or — in cloud mode — the way in to the settings.
-
-    The mode check is an authentication one, which is the only kind this file
-    is allowed. In cloud mode `/` is behind `guard()`, so a signed-out visitor
-    has already been sent to `/login` before this runs and the only person
-    reaching this line is signed in. Their dashboard is not here: it is at the
-    screen URL, which is the one a panel can open without a cookie.
-    """
-    if current_app.config["MODE"] == CLOUD:
-        return redirect(url_for("settings.home"))
+    """The dashboard, protected by parent sign-in when enabled."""
     return render_board(current_store())
+
+
+def screen_setup(config):
+    """This screen's setup from its own link, and the pages it may show.
+
+    The link is the whole setup, so another screen on the same household is
+    unaffected and nothing is stored.
+    """
+    setup, _ = pages_module.parse_setup(request.args)
+    shown = pages_module.available(config)
+    return setup, shown, {
+        "touch": setup.touch,
+        "initial": pages_module.initial_key(setup.page, shown),
+        "rotate": setup.rotate,
+        "interval": setup.interval,
+        "main_label": next((p.label for p in shown if p.key == "main"), "Dashboard"),
+        "pages": shown,
+    }
+
+
+def setup_suffix():
+    """`?mode=touch&...` for this request's setup, or nothing at the defaults."""
+    setup, _ = pages_module.parse_setup(request.args)
+    query = pages_module.link_query(setup)
+    return "?" + urlencode(query) if query else ""
 
 
 @bp.route("/changes")
@@ -95,40 +87,22 @@ def changes():
     return change_counter(current_store())
 
 
-def render_board(store, manifest_url=None, access=None, changes_url=None):
-    """The dashboard page for whichever family that store is for.
-
-    Shared with `web/routes/screen.py`, so the signed-in view and the wall
-    panel render the same page from the same code. `manifest_url` is the only
-    difference between them and it is one link in the head: the panel's
-    manifest has to be reachable without a session, or "save to home screen"
-    gets a redirect to `/login` instead of a name and an icon.
-    Hosted callers also pass access state, so a lapsed panel cannot keep
-    recomputing the day. Stores without check-ins render the shared task list
-    without completion state.
-    """
+def render_board(store, manifest_url=None, changes_url=None):
+    """Render the dashboard from the file-backed household store."""
     config = store.load_config()
     payload = store.load_payload(config)
-    if access and access.ended:
-        view = board_view.build_lapsed_view(config, payload, access.show_last_board)
-    else:
-        # One read of the family's clock, not two: `now` decides whether a
-        # dashboard that is not today's is actually late, and a date taken
-        # separately could land the other side of midnight from it.
-        now = config_module.now_for(config)
-        load = getattr(store, "load_completions", None)
-        completions = load(now.date() - timedelta(days=streaks.MAX_DAYS)) if load else None
-        load_list = getattr(store, "load_shopping", None)
-        view = board_view.build_view(config, payload, now.date(), now=now,
-                                     completions=completions,
-                                     shopping=load_list() if load_list else None)
-    if changes_url is None and hasattr(store, "change_token"):
+    now = config_module.now_for(config)
+    completions = store.load_completions(now.date() - timedelta(days=streaks.MAX_DAYS))
+    view = board_view.build_view(config, payload, now.date(), now=now,
+                                 completions=completions, shopping=store.load_shopping())
+    if changes_url is None:
         changes_url = url_for("board.changes")
+    view["screen"] = screen_setup(config)[2]
     return render_template("board.html", view=view, changes_url=changes_url,
-                           manifest_url=manifest_url or url_for("board.manifest"))
+                           manifest_url=(manifest_url or url_for("board.manifest")) + setup_suffix())
 
 
-def manifest_for(config, url):
+def manifest_for(config, url, suffix=""):
     """A wall panel saved to a tablet's home screen: full screen, no browser.
 
     Separate from the settings manifest, and deliberately so — one is a screen
@@ -137,13 +111,13 @@ def manifest_for(config, url):
     """
     # The saved app keeps its own background until the dashboard paints, so it has
     # to match the theme or a dark dashboard flashes white on every open.
-    colour = "#17120f" if config.get("theme") == "dark" else "#ffffff"
+    colour = THEME_COLOURS[theme_of(config)]
     return manifest_module.response(
         id=url,
-        name=config.get("family_name") or "DinkyDash",
-        short_name=config.get("family_name") or "DinkyDash",
+        name=config.get("family_name") or "PompDash",
+        short_name=config.get("family_name") or "PompDash",
         description="Today's agenda, whose turn it is, and what is coming up.",
-        start_url=url,
+        start_url=url + suffix,
         display="fullscreen",
         background_color=colour,
         theme_color=colour,
@@ -152,7 +126,7 @@ def manifest_for(config, url):
 
 @bp.route("/manifest.webmanifest")
 def manifest():
-    return manifest_for(current_config(), url_for("board.index"))
+    return manifest_for(current_config(), url_for("board.index"), setup_suffix())
 
 
 @bp.route("/preview")
@@ -164,24 +138,7 @@ def preview():
 
 @bp.route("/healthz")
 def healthz():
-    """Is this process up, and which commit is it?
-
-    **Deliberately touches nothing.** No config read, no database query, no
-    file. A health check that depends on storage turns a slow query into a
-    failed deploy and hands anyone who can reach the port a way to make the
-    platform restart the app. "Is the WSGI worker answering" is the only
-    question it should be able to answer wrongly.
-
-    The SHA comes from the environment because a deployed checkout has no
-    `.git` to ask. **App Platform does not set one on its own**, and the two
-    fallbacks that used to be here (`APP_PLATFORM_COMPONENT_COMMIT`,
-    `SOURCE_COMMIT`) were guesses at variable names that do not exist, so
-    this read "unknown". What does exist is `${_self.COMMIT_HASH}`, a *bindable* variable:
-    it has to be assigned to a key in the component's own `envs` before
-    anything can read it, and it is component-scoped, so it cannot live in the
-    app-level block with the rest. `.do/app.yaml` binds it to `GIT_SHA`, which
-    is the one name `website/site.py` already agreed on.
-    """
+    """Report process health without reading household data."""
     return {
         "status": "ok",
         "commit": os.environ.get("GIT_SHA") or "unknown",

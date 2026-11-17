@@ -5,9 +5,9 @@
 
 {% block content %}
 <div class="note-box">
-    A PIN stops one family member picking another's name on the phone page. It's
-    {{ min_digits }} to {{ max_digits }} digits. Leave a person without one and anybody can pick
-    their name.
+    Each person needs a PIN to use the phone page. It's {{ min_digits }} to {{ max_digits }}
+    digits. You can pick anyone without a PIN when you're signed in as a parent.
+    Changing or removing a PIN signs that person out of the phone page.
 </div>
 <div class="card">
     {% for person in people %}

@@ -1,6 +1,15 @@
 # Upgrading from an earlier version
 
-Nothing to do to your config — it is migrated on load. But be aware:
+Most config changes are migrated on load. One is not: a `recurring` chore list is unsupported.
+
+- **`recurring` is refused.** A config with a `recurring` key does not load: the dashboard,
+  the settings UI and `generate.py` all stop with a message naming it, and the file is never
+  modified. The chores are not converted or dropped for you. To upgrade, copy `config.yaml` as a
+  backup, then re-enter each chore as an entry under `tasks:` (the layout is in
+  `config.example.yaml`, or add them in the settings UI on a fresh config), and delete the
+  `recurring:` block. A config already saved in the `tasks` format needs nothing.
+
+The rest is migrated on load. But be aware:
 
 - **New dependency.** `pip install -r requirements.txt` — `ruamel.yaml` is needed for the settings
   UI to write the config without destroying your comments.

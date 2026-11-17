@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from tests.test_settings_improvements import household  # both stores and modes
+from tests.test_settings_improvements import household  # file-backed household
 from web import setup
 
 
@@ -32,7 +32,7 @@ def test_removal_prompt_escapes_the_item_name(household):
     config = store.load_config()
     config['tasks'][0]['title'] = '<script>example</script>'
     store.save_config(config)
-    for url in ['/settings/recurring/tableaaa', '/settings/recurring/tableaaa/delete']:
+    for url in ['/settings/tasks/tableaaa', '/settings/tasks/tableaaa/delete']:
         response = client.post(url) if url.endswith('/delete') else client.get(url)
         html = response.get_data(as_text=True)
         assert '<script>example</script>' not in html
@@ -67,40 +67,6 @@ def test_invalid_save_keeps_draft_protected_and_removal_names_the_saved_item(hou
     assert 'data-dirty-guard="changed"' in html
     assert 'Remove Avery?' in html and 'Remove Draft name?' not in html
     assert store.load_config()['people'][0]['name'] == 'Avery'
-
-
-def test_screen_replacement_requires_confirmation_before_revocation(household):
-    client, _, dashboard = household
-    if dashboard == '/':
-        assert client.post('/settings/screen', data={'action': 'rotate'}).status_code == 404
-        return
-    response = client.post('/settings/screen', data={'action': 'rotate'})
-    assert response.status_code == 200
-    html = response.get_data(as_text=True)
-    assert 'Keep current link' in html and 'Replace screen link' in html
-    assert 'Every connected screen will stop' in html
-    assert client.get(dashboard).status_code == 200
-    response = client.post('/settings/screen', data={'action': 'rotate', 'confirmed': 'yes'})
-    assert response.status_code == 302
-    assert client.get(dashboard).status_code == 404
-    assert 'New screen link.' in client.get('/settings/screen').get_data(as_text=True)
-
-
-def test_only_successful_account_deletion_shows_success(household):
-    client, _, dashboard = household
-    if dashboard == '/':
-        pytest.skip('Account deletion is hosted only')
-    response = client.post('/settings/account', data={'confirm': 'wrong@example.com'}, follow_redirects=True)
-    assert 'Your account and dashboard data have been deleted.' not in response.get_data(as_text=True)
-    assert client.get(dashboard).status_code == 200
-    response = client.post('/settings/account', data={'confirm': 'ux-test@example.com'}, follow_redirects=True)
-    html = response.get_data(as_text=True)
-    assert 'Your account and dashboard data have been deleted.' in html
-    assert 'All screen links have stopped working.' in html
-    assert client.get(dashboard).status_code == 404
-    assert client.get('/settings/').status_code == 302
-    # It is a one-time result of a real deletion, not a claim triggered by a URL flag.
-    assert 'Your account and dashboard data have been deleted.' not in client.get('/login?deleted=1').get_data(as_text=True)
 
 
 @pytest.mark.parametrize('invented_people,invented_pets,destination,other', [
@@ -138,7 +104,7 @@ def test_age_grammar(household, monkeypatch, age):
 
 def test_current_user_labels_distinguish_tasks_calendars_and_daily_message(household):
     client, _, _ = household
-    html = client.get('/settings/recurring/new').get_data(as_text=True)
+    html = client.get('/settings/tasks/new').get_data(as_text=True)
     assert 'New task' in html and '>Task</label>' in html
     home = client.get('/settings/').get_data(as_text=True)
     assert 'Rewrite daily headline' in home

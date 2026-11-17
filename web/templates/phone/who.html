@@ -4,7 +4,7 @@
 {% block feedback %}{% endblock %}
 
 {% block appbar %}
-<h1 class="wordmark">DinkyDash</h1>
+<h1 class="wordmark">PompDash</h1>
 {% endblock %}
 
 {% block content %}
@@ -28,6 +28,9 @@
             <div class="flash error" role="alert">{{ problem }}</div>
             {% endif %}
         </div>
+        {% elif require_pin %}
+        <div class="{{ 'flash error' if asking == person.id else 'hint' }}"
+             {% if asking == person.id %}role="alert"{% endif %}>{{ no_pin }}</div>
         {% endif %}
         <button class="btn outline" type="submit">{{ person.emoji or '' }} {{ person.name }}</button>
     </form>

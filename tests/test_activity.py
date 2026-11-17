@@ -173,6 +173,11 @@ class TestSignIn:
         assert locked.get("/settings/activity").status_code == 200
 
     def test_a_member_on_the_phone_cannot_use_it(self, locked):
+        guardian = client_for(locked.application)
+        guardian.get("/signin")
+        guardian.post("/signin", data={"password": PASSWORD})
+        guardian.post("/settings/pins/mia1", data={"pin": "4821"})
         locked.get("/h/who")
-        locked.post("/h/who", data={"person": "mia1"})
+        locked.post("/h/who", data={"person": "mia1", "pin": "4821"})
+        assert locked.get("/h").status_code == 200
         assert locked.get("/settings/activity").status_code == 302

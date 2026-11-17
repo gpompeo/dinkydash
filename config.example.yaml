@@ -1,4 +1,4 @@
-# DinkyDash configuration
+# PompDash configuration
 # Copy this file to config.yaml and make it yours. The settings UI at
 # /settings writes this same file, and keeps your comments. It also adds a
 # short `id` to each person, pet, chore, date and calendar the first time you
@@ -19,8 +19,11 @@ clock: "24h"
 # Optional. Gives the daily headline a bit of local flavour.
 location: "Berlin, Germany"
 
-# light or dark.
-theme: light
+# The first day of the week page: monday to sunday. Sunday is the default.
+week_start: "sunday"
+
+# dark (the default) or light: one choice for the dashboard, settings and phone page.
+theme: dark
 
 # One entry per iCal feed; they are merged into a single agenda.
 # Google, Apple iCloud and Outlook all publish an iCal link:
@@ -77,6 +80,8 @@ features:
 # Tasks come up every day (`recurrence.kind: daily`) and hand over in the order listed.
 # `assignment.mode: rotate` counts occurrences; `offset` shifts where the rotation starts.
 # Other modes: fixed (the first person listed), anyone, everyone.
+# A task is never due before its `start` (optional, YYYY-MM-DD, may be past or future), else its
+# `created` day, which the settings page records. A task with neither is due on every matching day.
 tasks:
   - id: table
     title: "Set the table"

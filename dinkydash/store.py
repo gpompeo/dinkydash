@@ -1,36 +1,8 @@
-"""The storage seam: where a family's config, dashboard and history are kept.
+"""File-backed household config, dashboard, history and activity data.
 
-FileStore keeps config.yaml and two JSON files; PostgresStore keeps rows keyed
-on a family. The config dict is the contract, and both expose seven operations:
-
-    load_config()                save_config(config, invalidate_calendars=())
-    load_payload(config)         save_agenda(config, agenda)
-                                 save_brief(config, brief)
-    recent_notes(config, days)   record_note(config, entry, keep)
-
-The runner, the dashboard route and the settings routes take a store and never
-learn which one they were given.
-
-**The dashboard is read whole and written in halves**, and that is the shape rather
-than an accident. A refresh owns the agenda; the daily brief owns the words.
-They run on different clocks, and the brief's write is separated from its read
-by a slow model call — so a single `save_payload` meant a refresh that landed
-during that call was overwritten by stale keys, silently, while the button that
-triggered it said it had worked (DIN-28). Two operations that each write only
-what they own makes that impossible rather than merely unlikely; in Postgres
-they are already two tables, so it is also the more honest mapping.
-
-Settings saves clear affected calendars under the same lock as agenda writes.
-`save_agenda` returns False if the saved calendar settings no longer match the
-fetch; the runner then stops before generating a brief from obsolete results.
-
-The payload and history calls are handed the config because `FileStore` needs
-two keys out of it — `data_file` and `content_history_file` — to know where to
-write. Those are storage-layer keys: they mean nothing in cloud mode, and this
-is the only module that reads them.
-
-This module and `config.py` are the only places under `dinkydash/` that touch
-a file.
+The agenda and daily brief are written separately so a refresh during a model
+call cannot be overwritten by the earlier read. Calendar settings and agenda
+writes share a lock, so an obsolete fetch cannot publish stale events.
 """
 
 import hashlib
@@ -50,6 +22,7 @@ except ImportError:  # pragma: no cover - Windows has no flock
 from . import config as config_module
 from . import history as history_module
 from .calendars import feed_label
+from .week import week_start_of
 
 log = logging.getLogger(__name__)
 
@@ -308,6 +281,7 @@ def calendar_config(config):
     """Fetch inputs, grouped by the label carried by stored events.
 
     Ignore item IDs so backfilling them does not invalidate a working agenda.
+    The week start is part of it because it decides how far back a fetch reaches.
     Keep duplicate labels together: changing either source invalidates that label.
     """
     feeds = {}
@@ -316,7 +290,7 @@ def calendar_config(config):
             feeds.setdefault(feed_label(entry), []).append(
                 {key: value for key, value in entry.items() if key != "id"})
     return (config.get("timezone") or config_module.DEFAULTS["timezone"],
-            int(config.get("calendar_days_ahead") or 14), feeds)
+            int(config.get("calendar_days_ahead") or 14), week_start_of(config), feeds)
 
 
 def invalidated_agenda(previous, current, payload, labels=()):
@@ -324,10 +298,10 @@ def invalidated_agenda(previous, current, payload, labels=()):
     before, after = calendar_config(previous), calendar_config(current)
     if payload is None or (before == after and not labels):
         return None
-    changed = set(labels) | {label for label in before[2].keys() | after[2].keys()
-                            if before[2].get(label) != after[2].get(label)}
+    changed = set(labels) | {label for label in before[3].keys() | after[3].keys()
+                            if before[3].get(label) != after[3].get(label)}
     return {key: [entry for entry in payload.get(key) or []
-                  if before[:2] == after[:2] and entry.get(label_key) not in changed]
+                  if before[:3] == after[:3] and entry.get(label_key) not in changed]
             for key, label_key in (("events", "calendar"), ("calendar_statuses", "label"))}
 
 
@@ -344,8 +318,7 @@ def _locked(directory):
     file to remember to exclude.
 
     Lock the config directory for settings and payload writes, including when
-    `data_file` points elsewhere. No network call runs under this lock. Cloud
-    mode coordinates config and agenda writes with a family-row lock instead.
+    `data_file` points elsewhere. No network call runs under this lock.
     """
     if fcntl is None:  # Windows; the dashboard runs on Linux and macOS
         yield

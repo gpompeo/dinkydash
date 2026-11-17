@@ -1,10 +1,10 @@
-# Running DinkyDash day to day
+# Running PompDash day to day
 
 What the dashboard does on its own, what the two buttons in the settings UI do, and what to
 check when something looks wrong.
 
 Setting it up for the first time? Use the
-[getting started guide](https://dinkydash.co/getting-started/).
+[self-hosting guide](self-hosting.md).
 
 ## What happens each day
 
@@ -65,8 +65,9 @@ token lives in `auth.json`.
 ## Phones, check-ins and the shopping list
 
 Each person opens `/h` on their own phone, picks their name and ticks off today's tasks (and
-yesterday's). A parent can set a PIN per person under **Settings → PINs**, so one child can't tick
-for another. Parents who are signed in can correct the last fourteen days on the **Activity** page.
+yesterday's). With sign-in on, a parent sets a PIN per person under **Settings → Phone PINs**,
+so one child can't tick for another. Parents who are signed in can pick anyone without a PIN and
+correct the last fourteen days on the **Activity** page. With sign-in off, anyone can pick a name.
 Streaks are worked out from the check-ins each time, never stored. The shopping list sits on the same
 page while the Shopping switch is on. Turn Tasks, Shopping or Special dates off on the settings home
 and the module disappears everywhere; its data stays where it is.
@@ -105,13 +106,12 @@ Two buttons on the settings home force the point:
 the daily headline is written, on your own clock. They are the `refresh_minutes` and `brief_time` keys,
 so editing them by hand still works; the page is just the version you can reach from a phone. The
 dashboard's own refresh follows: it redraws every five minutes, or every `refresh_minutes` if you set
-something shorter than that. A redraw that cannot reach the server — the Pi's Wi-Fi is down, or you
-are looking at the hosted dashboard during a deploy — keeps the last good dashboard on screen with a
+something shorter than that. A redraw that cannot reach the server — for example, when the Pi's Wi-Fi is down — keeps the last good dashboard on screen with a
 "Reconnecting" note in the corner, and tries again every minute.
 
 ## Keeping settings on your phone
 
-Save `/settings` to your phone's home screen and it opens like an app, with the DinkyDash icon and
+Save `/settings` to your phone's home screen and it opens like an app, with the PompDash icon and
 name rather than a bare URL. On an iPhone: **Share** → **Add to Home Screen**. On Android: the **⋮**
 menu → **Add to home screen**. The settings page offers this itself the first time, until you say no.
 
@@ -132,9 +132,8 @@ Where the link lives, per provider:
 | **Apple iCloud** | iCloud Calendar → share the calendar → **Public Calendar** → Copy Link. A `webcal://` link is fine — it is converted for you |
 | **Outlook / Microsoft 365** | Settings → Calendar → **Shared calendars** → **Publish a calendar**, permission **Can view all details**, then copy the **ICS** link |
 
-Nothing here signs you in to an account. DinkyDash fetches the link on a schedule and can only read.
-The [getting started guide](https://dinkydash.co/getting-started/#find-your-calendar-link) has the
-full steps and the gotchas.
+Nothing here signs you in to an account. PompDash fetches the link on a schedule and can only read.
+[Calendar links](calendar-links.md) has the full steps and the gotchas.
 
 Add one feed per person. A feed that stops answering is reported on the settings home page and is
 skipped rather than emptying the dashboard.
@@ -180,8 +179,7 @@ need replacing.
 
 **"Reconnecting" in the bottom corner.** The dashboard could not fetch its next copy, so it is
 showing the last one it got and trying again every minute. On a Pi that means Flask stopped
-answering (`sudo systemctl status dinkydash`); on the hosted dashboard it means the screen has no
-route to app.dinkydash.co, which is nearly always the Wi-Fi. The note says when the dashboard on
+answering (`sudo systemctl status dinkydash`) or the screen has lost its Wi-Fi. The note says when the dashboard on
 screen was last updated, and changes to "Showing Thursday's dashboard" once that day is over, because
 the turns and countdowns on it are then a day old. It goes away by itself the moment a copy arrives.
 
@@ -189,5 +187,4 @@ the turns and countdowns on it are then a day old. It goes away by itself the mo
 
 Trouble getting a Raspberry Pi to *boot* into the dashboard — Chromium starting before Flask,
 a keyring dialog, a blanking screen, blocked Wi-Fi — is covered under
-[Troubleshooting](https://dinkydash.co/getting-started/#troubleshooting) in the getting
-started guide.
+[Troubleshooting](self-hosting.md#troubleshooting) in the self-hosting guide.

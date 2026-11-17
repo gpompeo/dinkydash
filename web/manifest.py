@@ -1,4 +1,4 @@
-"""What a phone needs to keep a DinkyDash page on its home screen.
+"""What a phone needs to keep a PompDash page on its home screen.
 
 Two pages are worth saving and they want different things: the dashboard opens full
 screen on a wall panel, the settings UI opens like an app on a phone. So there
@@ -28,8 +28,6 @@ ICONS = [
 ]
 
 
-# The warm off-white the settings UI and the phone page paint behind themselves.
-PAGE_COLOUR = "#fffaf5"
 
 
 def response(**fields):

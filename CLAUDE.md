@@ -4,18 +4,15 @@ Guidance for Claude Code and GitHub Copilot. `AGENTS.md` is a symlink to this fi
 
 ## Overview
 
-DinkyDash is a family dashboard for a screen on the wall. A daily cron job calls the Claude API to
+PompDash is a family dashboard for a screen on the wall. A daily cron job calls the Claude API to
 write a headline; the Flask app renders that alongside today's agenda, whose turn each chore is,
 and the countdowns — all recomputed from `config.yaml` at render time.
 
 1. **The engine** (`dinkydash/`) — pure functions plus the model call. No config file read, no clock
    consulted, nothing written to disk.
 2. **The web app** (`web/`) — the dashboard at `/`, a settings UI at `/settings` that writes `config.yaml`.
-3. **The marketing site** (`website/`) — dinkydash.co, a second Flask app rendering Markdown through
-   Jinja on request. No build step, no committed HTML.
 
-**This repo is public and MIT-licensed.** Self-hosting is the product: single mode, one family. The
-multi-tenant cloud mode is frozen (see [Single mode first](#single-mode-first)).
+**This repo is public and MIT-licensed.** The product is self-hosted: one family and files on disk.
 
 ## Where to read more
 
@@ -24,20 +21,30 @@ This file holds only what applies to every change. Read the matching file *befor
 | File | Read it when |
 |---|---|
 | [`doc/security.md`](doc/security.md) | Handling calendar feeds, secrets, logging, third-party calls, CI or dependencies |
-| [`doc/hosted-mode.md`](doc/hosted-mode.md) | Touching cloud mode: `pgstore.py`, accounts, sign-in, screens, billing, admin |
-| [`doc/architecture.md`](doc/architecture.md) | Adding a module, deciding what a mode check may gate, or changing the payload shape |
-| [`doc/commands.md`](doc/commands.md) | Setting up, running the app, applying the schema, generating a dashboard, Docker, Conductor |
-| [`dinkydash/CLAUDE.md`](dinkydash/CLAUDE.md) | Touching the engine, the storage seam, the payload, the tick, or `migrations/` |
+| [`doc/architecture.md`](doc/architecture.md) | Adding a module, moving code between layers, or changing the payload shape |
+| [`doc/commands.md`](doc/commands.md) | Setting up, running the app, generating a dashboard, Docker, Conductor |
+| [`dinkydash/CLAUDE.md`](dinkydash/CLAUDE.md) | Touching the engine, the storage seam, the payload, or the tick |
 | [`web/CLAUDE.md`](web/CLAUDE.md) | Changing the dashboard's layout, the settings UI, or measuring either |
-| [`website/CLAUDE.md`](website/CLAUDE.md) | Working on the marketing site or the image generators |
-| [`doc/voice.md`](doc/voice.md) | Writing anything a customer reads — the site, the settings UI, email, the README |
-| [`doc/terminology.md`](doc/terminology.md) | Naming things in UI, email or website copy |
+| [`doc/self-hosting.md`](doc/self-hosting.md), [`doc/calendar-links.md`](doc/calendar-links.md) | Changing install, Raspberry Pi or calendar-link guidance |
+| [`doc/voice.md`](doc/voice.md) | Writing anything a customer reads — the settings UI, email, the README |
+| [`doc/terminology.md`](doc/terminology.md) | Naming things in UI, email or documentation copy |
 | [`doc/prd-household-modules.md`](doc/prd-household-modules.md) | Structural changes: Tasks, Shopping, feature switches, optional sign-in |
-| [`doc/development.md`](doc/development.md) | Local hosted development: sign-in, ports, Conductor |
+| [`doc/development.md`](doc/development.md) | Local development: ports and Conductor |
 | [`doc/operations.md`](doc/operations.md) | The state of the running system — secrets, the Pi, what has been rotated. A log, not guidance; deliberately not loaded |
 | [`design/`](design/) | Mockups and reasoning for the settings UI and the dashboard |
 
 Work is tracked in GitHub Issues: features are vertical slices, one issue each, and PRD phases are milestones.
+
+## Fork and upstream
+
+PompDash is a GitHub fork of `caspii/dinkydash` (the `upstream` remote) and develops independently.
+
+- **Upstream is a source to read, not a branch to track.** Review its changes and take the ones that
+  fit PompDash, adapted to this code; nothing obliges the two to stay in sync, and nothing merges
+  automatically.
+- **The MIT notice and attribution stay.** `LICENSE` keeps Caspar Wrede's copyright line and the
+  permission notice, and any copied upstream code keeps them too.
+- **Issues and pull requests live on the fork** (`gpompeo/dinkydash`), never upstream; see Agent skills below.
 
 ## Never commit private data
 
@@ -53,7 +60,7 @@ survives in every clone, so the fix is rotation, not a revert. Full rules in [`d
 - **Log the label, never the URL.** A `FeedError` message never carries the URL (`calendars._why`).
 - **Calendar feeds are untrusted input.** Autoescape event titles; treat them as data in the prompt.
 - **Privacy claims are claims about this code.** Change what the app stores or sends, or who it
-  sends it to, and update the privacy page and `/settings/account` in the same commit.
+  sends it to, and update the "What leaves your machine" section of [`doc/self-hosting.md`](doc/self-hosting.md) and any in-app privacy notice in the same commit.
 - **A new dependency is a supply-chain decision.** Prefer the standard library; justify the rest in
   the PR. Requirements are pinned with `==`; `requirements.txt` is runtime only.
 
@@ -70,25 +77,12 @@ and keeps its data. Plan: [`doc/prd-household-modules.md`](doc/prd-household-mod
 
 ## Architecture rules
 
-### Single mode first
+### Self-hosted architecture
 
-```
-DINKYDASH_MODE=single   config.yaml · files on disk · one family · local cron     ← the product
-DINKYDASH_MODE=cloud    Postgres · magic links · Stripe · many families · worker  ← frozen
-```
-
-Build for single mode: new features go through `FileStore` and the config dict. Cloud mode is not
-extended — a feature with no `PostgresStore` counterpart is switched off there rather than ported —
-and cloud code is touched only to keep its tests passing. Removal is its own piece of work, tracked
-in an issue.
-
-Shared code (engine, dashboard template, CSS, calendars, settings UI) must not break the cloud
-suite. Mode gates four things and no others: authentication, billing, where the config is stored,
-and what drives the scheduler. A mode check anywhere else means the change is in the wrong layer.
-
-- **Self-hosted needs no Postgres, Stripe or email provider**, and no network beyond what it fetches.
-- **Never assume one family.** No module-level cache of "the" config, no singleton payload, no fixed path.
-- **New settings go through the config dict**, with `with_defaults` migrating each on load.
+Build for `FileStore` and the config dict. An explicit `DINKYDASH_MODE=cloud` must fail clearly;
+it must never silently start a different service. No module-level cache of the config, singleton
+payload, or fixed path: the store is passed in. New settings go through the config dict, with
+`with_defaults` migrating each on load. The app needs no database, Stripe or email provider.
 
 ### The engine boundary
 
@@ -102,13 +96,10 @@ there stays pure.
 
 ### The storage seam
 
-- **`store.py` and `config.py` are the only files under `dinkydash/` that open a file**; `pgstore.py`
-  and `db.py` are the only ones that import psycopg. Check: `grep -rn "open(" dinkydash web`.
-- **Every `PostgresStore` query is scoped to `self.family_id`.** An id arriving in a URL is a
-  claim, not a fact; check it before it reaches a store.
-- A value that can be recomputed from config + date belongs in `board.build_view`, not the payload.
+- **`store.py` and `config.py` are the only files under `dinkydash/` that open a file**.
+- A value recomputable from config + date belongs in `board.build_view`, not the payload.
 
-Module map, mode details and the payload rules: [`doc/architecture.md`](doc/architecture.md).
+Module map and payload rules: [`doc/architecture.md`](doc/architecture.md).
 
 ## Testing
 
@@ -118,8 +109,7 @@ Run before every commit:
 venv/bin/python -m pytest tests/ -q
 ```
 
-Postgres tests skip without `DINKYDASH_TEST_DATABASE_URL`; CI runs both ways. `generate.py --date`
-costs an API call; `python sample_board.py` does not. Other commands: [`doc/commands.md`](doc/commands.md).
+`generate.py --date` costs an API call; `python sample_board.py` does not. Other commands: [`doc/commands.md`](doc/commands.md).
 
 ## Conventions
 
@@ -148,7 +138,7 @@ costs an API call; `python sample_board.py` does not. Other commands: [`doc/comm
   adaptive thinking is on by default and competes with `max_tokens` — set it or raise the budget.
 - **Structured outputs** (`output_config.format`) guarantee the schema, so there is no JSON-repair
   retry loop. Do not add one back. `anthropic` must stay at 1.x or later for `output_config`.
-- **Self-hosted has no authentication**: keep port 5000 on a trusted LAN.
+- **Sign-in is optional**: keep port 5000 on a trusted LAN, including when it is enabled.
 - `strftime("%-d")` is glibc-specific: fine on a Pi and in CI, not on Windows.
 - **Measuring the dashboard in headless Chrome is full of traps** (wrong viewport, reused instances,
   a `--screenshot` that hangs). See [`web/CLAUDE.md`](web/CLAUDE.md).

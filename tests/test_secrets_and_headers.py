@@ -171,7 +171,7 @@ class TestNothingAsksGoogleForAFont:
     """Self-hosted Nunito. The dashboard reloads every five minutes; each request to
     fonts.gstatic.com from a tokenised URL would hand it to Google."""
 
-    @pytest.mark.parametrize("directory", ["web/templates", "website/templates"])
+    @pytest.mark.parametrize("directory", ["web/templates"])
     def test_no_template_links_google_fonts(self, directory):
         offenders = [
             str(path.relative_to(REPO))

@@ -1,0 +1,181 @@
+{# The one palette. Every page that draws in colour includes this and takes its
+   colours from these tokens: the dashboard, the settings UI and the phone page.
+   `data-theme` on <html> picks the set, from the one `theme` setting in
+   config.yaml (see dinkydash/config.py: THEMES, DEFAULT_THEME, theme_of).
+
+   Dark follows Tokyo Night and light follows Tokyo Night Day. Text, accents and
+   status colours are chosen so that each reads at 4.5:1 or better on the page,
+   card and raised surfaces of its own theme; tests/test_theme.py holds the
+   numbers. A colour literal belongs in this file and nowhere else in a template.
+
+   Channel tokens (`--*-rgb`) are bare "r, g, b" triplets so a rule can set its
+   own alpha: `rgba(var(--accent-rgb), 0.1)`.
+
+   `follow_system` is for the one page that knows nothing about the family: with
+   no data-theme it takes the browser's own light/dark preference. #}
+{% macro dark_tokens() %}
+            color-scheme: dark;
+            --bg: #1a1b26;
+            --surface: #24283b;
+            --warm: #292e42;
+            --border: #2f344d;
+            --border-strong: #3b4261;
+            --control-edge: #6b739e;
+            --text: #c0caf5;
+            --text-mid: #a9b1d6;
+            --text-muted: #9aa5ce;
+            --text-faint: #9aa5ce;
+            --faint: #737aa2;
+            --accent: #7aa2f7;
+            --accent-dark: #9ab8fa;
+            --on-accent: #1a1b26;
+            --purple: #bb9af7;
+            --blue: #7aa2f7;
+            --green: #9ece6a;
+            --ok-fg: #9ece6a;
+            --amber: #e0af68;
+            --amber-dark: #e0af68;
+            --danger: #f7768e;
+            --danger-dark: #e5607a;
+            --accent-rgb: 122, 162, 247;
+            --purple-rgb: 187, 154, 247;
+            --blue-rgb: 122, 162, 247;
+            --green-rgb: 158, 206, 106;
+            --pink-rgb: 255, 117, 172;
+            --orange-rgb: 255, 158, 100;
+            --amber-rgb: 224, 175, 104;
+            --teal-rgb: 26, 188, 156;
+            --danger-rgb: 247, 118, 142;
+            --neutral-rgb: 169, 177, 214;
+            --edge-rgb: 192, 202, 245;
+            --shadow-rgb: 0, 0, 0;
+            --page: radial-gradient(130% 70% at 50% -10%, #1f2335 0%, #1a1b26 60%, #16161e 100%);
+            --card-fill: linear-gradient(180deg, #292e42 0%, #24283b 100%);
+            --hair: rgba(192, 202, 245, 0.10);
+            --hair-soft: rgba(192, 202, 245, 0.07);
+            --sheen: inset 0 1px 0 rgba(192, 202, 245, 0.06);
+            --lift-sm: 0 1px 1px rgba(0, 0, 0, 0.25), 0 1px 3px rgba(0, 0, 0, 0.3);
+            --lift-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 14px 32px -10px rgba(0, 0, 0, 0.5);
+            --lift-lg: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 24px -6px rgba(0, 0, 0, 0.45), 0 32px 64px -16px rgba(0, 0, 0, 0.6);
+            --inset-field: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+            --accent-fill: linear-gradient(180deg, #86adf8 0%, #7aa2f7 100%);
+            --accent-fill-hover: linear-gradient(180deg, #96b8fa 0%, #88aef8 100%);
+            --accent-pressed: #6b93e6;
+            --accent-lift: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 12px -4px rgba(122, 162, 247, 0.35);
+            --accent-glow: 0 8px 20px -8px rgba(122, 162, 247, 0.5);
+            --accent-press-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+            --focus-halo: 0 0 0 3px rgba(122, 162, 247, 0.3);
+            --danger-fill: linear-gradient(180deg, #f98a9e 0%, #f7768e 100%);
+            --danger-lift: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px -4px rgba(247, 118, 142, 0.35);
+            --danger-glow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 20px -8px rgba(247, 118, 142, 0.45);
+            --danger-press-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            --tint: rgba(169, 177, 214, 0.12);
+            --scrim: rgba(13, 14, 22, 0.7);
+            --appbar-bg: rgba(26, 27, 38, 0.82);
+            --qr-plate: #ffffff;
+            --avatar-edge: inset 0 1px 0 rgba(192, 202, 245, 0.08), inset 0 0 0 1px rgba(192, 202, 245, 0.06);
+            --avatar-alpha: 0.2;
+            --card: linear-gradient(180deg, #292e42 0%, #24283b 100%);
+            --card-edge: rgba(192, 202, 245, 0.08);
+            --card-lift: inset 0 1px 0 rgba(192, 202, 245, 0.06),
+                         0 1px 2px rgba(0, 0, 0, 0.3),
+                         0 14px 32px -10px rgba(0, 0, 0, 0.5);
+            --chore-sheen: linear-gradient(180deg, rgba(192, 202, 245, 0.06), rgba(192, 202, 245, 0));
+            --chore-1-edge: inset 0 0 0 1px rgba(122, 162, 247, 0.22), inset 0 1px 0 rgba(192, 202, 245, 0.06);
+            --chore-2-edge: inset 0 0 0 1px rgba(187, 154, 247, 0.24), inset 0 1px 0 rgba(192, 202, 245, 0.06);
+            --box: #1f2335;
+            --chore-1-bg: rgba(122, 162, 247, 0.16);
+            --chore-1-fg: #9ab8fa;
+            --chore-2-bg: rgba(187, 154, 247, 0.18);
+            --chore-2-fg: #c9b0f9;
+            --warn-bg: #2f2a22;
+            --warn-fg: #e0af68;
+            --stale-box: #1f2335;
+{% endmacro %}
+{% macro light_tokens() %}
+            color-scheme: light;
+            --bg: #e1e2e7;
+            --surface: #f2f3f8;
+            --warm: #e6e7ee;
+            --border: #c9ccdb;
+            --border-strong: #a9aec6;
+            --control-edge: #747ba0;
+            --text: #343b58;
+            --text-mid: #434a6b;
+            --text-muted: #565e86;
+            --text-faint: #565e86;
+            --faint: #6f77a0;
+            --accent: #2a5cb8;
+            --accent-dark: #1f4a9c;
+            --on-accent: #ffffff;
+            --purple: #7847bd;
+            --blue: #2a5cb8;
+            --green: #3f6b1f;
+            --ok-fg: #3f6b1f;
+            --amber: #85561a;
+            --amber-dark: #85561a;
+            --danger: #b8234a;
+            --danger-dark: #a31f43;
+            --accent-rgb: 42, 92, 184;
+            --purple-rgb: 120, 71, 189;
+            --blue-rgb: 42, 92, 184;
+            --green-rgb: 63, 107, 31;
+            --pink-rgb: 176, 45, 112;
+            --orange-rgb: 150, 74, 0;
+            --amber-rgb: 133, 86, 26;
+            --teal-rgb: 11, 110, 95;
+            --danger-rgb: 184, 35, 74;
+            --neutral-rgb: 86, 94, 134;
+            --edge-rgb: 52, 59, 88;
+            --shadow-rgb: 52, 59, 88;
+            --page: radial-gradient(130% 70% at 50% -10%, #ebecf1 0%, #e1e2e7 60%, #d8dae3 100%);
+            --card-fill: linear-gradient(180deg, #f5f6fa 0%, #eceef4 100%);
+            --hair: rgba(52, 59, 88, 0.12);
+            --hair-soft: rgba(52, 59, 88, 0.08);
+            --sheen: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            --lift-sm: 0 1px 1px rgba(52, 59, 88, 0.05), 0 1px 3px rgba(52, 59, 88, 0.08);
+            --lift-md: 0 1px 2px rgba(52, 59, 88, 0.06), 0 4px 10px -2px rgba(52, 59, 88, 0.08), 0 14px 32px -10px rgba(52, 59, 88, 0.14);
+            --lift-lg: 0 2px 4px rgba(52, 59, 88, 0.06), 0 12px 24px -6px rgba(52, 59, 88, 0.12), 0 32px 64px -16px rgba(52, 59, 88, 0.2);
+            --inset-field: inset 0 1px 2px rgba(52, 59, 88, 0.06);
+            --accent-fill: linear-gradient(180deg, #2f64c4 0%, #2455a8 100%);
+            --accent-fill-hover: linear-gradient(180deg, #2a5cb8 0%, #1f4a9c 100%);
+            --accent-pressed: #1f4a9c;
+            --accent-lift: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(31, 74, 156, 0.25), 0 4px 12px -4px rgba(42, 92, 184, 0.4);
+            --accent-glow: 0 8px 20px -8px rgba(42, 92, 184, 0.5);
+            --accent-press-shadow: inset 0 1px 2px rgba(15, 30, 70, 0.3);
+            --focus-halo: 0 0 0 3px rgba(42, 92, 184, 0.2);
+            --danger-fill: linear-gradient(180deg, #c92b56 0%, #b32248 100%);
+            --danger-lift: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px -4px rgba(192, 38, 79, 0.35);
+            --danger-glow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 20px -8px rgba(192, 38, 79, 0.45);
+            --danger-press-shadow: 0 1px 3px rgba(192, 38, 79, 0.25);
+            --tint: rgba(86, 94, 134, 0.12);
+            --scrim: rgba(52, 59, 88, 0.5);
+            --appbar-bg: rgba(225, 226, 231, 0.82);
+            --qr-plate: #ffffff;
+            --avatar-edge: inset 0 1px 0 rgba(255, 255, 255, 0.7), inset 0 0 0 1px rgba(52, 59, 88, 0.06);
+            --avatar-alpha: 0.14;
+            --card: linear-gradient(180deg, #f5f6fa 0%, #eceef4 100%);
+            --card-edge: rgba(52, 59, 88, 0.1);
+            --card-lift: inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                         0 1px 2px rgba(52, 59, 88, 0.06),
+                         0 4px 10px -2px rgba(52, 59, 88, 0.08),
+                         0 14px 32px -10px rgba(52, 59, 88, 0.14);
+            --chore-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0));
+            --chore-1-edge: inset 0 0 0 1px rgba(42, 92, 184, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(52, 59, 88, 0.06);
+            --chore-2-edge: inset 0 0 0 1px rgba(120, 71, 189, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 1px 2px rgba(52, 59, 88, 0.06);
+            --box: #e6e8f0;
+            --chore-1-bg: rgba(42, 92, 184, 0.1);
+            --chore-1-fg: #1f4a9c;
+            --chore-2-bg: rgba(120, 71, 189, 0.1);
+            --chore-2-fg: #6a3aab;
+            --warn-bg: #ebe2d2;
+            --warn-fg: #7a4f14;
+            --stale-box: #dadde8;
+{% endmacro %}
+<style id="theme-tokens">
+        :root, [data-theme="light"] { {{ light_tokens() }} }
+        [data-theme="dark"] { {{ dark_tokens() }} }
+{% if follow_system %}
+        @media (prefers-color-scheme: dark) { :root:not([data-theme]) { {{ dark_tokens() }} } }
+{% endif %}
+</style>

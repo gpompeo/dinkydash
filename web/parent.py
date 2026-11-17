@@ -43,10 +43,8 @@ def password():
 
 
 def enabled():
-    """Sign-in is on: a password is set, in single mode (cloud has its own)."""
-    from . import SINGLE
-
-    return bool(password()) and current_app.config["MODE"] == SINGLE
+    """Sign-in is on when a parent password is set."""
+    return bool(password())
 
 
 def is_parent():
@@ -65,7 +63,7 @@ def check_configuration(app):
 
 
 def guard():
-    """Single mode with sign-in on: no parent session, no settings."""
+    """With sign-in on, settings require a parent session."""
     if not enabled() or is_parent():
         return None
     return redirect(url_for("parent.sign_in"))

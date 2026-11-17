@@ -25,11 +25,12 @@ from datetime import date, datetime, timedelta, timezone
 
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
-from .config import feature_on
+from .config import THEME_COLOURS, feature_on, theme_of
 from .context import build_countdowns, tasks_for
 from .schedule import brief_due, refresh_interval
 from . import shopping as shopping_module
 from .streaks import person_streak, task_streak
+from . import week as week_module
 
 # The agenda's row budget, not just today's cap. Today fills it first and
 # tomorrow tops up whatever is left, so a quiet day stops leaving the column
@@ -40,8 +41,16 @@ MAX_EVENTS = 5
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
 
+# One column of the week page names this many events, then counts the rest. The
+# page is read-only and unscrolled, so a crowded day says how many it left out.
+MAX_WEEK_EVENTS = 6
+
 # The wall's shopping card names this many unbought items, then counts the rest.
 MAX_SHOPPING = 8
+
+# The shopping page is the whole screen, so it names more; past this it counts.
+# The page sheds further to what its screen holds.
+MAX_SHOPPING_PAGE = 30
 
 # Nothing pushes to the dashboard, so it reloads itself on a timer. Five minutes is
 # the ceiling — it is a panel on a wall, not a page anyone is watching — and
@@ -75,6 +84,34 @@ def as_shown(events, clock, hide_locations=()):
         written = format_time(event.get("start") or event.get("time"), clock)
         shown.append({**event, "time": written or event.get("time")})
     return shown
+
+
+def week_view(config, today, fetched, clock, hidden):
+    """The seven days of the family's current week, for the week page.
+
+    Worked out from `today` and the `week_start` setting, never from the
+    payload, so it is the right week even when the last fetch is old. Locations
+    are left off: the page is a glance, and a calendar that hides its
+    locations then has nothing to leak. Times are written for the family's
+    clock like every other.
+    """
+    days = week_module.days(today, week_module.week_start_of(config))
+    shown = []
+    for day in days:
+        on_day = events_on(fetched, day)
+        rows = [{**e, "location": None}
+                for e in as_shown(on_day[:MAX_WEEK_EVENTS], clock, hidden)]
+        shown.append({
+            "date": day.isoformat(),
+            "weekday": day.strftime("%a"),
+            "weekday_name": day.strftime("%A"),
+            "day": day.day,
+            "today": day == today,
+            "past": day < today,
+            "events": rows,
+            "more": max(0, len(on_day) - MAX_WEEK_EVENTS),
+        })
+    return {"range": week_module.range_label(days), "days": shown}
 
 
 def computed_headline(events):
@@ -155,7 +192,7 @@ def add_checkins(view, config, tasks, today, completions):
     """Done state, streaks and yesterday's open tasks, from the completions.
 
     Worked out here on every render and stored nowhere. With `completions` of
-    None the store keeps none (cloud mode), so the card stays the plain list.
+    None leaves the card as a plain list.
     """
     if completions is None:
         return
@@ -193,8 +230,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     without one every stale dashboard counts as late, which is what a caller
     rendering a fixed day (the frozen dashboard, a test) wants.
     """
-    theme = config.get("theme", "light")
-    theme = theme if theme in ("light", "dark") else "light"
+    theme = theme_of(config)
 
     # A switched-off feature is absent from the view, not hidden by the
     # template, so no later card can show what it owns. Special dates owns the
@@ -208,6 +244,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     view = {
         "family_name": config.get("family_name", ""),
         "theme": theme,
+        "theme_colour": THEME_COLOURS[theme],
         # The times are already written for this family below; the template
         # still needs to know which clock, because "12:00 pm" is wider than
         # "12:00" and the agenda's time column is a fixed width.
@@ -219,6 +256,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
         "countdowns": countdowns,
         "shopping": [],
         "shopping_more": 0,
+        "shopping_page": {"items": [], "more": 0},
         "events": [],
         "tomorrow": [],
         "headline": "",
@@ -237,11 +275,13 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
 
     if shopping and now is not None and feature_on(config, "shopping"):
         # Bought items are for the phone; the wall asks what is still to get.
-        unbought = [i for i in shopping_module.current(shopping, now)
+        unbought = [{"text": i["text"], "quantity": i.get("quantity") or ""}
+                    for i in shopping_module.current(shopping, now)
                     if not i.get("bought_at")]
-        view["shopping"] = [{"text": i["text"], "quantity": i.get("quantity") or ""}
-                            for i in unbought[:MAX_SHOPPING]]
+        view["shopping"] = unbought[:MAX_SHOPPING]
         view["shopping_more"] = max(0, len(unbought) - MAX_SHOPPING)
+        view["shopping_page"] = {"items": unbought[:MAX_SHOPPING_PAGE],
+                                 "more": max(0, len(unbought) - MAX_SHOPPING_PAGE)}
 
     if feature_on(config, "tasks"):
         add_checkins(view, config, tasks, today, completions)
@@ -256,6 +296,7 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
     # below is on the family's clock too.
     events = as_shown(events_on(fetched, today)[:MAX_EVENTS], clock, hidden)
     view["events"] = events
+    view["week"] = week_view(config, today, fetched, clock, hidden)
     # The fetch reaches 14 days ahead, so tomorrow is in the payload even when
     # it is a day old. Slots are what today did not use, which is why a busy
     # day silently drops tomorrow rather than overflowing the panel.
@@ -290,26 +331,3 @@ def build_view(config, payload, today, now=None, completions=None, shopping=None
         view["overdue"] = brief_is_overdue(config, payload, view["stale_days"], now)
 
     return view
-
-
-def build_lapsed_view(config, payload, show_last_board):
-    """Hold the last brief's date and computed turns, then show only a message.
-
-    Read existing data rather than retaining another copy of calendar details.
-    Explicit settings edits and calendar privacy invalidation still take effect.
-    """
-    if show_last_board:
-        try:
-            saved_day = date.fromisoformat((payload or {}).get("generated_for_date", ""))
-        except (TypeError, ValueError):
-            pass  # No successful brief: there is no dashboard to preserve.
-        else:
-            view = build_view(config, payload, saved_day)
-            view["state"] = "frozen"
-            return view
-    return {
-        "state": "ended", "family_name": "", "reload_seconds": MAX_RELOAD_SECONDS,
-        "theme": "dark" if config.get("theme") == "dark" else "light",
-        "clock": clock_of(config),
-        "timezone": config.get("timezone") or "UTC",
-    }

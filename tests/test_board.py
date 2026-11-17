@@ -358,9 +358,9 @@ class TestTheme:
         view = build_view(dict(CONFIG, theme="dark"), payload("2026-09-03"), TODAY)
         assert view["theme"] == "dark"
 
-    def test_an_unknown_theme_falls_back_to_light(self):
+    def test_an_unknown_theme_falls_back_to_dark(self):
         view = build_view(dict(CONFIG, theme="neon"), payload("2026-09-03"), TODAY)
-        assert view["theme"] == "light"
+        assert view["theme"] == "dark"
 
 
 class TestLocations:
@@ -451,7 +451,7 @@ class TestTheFirstDashboard:
 
     def test_a_set_up_family_sees_its_dashboard(self, tmp_path):
         page = self.page(tmp_path, 'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n')
-        assert '<div class="board">' in page
+        assert 'class="board"' in page
         assert "The Wilsons" in page
         assert "Nothing booked in today." in page
         assert "first dashboard" not in page
@@ -466,7 +466,7 @@ class TestTheFirstDashboard:
         page = self.page(tmp_path, 'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n'
                                    'people:\n  - name: "Mia"\n    date_of_birth: "2017-03-15"\n'
                                    '    invented: true\n')
-        assert '<div class="board">' in page
+        assert 'class="board"' in page
         assert "Mia" in page
         assert "Nearly there" not in page
 
@@ -542,8 +542,8 @@ class TestTheFactOfTheDayIsNotShown:
         path.write_text(
             'family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\n'
             'people:\n  - name: "Mia"\n    date_of_birth: "2017-03-15"\n'
-            'recurring:\n  - title: "Set the table"\n    emoji: "🍽"\n'
-            '    choices: ["Mia"]\n'
+            'tasks:\n  - id: tbl12345\n    title: "Set the table"\n    emoji: "🍽"\n'
+            '    recurrence:\n      kind: daily\n    assignment:\n      mode: anyone\n'
         )
         (tmp_path / "dashboard_data.json").write_text(json.dumps(payload(
             "2026-09-03",

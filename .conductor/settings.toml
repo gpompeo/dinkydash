@@ -1,29 +1,19 @@
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
 
 [scripts]
-# Copied .env files may select the same database across workspaces.
+# Workspaces may share a copied configuration.
 run_mode = "nonconcurrent"
 
-# requirements-cloud.txt is the superset — it pulls in requirements-site.txt,
-# which pulls in requirements.txt — so this one line installs psycopg, the
-# Markdown renderer and gunicorn. Cloud mode cannot import without psycopg, and
-# the preview is cloud mode. None of it reaches a self-hosted dashboard, which
-# installs requirements.txt alone.
-#
-# config.yaml and dashboard_data.json are only needed by single mode now, but
-# they stay: the suite exercises both modes and `sample_board.py` is still how
-# you look at the dashboard without spending an API call.
+# The development requirements cover the app and tests.
 setup = """
 set -e
 python3 -m venv venv
 venv/bin/pip install -q -r requirements-dev.txt
-venv/bin/pip install -q -r requirements-cloud.txt
 [ -f config.yaml ] || cp config.example.yaml config.yaml
 venv/bin/python sample_board.py
 """
 
-# Both Flask apps, supervised together. Configuration and database checks live
-# in dev.py so the same command works in a terminal outside Conductor.
+# dev.py supervises the Flask app.
 [scripts.run.dev]
 command = "venv/bin/python dev.py"
 default = true

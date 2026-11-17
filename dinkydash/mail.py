@@ -1,30 +1,4 @@
-"""Sending one transactional email, and nothing else.
-
-    send(to, subject, text) -> None
-
-Magic links are what this exists for; dunning and the support inbox are later
-callers of the same function. Named `mail` rather than `email` because the
-standard library owns that name.
-
-**SendGrid, on the account KeepTheScore already sends from.** The shared
-sender reputation is the whole point: a login link that lands in spam is a login
-that fails. `dinkydash.co` is an authenticated sending domain on that account,
-so DKIM signs whatever leaves here.
-
-**No SendGrid SDK.** Sending is one `POST` with a JSON body, and `requests` is
-already a dependency because `calendars.py` fetches feeds with it. A new
-package in an app holding other families' calendars is a supply-chain decision,
-and fifteen saved lines do not pay for one.
-
-**Single mode never calls this.** A self-hosted dashboard has no accounts, so it has
-no logins to mail and no dunning to send. Nothing here is imported unless cloud
-mode asks for it — `web/feedback.py` decides whether there is a key before
-importing anything from here, for that reason — and `send` refuses rather than
-guessing if it is reached without a key.
-
-The shape follows `calendars.fetch_feed`: a typed error the caller decides
-about, a transport that tests replace, and a message that carries no secret.
-"""
+"""Send optional feedback through SendGrid without logging message contents."""
 
 import logging
 import os
@@ -39,7 +13,7 @@ DEFAULT_TIMEOUT = 10
 # Who the mail comes from. A subdomain of the authenticated domain would need
 # its own DKIM records; the apex is what SendGrid validated.
 DEFAULT_FROM = "hello@dinkydash.co"
-DEFAULT_FROM_NAME = "DinkyDash"
+DEFAULT_FROM_NAME = "PompDash"
 
 # **Where a reply goes, which is not the `From` address.** `dinkydash.co` has no
 # MX records — it is authenticated for *sending* and nothing receives on it — so
@@ -48,19 +22,13 @@ DEFAULT_FROM_NAME = "DinkyDash"
 # from the person who was trying to tell you their link did not work.
 #
 # `keepthescore.com` is on Google Workspace and is the same person, which is
-# also what the privacy policy gives as the contact address. When DinkyDash gets
+# also what the privacy policy gives as the contact address. When PompDash gets
 # MX records of its own, this moves and the policy moves with it.
 DEFAULT_REPLY_TO = "hi@keepthescore.com"
 
 
 class MailError(Exception):
-    """A message did not go out.
-
-    Raised rather than swallowed, and swallowed rather than retried in a loop:
-    whether a failed magic link is worth a second attempt is the caller's
-    decision, not this module's. One bad send is a failed login, not a failed
-    process.
-    """
+    """A message did not go out."""
 
 
 class MailRefused(MailError):
@@ -75,18 +43,7 @@ class MailRefused(MailError):
 
 
 def support_address():
-    """The address a person reaches us on, in the app and out of it.
-
-    Where a reply to a sign-in email lands, what the legal pages give as the
-    contact, and what the feedback form offers when it could not send. One
-    function because those are one mailbox: an address the app prints that
-    could disagree with the reply-to on our own mail would send somebody's
-    reply somewhere nobody reads.
-
-    It is also where the feedback form sends by default, and that one is
-    movable — `web.feedback.recipient()` — because where a message is read is
-    not a claim made to anybody, while this address is on a page.
-    """
+    """The support address shown when feedback cannot be sent."""
     return _reply_to()
 
 
@@ -129,7 +86,7 @@ def send(to, subject, text, html=None, transport=None, api_key=None,
         # puts the offending header *value* in this exception's message —
         # "...in header value: 'Bearer SG.REALKEY\n'" — and the only variable
         # header here is the Authorization one. Chaining it would print the key
-        # in every traceback that reaches a log or Sentry, past the sanitised
+        # in every traceback that reaches a log, past the sanitised
         # message. `_clean_key` should mean this never fires; this is the belt
         # to its braces, and it stays even if a future header makes it possible
         # again.
@@ -222,7 +179,7 @@ def _sender():
 def _reply(reply_to):
     """The `reply_to` block. Ours carries a name; somebody else's does not.
 
-    A name is a label the sender chose for themselves, and "DinkyDash" on a
+    A name is a label the sender chose for themselves, and "PompDash" on a
     family's own address would be a mail client showing our name against their
     mailbox.
     """
@@ -242,8 +199,7 @@ def _why(exc):
     `requests` puts the full URL in the message of a connection error, and the
     `Authorization` header can surface in a repr. Neither is something to write
     to a log that a support person reads. The endpoint is not secret, but the
-    habit is what keeps `calendars._why` honest, and this module handles magic
-    links: **a login link in a log is a login in a log.**
+    habit is what keeps `calendars._why` honest.
     """
     if isinstance(exc, requests.Timeout):
         return "the server did not answer in time"

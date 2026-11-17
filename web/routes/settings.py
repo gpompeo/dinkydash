@@ -8,36 +8,33 @@ Writes go straight back to config.yaml through ruamel's round-trip mode, so the
 comments in the file survive being edited from a phone.
 """
 
-import io
-import json
 import logging
+from urllib.parse import urlencode
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo
 
 from flask import (Blueprint, abort, current_app, flash, redirect,
                    render_template, request, url_for)
 
-from dinkydash import accounts
 from dinkydash import config as config_module
-from dinkydash import lifecycle, schedule, screens, taskform
+from dinkydash.config import THEME_COLOURS, theme_of
+from dinkydash import pages as pages_module
+from dinkydash import schedule, taskform
 from dinkydash.calendars import FeedError, addresses, describe_feed, feed_label
 from dinkydash.claude_client import GenerationError
 from dinkydash.clock import CLOCKS, DEFAULT_CLOCK, clock_of, format_time
+from dinkydash.week import WEEK_STARTS
 from dinkydash.context import compute_birthday_info, parse_monthday, tasks_for
 from dinkydash.runner import refresh_calendars
 from dinkydash.runner import run as run_generation
-from web import CLOUD
 from web import parent
 from web import feedback as feedback_module
 from web import manifest as manifest_module
 from web import ratelimit
 from web import setup as setup_module
 from web.emoji import one_emoji
-from web.family import (current_access, current_address, current_budget,
-                        current_family_id, current_store, is_admin)
-from web import session as session_module
-from web.session import guard
-from web.urls import absolute_url, board_path
+from web.family import current_store
+from web.urls import board_path
 
 log = logging.getLogger(__name__)
 
@@ -50,12 +47,6 @@ bp = Blueprint("settings", __name__)
 # page then read "2009 years old". Nobody alive was born before 1900.
 EARLIEST_BIRTH_YEAR = 1900
 
-SCREEN_REPLACEMENT = {
-    "title": "Replace the screen link?",
-    "message": "Every connected screen will stop until you open the new link on it.",
-    "confirm": "Replace screen link", "cancel": "Keep current link",
-}
-
 # How much feedback one family may send in an hour. Somebody with something to
 # say writes once, occasionally twice; past this it is a script or a stuck
 # button, and either way it is our sending reputation being spent rather than
@@ -65,31 +56,18 @@ MOST_FEEDBACK = 5
 FEEDBACK_SECONDS = 3600
 
 
-# How often one family may email itself the calendar steps. One is the whole
-# use; a few more covers a typo'd spam folder. Past that it is a stuck button.
-MOST_STEPS_EMAILS = 3
-STEPS_EMAIL_SECONDS = 3600
-
 
 @bp.record_once
 def _build_the_feedback_limiter(state):
-    """Give each app its own feedback limiter, as `routes/auth.py` does."""
+    """Give each app its own feedback limiter."""
     state.app.config.setdefault(
         "FEEDBACK_LIMITER", ratelimit.Limiter(MOST_FEEDBACK, FEEDBACK_SECONDS))
-    state.app.config.setdefault(
-        "STEPS_LIMITER", ratelimit.Limiter(MOST_STEPS_EMAILS, STEPS_EMAIL_SECONDS))
 
 
 @bp.before_request
 def _needs_a_session():
-    """Cloud mode: everything under /settings is behind a magic link.
-
-    `guard()` reads the mode off `current_app` rather than being registered
-    conditionally, because this blueprint object is shared by every app built
-    in a process — attaching a cloud-mode hook to it would follow the next
-    single-mode app that imported it.
-    """
-    return guard() or parent.guard()
+    """Protect settings when parent sign-in is enabled."""
+    return parent.guard()
 
 
 # Each field is (name, label, kind, required, help). `kind` decides both the
@@ -122,8 +100,7 @@ SECTIONS = {
             ("avatar_emoji", "Emoji", "emoji", False, ""),
         ],
     },
-    # The URL stays `recurring`; what the section edits is `tasks`.
-    "recurring": {
+    "tasks": {
         "key": "tasks",
         "title": "Tasks",
         "singular": "task",
@@ -184,7 +161,7 @@ SECTIONS = {
 EMOJI_SUGGESTIONS = {
     "people": ["🦖", "⚽", "🎨", "☕", "🚀", "🎸", "🐙", "📚"],
     "pets": ["🐕", "🐈", "🐰", "🐠", "🐹", "🐦", "🐢", "🐴"],
-    "recurring": ["🍽", "🦴", "🗑", "🧺", "🛏", "🌱", "🧹", "📦"],
+    "tasks": ["🍽", "🦴", "🗑", "🧺", "🛏", "🌱", "🧹", "📦"],
     "special_dates": ["🎄", "☀️", "🚂", "🎃", "✈️", "🎆", "🥚", "🍂"],
 }
 
@@ -213,7 +190,21 @@ def save(config, *, invalidate_calendars=()):
 
 # The sections each switch owns. Off, they are not offered and their routes
 # answer 404; the data stays in the config.
-SECTION_FEATURES = {"recurring": "tasks", "special_dates": "special_dates"}
+SECTION_FEATURES = {"tasks": "tasks", "special_dates": "special_dates"}
+
+# Section names an earlier release put in URLs. Forms already open on a screen still post to them,
+# so they resolve to the current name before any handler, switch or form sees them.
+LEGACY_SECTION_NAMES = {"recurring": "tasks"}
+
+
+@bp.url_value_preprocessor
+def _use_current_section_name(endpoint, values):
+    """Serve an old section URL through the same view as its current one.
+
+    One view means one feature check, one sign-in guard and one write, whichever URL a form used.
+    """
+    if values and values.get("section_name") in LEGACY_SECTION_NAMES:
+        values["section_name"] = LEGACY_SECTION_NAMES[values["section_name"]]
 
 
 def task_form(config, task):
@@ -226,13 +217,15 @@ def task_form(config, task):
              if isinstance(p, dict) and p.get("id")}
     people = (task.get("assignment") or {}).get("people") or []
     chosen = [i for i in people if i in by_id]
-    mode = (task.get("assignment") or {}).get("mode")
+    assignment_mode = (task.get("assignment") or {}).get("mode")
     today = config_module.today_for(config)
     return {"id": task.get("id"), "title": task.get("title", ""), "emoji": task.get("emoji", ""),
             "choices": chosen, "names": [by_id[i] for i in chosen],
             "rec": taskform.recurrence_state(task.get("recurrence"), today),
+            "start": taskform._iso(task.get("start") or "") or "",
+            "created": task.get("created") or "",
             "when": taskform.describe(task.get("recurrence"), today),
-            "mode": mode if mode in taskform.MODES else taskform.ROTATE}
+            "mode": assignment_mode if assignment_mode in taskform.MODES else taskform.ROTATE}
 
 
 def known_person_ids(config, ids):
@@ -244,7 +237,7 @@ def known_person_ids(config, ids):
 def task_from_form(config, existing, submitted):
     """The task to store for a submitted Tasks form.
 
-    `submitted` carries the checked `recurrence` and `mode`; the rotation offset is kept from
+    `submitted` carries the checked `recurrence` and the assignment `mode`; the rotation offset is kept from
     `existing`.
     The form posts person ids and only ids of people in the family are kept, so a later rename
     changes nothing and no empty id reaches an assignment.
@@ -255,6 +248,12 @@ def task_from_form(config, existing, submitted):
     assignment["people"] = known_person_ids(config, submitted.get("choices"))
     task.update({"title": submitted["title"], "emoji": submitted.get("emoji", ""),
                  "recurrence": submitted["recurrence"], "assignment": assignment})
+    if submitted.get("start"):
+        task["start"] = submitted["start"]
+    else:
+        task.pop("start", None)
+    if not existing and submitted.get("created"):
+        task["created"] = submitted["created"]
     return task
 
 
@@ -264,18 +263,25 @@ def read_rules(form, submitted, item, stored, today):
     A post with no `rec_kind` is not from the editor's controls, so the task keeps what it has.
     `submitted["rec"]` is what the form redisplays; `submitted["recurrence"]` is what is stored.
     """
+    stored_start = (stored or {}).get("start") or ""
+    submitted["start"], problems = taskform.start_from_form(form, today, stored_start)
+    submitted["created"] = (stored or {}).get("created") or (today.isoformat() if stored is None else "")
     if "rec_kind" not in form:
         stored = stored or {}
         submitted["recurrence"] = stored.get("recurrence") or {"kind": "daily"}
         submitted["mode"] = item.get("mode") or taskform.ROTATE
         submitted["rec"] = item.get("rec")
-        return {}
+        return problems
     submitted["rec"] = taskform.draft_state(form, today)
-    submitted["recurrence"], problems = taskform.recurrence_from_form(form, today)
-    mode = form.get("mode", "")
-    if mode not in taskform.MODES:
+    submitted["recurrence"], rule_problems = taskform.recurrence_from_form(form, today)
+    problems.update(rule_problems)
+    if not rule_problems and "task_start" not in problems:
+        first = taskform.effective_start(submitted["start"], submitted["created"])
+        problems.update(taskform.once_problem(submitted["recurrence"], first))
+    assignment_mode = form.get("mode", "")
+    if assignment_mode not in taskform.MODES:
         problems["mode"] = "Choose whose job it is."
-    submitted["mode"] = mode if mode in taskform.MODES else taskform.ROTATE
+    submitted["mode"] = assignment_mode if assignment_mode in taskform.MODES else taskform.ROTATE
     return problems
 
 
@@ -381,38 +387,27 @@ def home():
         if fetched:
             status["detail"] += f" Calendars refreshed {fetched}."
 
-    access = current_access()
-    lapsed = bool(access and access.ended)
-    if lapsed:
-        status = {"state": "lapsed", "detail": lifecycle.ENDED_MESSAGE}
-
     calendars = config.get("calendars") or []
     broken = [c for c in (payload or {}).get("calendar_statuses", []) if c.get("ok") is False]
-    jobs = [c for c in config.get("tasks") or [] if isinstance(c, dict)]
+    tasks = [c for c in config.get("tasks") or [] if isinstance(c, dict)]
 
     counts = {
         "people": len(config.get("people") or []),
         "pets": len(config.get("pets") or []),
-        "recurring": len(jobs),
+        "tasks": len(tasks),
         "special_dates": len(config.get("special_dates") or []),
         "calendars": len(calendars),
-        # A job with nobody in its rotation is skipped on the dashboard. Say so on
-        # the row rather than counting it as rotating.
-        "jobs_unassigned": sum(
-            1 for c in jobs
+        # A task with nobody to take it is skipped on the dashboard. Say so on
+        # the row rather than counting it as assigned.
+        "tasks_unassigned": sum(
+            1 for c in tasks
             if (c.get("assignment") or {}).get("mode") in taskform.NAMED_MODES
             and not task_form(config, c)["choices"]),
     }
 
-    # **Two personalities.** Until the family is set up and its first dashboard
-    # written, the top of the page is the checklist in `web/setup.py` and the
-    # daily controls are not offered at all: "Refresh calendars" with no
-    # calendar and "View dashboard" on somebody else's household are the two
-    # buttons a new parent was met with. A lapsed family gets the status card
-    # whatever state its config is in — the one thing it needs is the "has
-    # ended" line, and the buttons that line disables.
+    # Show the checklist until setup and the first dashboard are complete.
     setup = setup_module.status(config, payload)
-    setting_up = setup["in_progress"] and not lapsed
+    setting_up = setup["in_progress"]
     screen = screen_for_setup() if setting_up and setup["ready"] else None
 
     return render_template(
@@ -422,23 +417,12 @@ def home():
         calendars_on=any(c.get("enabled") for c in calendars if isinstance(c, dict)),
         board_link=board_path(),
         family_name_is_default=config_module.family_name_is_default(config),
-        # Who is signed in, for the app bar. None self-hosted, where nobody is;
-        # `admin` is the one place the operator's page is linked from.
-        address=current_address(), admin=is_admin(),
     )
 
 
 def screen_for_setup():
-    """The dashboard's address, for the last step of the checklist.
-
-    Hosted, it is the same credential the screen page shows, drawn as a QR
-    code the same way; self-hosted, the local URL and no code — a Pi's kiosk
-    browser has the address typed into it once.
-    """
-    if current_app.config["MODE"] != CLOUD:
-        return {"link": url_for("board.index", _external=True), "qr": None}
-    link = absolute_url(board_path())
-    return {"link": link, "qr": qr_svg(link)}
+    """The dashboard's local address for the setup checklist."""
+    return {"link": url_for("board.index", _external=True), "qr": None}
 
 
 @bp.route("/features", methods=["POST"])
@@ -486,8 +470,7 @@ def _clock(stamp, tzinfo, clock=None):
     """An ISO timestamp as the time on the family's own clock, or None.
 
     Stamps are written in UTC. The server is often not in the family's timezone
-    — a Pi is frequently left on UTC, and hosted the server is nowhere near
-    them — so reading the characters out of the string showed the wrong time.
+    — a Pi is frequently left on UTC — so timestamps must be converted.
     Written in whichever clock they read, so this page does not contradict the
     dashboard it is describing.
     """
@@ -513,33 +496,24 @@ def manifest():
     family = config.get("family_name")
     return manifest_module.response(
         id=url_for("settings.home"),
-        name="DinkyDash settings",
+        name="PompDash settings",
         # What fits under the icon. Not "Settings" — that is already an app.
-        short_name="DinkyDash",
+        short_name="PompDash",
         description=f"Change what {family} sees on the dashboard." if family
                     else "Change what the dashboard shows.",
         start_url=url_for("settings.home"),
-        background_color=manifest_module.PAGE_COLOUR,
-        theme_color=manifest_module.PAGE_COLOUR,
+        background_color=THEME_COLOURS[theme_of(config)],
+        theme_color=THEME_COLOURS[theme_of(config)],
     )
 
 
 @bp.route("/generate", methods=["POST"])
 def generate_now():
-    """"Rewrite daily headline" — a person asking for a dashboard, and paying for it.
-
-    **Charged against the same budget as the worker**, because it is the same
-    money out of the same account (DIN-43). Without that, a signed-in parent
-    holding this button down is an unbounded bill from one browser, and it was
-    the one path to Anthropic with no limit on it at all.
-
-    A refusal is an `OverBudget`, which is a `GenerationError`, so it arrives in
-    the branch below that already existed and the person is told plainly.
-    """
+    """Rewrite the daily headline on request."""
     config = current_config()
     first = not (current_store().load_payload(config) or {}).get("generated_for_date")
     try:
-        payload = run_generation(config, current_store(), budget=current_budget())
+        payload = run_generation(config, current_store())
     except GenerationError as exc:
         flash(str(exc), "error")
     except Exception as exc:  # a broken feed or an unreadable file shouldn't 500 the UI
@@ -549,69 +523,6 @@ def generate_now():
         what = "Your first daily headline is written" if first else "Daily headline rewritten"
         flash(f"{what} — “{payload['headline']}”", "ok")
     return redirect(url_for("settings.home"))
-
-
-def steps_by_email():
-    """Can this parent email themselves the calendar steps?
-
-    Hosted, with a mail key: there has to be an account address to send to and
-    a way to send. A Pi has neither, and is offered nothing.
-    """
-    return feedback_module.enabled() and current_address() is not None
-
-
-CALENDAR_STEPS_SUBJECT = "Add your calendar to DinkyDash on a computer"
-
-
-def calendar_steps_text(sign_in):
-    """The email: where to go on the computer, and what to copy there.
-
-    Google shows the calendar's secret address only on its website, never in
-    the app, so the parent who started on a phone needs the steps somewhere
-    they will see them at a desk. Nothing of the family goes in it.
-    """
-    return f"""\
-Here's how to add your calendar to DinkyDash from a computer.
-
-1. Open {sign_in} and sign in with this address.
-2. Choose A calendar, or Add a calendar.
-3. Press Google Calendar. In its settings, pick your calendar, open
-   Integrate calendar and copy the "Secret address in iCal format".
-4. Paste it into DinkyDash and press Save calendar.
-
-- DinkyDash
-"""
-
-
-@bp.route("/calendar-steps", methods=["POST"])
-def email_calendar_steps():
-    """Email the signed-in parent the calendar steps, for a computer. Hosted only.
-
-    A 404 where `steps_by_email` says no, like the feedback form, so a route
-    that cannot work is never one somebody is offered. It goes to the
-    account's own address and to nobody else, so it cannot be pointed at a
-    stranger; the limiter is for a stuck button.
-    """
-    if not steps_by_email():
-        abort(404)
-    back = redirect(url_for("settings.section_edit", section_name="calendars", item_id="new"))
-    if not current_app.config["STEPS_LIMITER"].allow(current_family_id()):
-        flash("We've already sent those. Look in your inbox, or the spam folder.", "error")
-        return back
-
-    from dinkydash import mail
-
-    address = current_address()
-    try:
-        mail.send(address, CALENDAR_STEPS_SUBJECT,
-                  calendar_steps_text(absolute_url(url_for("auth.login"))))
-    except mail.MailError as exc:
-        log.warning("The calendar steps did not go out: %s", exc)
-        flash("That didn't send. Try again in a minute.", "error")
-        return back
-    log.info("Sent the calendar steps.")
-    flash(f"Sent to {address}. Open it on your computer.", "ok")
-    return back
 
 
 @bp.route("/<section_name>")
@@ -624,7 +535,7 @@ def section_list(section_name):
     extras = {}
     if section_name == "people":
         extras["birthdays"] = [compute_birthday_info(p, today) for p in items]
-    if section_name == "recurring":
+    if section_name == "tasks":
         today_for = {t["id"]: t["assigned_to"] for t in tasks_for(config, today)}
         extras["turns"] = [[{"assigned_to": today_for[c["id"]]}] if c.get("id") in today_for else []
                            for c in items]
@@ -654,7 +565,7 @@ def section_edit(section_name, item_id):
     is_new = item_id == "new"
     if is_new:
         item = {}
-        if section_name == "recurring":
+        if section_name == "tasks":
             item = task_form(config, {})
         if section_name == "calendars":
             item = {"enabled": True, "show_locations": True,
@@ -664,7 +575,7 @@ def section_edit(section_name, item_id):
         index, item = config_module.find_item(items, item_id)
         if item is None:
             abort(404)
-        if section_name == "recurring":
+        if section_name == "tasks":
             stored_task, item = item, task_form(config, item)
         if section_name == "calendars" and "show_locations" not in item:
             # Absent means shown, so the box starts ticked and the copy keeps
@@ -679,12 +590,12 @@ def section_edit(section_name, item_id):
         for field in section["fields"]:
             submitted[field[0]] = parse_field(field, request.form, item)
         task_problems = {}
-        if section_name == "recurring":
+        if section_name == "tasks":
             submitted["choices"] = known_person_ids(config, submitted["choices"])
             task_problems = read_rules(request.form, submitted, item,
                                        None if is_new else stored_task, today)
 
-        if section_name == "recurring" and (request.form.get("move_choice")
+        if section_name == "tasks" and (request.form.get("move_choice")
                                             or request.form.get("action") == "update_choices"):
             # No-JavaScript ordering edits the submitted draft, never storage.
             direction, _, person = request.form.get("move_choice", "").partition(":")
@@ -700,7 +611,7 @@ def section_edit(section_name, item_id):
             item = submitted
         else:
             problems = validate(section, submitted, today)
-            if section_name == "recurring":
+            if section_name == "tasks":
                 problems.update(task_problems)
                 if submitted["mode"] in taskform.NAMED_MODES and not submitted["choices"]:
                     problems["choices"] = "Choose at least one person."
@@ -716,7 +627,7 @@ def section_edit(section_name, item_id):
                 # Saving the form is the touch that makes the item theirs,
                 # whatever they left in the boxes.
                 submitted.pop(config_module.INVENTED, None)
-                if section_name == "recurring":
+                if section_name == "tasks":
                     submitted = task_from_form(config, None if is_new else stored_task, submitted)
                 if is_new:
                     submitted["id"] = config_module.new_id(
@@ -755,7 +666,7 @@ def section_edit(section_name, item_id):
         "settings/edit.html", section=section, section_name=section_name,
         item=item, item_id=item_id, is_new=is_new, problems=problems,
         checked=checked, config=config, months=MONTHS,
-        email_steps=section_name == "calendars" and steps_by_email(),
+        email_steps=False,
         task_choices={"recurrence": taskform.RECURRENCE_CHOICES, "modes": taskform.MODE_CHOICES,
                       "nth": taskform.NTH_CHOICES, "days": taskform.DAY_NAMES},
         date_min=f"{EARLIEST_BIRTH_YEAR}-01-01", date_max=today.isoformat(),
@@ -809,7 +720,6 @@ def check_feed(item, config):
         return {"ok": False, "message": "Paste a link first."}
     wanted = addresses(item.get("shared_with"))
     try:
-        current_budget().check_access()
         found = describe_feed(
             url, config_module.tzinfo_for(config),
             today=config_module.today_for(config),
@@ -819,7 +729,7 @@ def check_feed(item, config):
     except FeedError as exc:
         if exc.status_code in (401, 403, 404, 410) or exc.invalid_data:
             if exc.status_code in (401, 403):
-                message = "This calendar isn't allowing DinkyDash to read it."
+                message = "This calendar isn't allowing PompDash to read it."
             elif exc.status_code in (404, 410):
                 message = ("We couldn't find a calendar at this link. It may be private, "
                            "out of date, or copied incorrectly.")
@@ -922,59 +832,43 @@ def section_move(section_name, item_id):
 
 @bp.route("/screen", methods=["GET", "POST"])
 def screen():
-    """Edit colours and, in cloud mode, show or rotate the screen URL."""
+    """Edit dashboard colours."""
     config = current_config()
     if request.method == "POST":
-        if request.form.get("action") == "rotate":
-            return rotate_screen_token()
         theme = request.form.get("theme")
         if theme in config_module.THEMES:
             config["theme"] = theme
             save(config)
-            flash(f"Dashboard set to {theme}.", "ok")
+            flash(f"Colours set to {theme}.", "ok")
         return redirect(url_for("settings.screen"))
-    link = absolute_url(board_path()) if current_app.config["MODE"] == CLOUD else None
     return render_template("settings/screen.html", config=config,
-                           themes=config_module.THEMES, screen_link=link,
-                           screen_qr=qr_svg(link) if link else None,
-                           replacement=SCREEN_REPLACEMENT)
+                           themes=config_module.THEMES)
 
 
-def qr_svg(link):
-    """Draw the credential locally as inline SVG; segno is a cloud-only dependency."""
-    try:
-        import segno
-    except ImportError:  # pragma: no cover - cloud installs it
-        log.warning("segno is not installed, so the screen QR code is missing.")
-        return None
-    # Black on the template's white background, with a four-module quiet zone.
-    out = io.BytesIO()
-    segno.make(link, error="m").save(
-        out, kind="svg", xmldecl=False, svgns=False, omitsize=True, border=4,
-        dark="#000000", light=None, lineclass="qr")
-    return out.getvalue().decode("utf-8")
+@bp.route("/screen/setup")
+def screen_setup():
+    """Make the link for one screen: touch or not, first page, rotation.
 
-
-def rotate_screen_token():
-    """Give the dashboard a new URL, and stop the old one working.
-
-    **This is the only revocation a screen token has.** It does not expire and
-    it is not single use, so a parent who has shared a screenshot too widely
-    has exactly this button. It must therefore be honest about the cost: every
-    screen already showing the dashboard goes blank until somebody opens the new
-    URL on it.
+    A read: the setup is in the link it makes and nowhere on the server, so
+    each screen is set up by its own link and none can alter another.
     """
-    if current_app.config["MODE"] != CLOUD:
-        abort(404)
-    if request.form.get("confirmed") != "yes":
-        return confirm_action(SCREEN_REPLACEMENT, url_for("settings.screen"), {"action": "rotate"})
-    token = screens.rotate(current_app.config["POOL"], current_family_id())
-    if token is None:
-        flash("That did not work. Try again.", "error")
+    config = current_config()
+    setup, problems = pages_module.parse_setup(request.args)
+    shown = pages_module.available(config)
+    setup = pages_module.Setup(
+        touch=setup.touch, page=pages_module.initial_key(setup.page, shown),
+        rotate=setup.rotate, interval=setup.interval)
+    if parent.enabled():
+        from web.routes.wall import screen_token
+        base = url_for("wall.board", token=screen_token(current_store()), _external=True)
     else:
-        flash("New screen link. Open it on every screen showing this dashboard — "
-              "the old link has stopped working.", "ok")
-    return redirect(url_for("settings.screen"))
+        base = url_for("board.index", _external=True)
+    query = pages_module.link_query(setup)
+    link = base + ("?" + urlencode(query) if query else "")
+    return render_template(
+        "settings/screen_setup.html", setup=setup, problems=problems, pages=shown,
+        link=link, minimum=pages_module.MIN_INTERVAL, maximum=pages_module.MAX_INTERVAL,
+        default_interval=pages_module.DEFAULT_INTERVAL)
 
 
 def describe_minutes(minutes):
@@ -1066,7 +960,7 @@ def refresh_now():
     """Fetch the calendars and nothing else — the free half of "Rewrite daily headline"."""
     config = current_config()
     try:
-        payload = refresh_calendars(config, current_store(), budget=current_budget())
+        payload = refresh_calendars(config, current_store())
     except GenerationError as exc:
         flash(str(exc), "error")
         return redirect(url_for("settings.home"))
@@ -1088,185 +982,9 @@ def refresh_now():
     return redirect(url_for("settings.home"))
 
 
-@bp.route("/account", methods=["GET", "POST"])
-def account():
-    """Your data, and getting rid of it. Cloud mode only.
-
-    Not registered behind a mode check but hidden behind one: a self-hoster has
-    no account to delete and no export to want — their data is a YAML file and
-    two JSON files they already have, in a directory they chose.
-    """
-    if current_app.config["MODE"] != CLOUD:
-        abort(404)
-    if request.method == "POST":
-        return delete_account()
-    return render_template(
-        "settings/account.html", config=current_config(),
-        address=accounts.address_for(current_app.config["POOL"],
-                                     session_module.current_user_id()))
-
-
-@bp.route("/account/export")
-def export_account():
-    """The family's settings, dashboard and retained generation history as JSON.
-
-    **The family's own data comes from the store**, which is the only thing that
-    knows what it is. Two things it deliberately cannot answer are read directly
-    and named as such:
-
-    * the plan, the trial and when the account was made, which are the
-      platform's bookkeeping rather than the family's data;
-    * all retained daily generations and recent rewrites. `recent_notes` returns note *text* and
-      nothing else, because it exists to stop the model repeating itself — an
-      export needs the date and the headline with it, and widening the store's
-      operation to suit one caller would make every other caller carry it;
-    * recorded screen sizes. The store writes one and does not list them.
-
-    `Cache-Control: no-store` because this is the most concentrated copy of a
-    family's data the app ever produces, and a shared cache holding it is worse
-    than any single page.
-    """
-    if current_app.config["MODE"] != CLOUD:
-        abort(404)
-    store = current_store()
-    config = store.load_config()
-    payload = store.load_payload(config) or {}
-    export = {
-        "exported_at": datetime.now(timezone.utc).isoformat(),
-        "family": _family_facts(),
-        "settings": config,
-        "board": payload,
-        "generations": _generations(),
-        # Recent rewrites can differ from the final brief saved for that date.
-        "written_lines": _written_lines(),
-        "screen_sizes": _screen_sizes(),
-    }
-    body = json.dumps(export, indent=2, ensure_ascii=False, default=str)
-    return body, 200, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="dinkydash-export.json"',
-        "Cache-Control": "no-store",
-        "X-Robots-Tag": "noindex",
-    }
-
-
-def _generations():
-    """All retained daily briefs and their metadata, including older rows."""
-    with current_app.config["POOL"].connection() as conn, conn.cursor() as cur:
-        cur.execute(
-            """SELECT generated_for_date, generated_at, status, brief, model,
-                      input_tokens, output_tokens, error
-               FROM generations WHERE family_id = %s ORDER BY generated_for_date""",
-            (current_family_id(),),
-        )
-        keys = ("generated_for_date", "generated_at", "status", "brief", "model",
-                "input_tokens", "output_tokens", "error")
-        return [dict(zip(keys, row)) for row in cur.fetchall()]
-
-
-def _written_lines():
-    """Every retained history entry for this family, with its date.
-
-    Read directly rather than through `store.recent_notes`, which returns note
-    text alone — see `export_account`. Scoped to the session's family like
-    everything else, and that id never comes from the request.
-    """
-    with current_app.config["POOL"].connection() as conn, conn.cursor() as cur:
-        cur.execute(
-            """SELECT date, headline, note, note_kind, created_at
-               FROM content_history WHERE family_id = %s ORDER BY date, id""",
-            (current_family_id(),),
-        )
-        keys = ("date", "headline", "note", "note_kind", "created_at")
-        return [dict(zip(keys, row)) for row in cur.fetchall()]
-
-
-def _screen_sizes():
-    """Each recorded screen size for this family.
-
-    Read directly, like the generations: the store records a size and does
-    not list them. Scoped to the session's family, which never comes from
-    the request. The screen token is not a column, and the family id stays
-    out of the file.
-    """
-    with current_app.config["POOL"].connection() as conn, conn.cursor() as cur:
-        cur.execute(
-            """SELECT width, height, pixel_ratio, user_agent,
-                      first_seen_at, last_seen_at
-               FROM screen_sizes
-               WHERE family_id = %s
-               ORDER BY first_seen_at, width, height, pixel_ratio""",
-            (current_family_id(),),
-        )
-        keys = ("width", "height", "pixel_ratio", "user_agent",
-                "first_seen_at", "last_seen_at")
-        return [dict(zip(keys, row)) for row in cur.fetchall()]
-
-
-def _family_facts():
-    """The platform's own bookkeeping about a family, for the export."""
-    with current_app.config["POOL"].connection() as conn, conn.cursor() as cur:
-        cur.execute(
-            """SELECT plan, status, trial_ends_at, created_at, lapsed_at,
-                      calendar_added_at, activated_at,
-                      stripe_customer_id, stripe_subscription_id, subscription_status,
-                      subscription_period_end, subscription_cancel_at, billing_access_until
-               FROM families WHERE id = %s""",
-            (current_family_id(),),
-        )
-        row = cur.fetchone()
-    if row is None:
-        return {}
-    # **The screen token is not in here.** An export is a file that gets emailed
-    # to somebody, saved to a downloads folder and forgotten; a live credential
-    # should not ride along in one. It is on the screen page, where it can be
-    # rotated in the same breath as being read.
-    return dict(zip(("plan", "status", "trial_ends_at", "created_at", "lapsed_at",
-                     "calendar_added_at", "activated_at",
-                     "stripe_customer_id", "stripe_subscription_id", "subscription_status",
-                     "subscription_period_end", "subscription_cancel_at", "billing_access_until"), row))
-
-
-def delete_account():
-    """Delete this family for good, if they typed their own address back.
-
-    **The confirmation is the address on the account**, the way a repository
-    host asks for the repository name. A button alone is one mis-tap from a
-    family losing a dashboard they set up; typing an address they had to know is
-    friction that only the right person can pass.
-
-    The family comes from the session and from nowhere else, so there is no id
-    to get wrong and no way to be handed somebody else's.
-    """
-    pool = current_app.config["POOL"]
-    address = accounts.address_for(pool, session_module.current_user_id())
-    typed = (request.form.get("confirm") or "").strip().lower()
-    if not address or typed != address.lower():
-        flash("Type the email address on this account to confirm.", "error")
-        return redirect(url_for("settings.account"))
-
-    from dinkydash.billing import BillingError
-    try:
-        accounts.delete_family(pool, current_family_id(), billing=current_app.config["BILLING"])
-    except BillingError:
-        flash("We could not stop your billing, so your account has been kept. Please try again later.", "error")
-        return redirect(url_for("settings.account"))
-    session_module.sign_out()
-    flash("Your account and dashboard data have been deleted. All screen links have stopped working.", "ok")
-    return redirect(url_for("auth.login", deleted=1))
-
-
 @bp.route("/system", methods=["GET", "POST"])
 def system():
-    """The family's name, clock and whereabouts — and, self-hosted, the model.
-
-    **Which model runs is not a hosted family's setting**, because it is not
-    their API key. Self-hosted, the key is theirs and so is the bill, so the
-    model is a free text box with its price beside it. Hosted, the box would
-    offer a choice the platform does not honour. Cloud mode hides and ignores
-    the field here; the shared generation budget also overrides saved model
-    and token settings before either hosted caller reaches the API.
-    """
+    """Edit the family's name, clock, location and model."""
     config = current_config()
     if request.method == "POST":
         config["family_name"] = request.form.get("family_name", "").strip()
@@ -1277,8 +995,11 @@ def system():
         clock = request.form.get("clock", "").strip()
         if clock in CLOCKS:
             config["clock"] = clock
+        week_start = request.form.get("week_start", "").strip().lower()
+        if week_start in WEEK_STARTS:
+            config["week_start"] = week_start
         model = request.form.get("claude_model", "").strip()
-        if model and current_app.config["MODE"] != CLOUD:
+        if model:
             config["claude_model"] = model
         save(config)
         flash("Saved.", "ok")
@@ -1294,8 +1015,9 @@ def system():
     names = {"24h": "24-hour", "12h": "12-hour"}
     clocks = [(name, f"{names[name]} ({format_time(time(15, 45), name)})")
               for name in CLOCKS]
+    week_starts = [(name, name.capitalize()) for name in WEEK_STARTS[-1:] + WEEK_STARTS[:-1]]
     return render_template("settings/system.html", config=config, zones=zones,
-                           clocks=clocks)
+                           clocks=clocks, week_starts=week_starts)
 
 
 # -- telling us something ---------------------------------------------------
@@ -1320,9 +1042,7 @@ def feedback():
     route somebody is offered. It is also what keeps `dinkydash.mail` unimported
     on a machine with no mail provider.
 
-    Behind the blueprint's own `guard()` like every other page here, so in cloud
-    mode a message always has an account behind it. That is the spam control
-    that matters: the open door is `/login`, and it is Turnstile's.
+    The settings guard also protects this page when parent sign-in is on.
     """
     if not feedback_module.enabled():
         abort(404)
@@ -1345,13 +1065,8 @@ def feedback():
     # no key, nothing on this path is ever reached, so nothing imports `mail`.
     from dinkydash.mail import MailError
 
-    cloud_mode = current_app.config["MODE"] == CLOUD
     try:
-        feedback_module.submit(
-            message,
-            address=current_address(),
-            family_id=current_family_id() if cloud_mode else None,
-        )
+        feedback_module.submit(message)
     except MailError as exc:
         # The exception, never the message. What somebody wrote is theirs, and
         # what failed is our mail provider.
@@ -1368,19 +1083,9 @@ def _feedback_page(message=None, problem=None):
     """The form, empty or holding back what somebody has already typed."""
     return render_template("settings/feedback.html", message=message,
                            problem=problem, longest=feedback_module.LONGEST,
-                           support=feedback_module.support_address(),
-                           address=current_address())
+                           support=feedback_module.support_address())
 
 
 def _who_is_writing():
-    """The rate-limit key: the family hosted, the caller's address otherwise.
-
-    The family rather than the address, because the limit is on an account and
-    a household may well have two parents and two phones. Self-hosted there is
-    no account to key on and no shared reputation at stake — the caller's own
-    network is the limit — so it falls back to the address `ratelimit` can see,
-    which on a home network is deliberately nothing at all.
-    """
-    if current_app.config["MODE"] == CLOUD:
-        return current_family_id()
-    return ratelimit.client_ip(request)
+    """Rate-limit feedback by the caller's address."""
+    return parent.caller()

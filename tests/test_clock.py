@@ -33,10 +33,6 @@ timezone: "Europe/Berlin"
 people:
   - name: "Mia"
     date_of_birth: "2017-03-15"
-
-recurring:
-  - title: "Set the table"
-    choices: ["Mia", "Theo"]
 """
 
 
@@ -60,7 +56,7 @@ def payload(events):
 
 def board_config(clock):
     return {"family_name": "The Wilsons", "timezone": "Europe/Berlin",
-            "clock": clock, "people": [], "recurring": []}
+            "clock": clock, "people": []}
 
 
 class TestFormatTime:

@@ -9,20 +9,13 @@ same day (`generate.py --tick`, and `dinkydash.schedule.due`).
 what the settings page's "Rewrite daily headline" does.
 
 All three take a `store` and read and write only through it, so nothing here
-knows whether the dashboard it is replacing is a file on a Pi or a row belonging to
-one family among thousands.
+depends on the storage implementation.
 
 **Each half writes only what it owns** — `save_agenda` or `save_brief`, never a
 whole payload. That is what makes a refresh landing during the model call
 survive rather than being overwritten by the stale keys the brief read minutes
 earlier (DIN-28). A fresh agenda under yesterday's headline is exactly the
 amber-banner state `board.build_view` already handles.
-
-**`write_brief` takes a budget as well as a store**, and for the same reason it
-takes a store: what a call is allowed to cost is the caller's business, not the
-engine's (DIN-43). Single mode passes nothing and gets `NoBudget`; cloud mode
-passes one backed by Postgres. A refusal arrives as a `GenerationError`, so
-every caller's existing keep-last-good path handles it with no new branch.
 """
 
 import logging
@@ -30,31 +23,32 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from . import config as config_module
-from .budget import NoBudget
 from .calendars import fetch_events, sort_key
 from .claude_client import GenerationError
 from .generate import generate
+from .week import first_day, week_start_of
 
 log = logging.getLogger(__name__)
 
 
-def refresh_calendars(config, store, now=None, today=None, budget=None):
+def refresh_calendars(config, store, now=None, today=None):
     """Re-fetch every enabled feed and store the merged agenda. No model call.
 
     `now` is when this is happening and becomes the `calendars_fetched_at`
-    stamp. `today` is the day the fourteen-day window starts on, and defaults
-    to today on the family's clock — they are the same thing except under
-    `generate.py --date`, where the window is moved but the stamp is not.
-    The budget checks account access here without charging a model call.
+    stamp. `today` is the day the fourteen-day window is measured from, and
+    defaults to today on the family's clock — they are the same thing except
+    under `generate.py --date`, where the window is moved but the stamp is not.
+    The window starts on the first day of the family's week, so the week page
+    has the days already gone; nothing earlier is fetched or kept.
     """
-    (budget or NoBudget()).check_access()
     now = now or datetime.now(timezone.utc)
     tzinfo = config_module.tzinfo_for(config)
     today = today or now.astimezone(tzinfo).date()
 
     days_ahead = int(config.get("calendar_days_ahead") or 14)
+    since = first_day(today, week_start_of(config))
     events, statuses = fetch_events(
-        config.get("calendars"), today, tzinfo, days_ahead=days_ahead,
+        config.get("calendars"), today, tzinfo, days_ahead=days_ahead, since=since,
     )
 
     # Read only to find out what a failing feed last gave us. Nothing from this
@@ -65,7 +59,7 @@ def refresh_calendars(config, store, now=None, today=None, budget=None):
     if failed:
         log.warning("Calendars that did not answer: %s", ", ".join(sorted(failed)))
         events = _with_last_known(events, previous, failed,
-                                  today, today + timedelta(days=days_ahead))
+                                  since, today + timedelta(days=days_ahead))
 
     agenda = {
         "events": events,
@@ -82,7 +76,7 @@ def _with_last_known(fresh, previous, failed_labels, start, end):
     """Fresh events, plus the last-known events of the feeds that did not answer.
 
     A missing event is invisible while a stale one is still on the right day —
-    the previous fetch reached the same fourteen days ahead — so a feed that
+    the previous fetch reached the same days — so a feed that
     fails holds its last agenda rather than emptying it. Only that feed does:
     the ones that answered are always fresh, or a single dead URL would freeze
     the whole dashboard for as long as nobody fixed it.
@@ -108,38 +102,23 @@ def _with_last_known(fresh, previous, failed_labels, start, end):
     return sorted(fresh + kept, key=sort_key)
 
 
-def write_brief(config, store, today=None, client=None, budget=None):
+def write_brief(config, store, today=None, client=None):
     """Ask Claude for today's headline, and store it. Costs one call.
 
     The events come from the stored payload rather than a second fetch, so the
     brief always describes the agenda the dashboard is showing, and a tick that
     owes both does one fetch rather than two.
 
-    Raises GenerationError if the model call fails **or if the budget refuses
-    it** — the caller decides what to do, and the previous payload is left
-    untouched either way. That sameness is the point: a dashboard that is too
-    expensive to rewrite and a dashboard whose rewrite failed should both leave the
-    screen on the wall showing yesterday, labelled stale.
+    A failed model call leaves the previous payload untouched.
     """
     require_api_key()
-    budget = budget or NoBudget()
     today = today or config_module.today_for(config)
 
     stored = store.load_payload(config) or {}
 
     keep = int(config.get("history_days") or 30)
 
-    # **Charged before the call, not after.** A key that has been revoked fails
-    # every time and reports no usage, so counting successes would let a
-    # five-minute retry loop run for ever. Raises `OverBudget` if it will not
-    # pay for this one, and nothing below has run.
-    budget.allow()
-
-    payload = generate(
-        budget.generation_config(config), today, stored.get("events") or [],
-        client=client,
-    )
-    budget.record(payload.get("input_tokens"), payload.get("output_tokens"))
+    payload = generate(config, today, stored.get("events") or [], client=client)
     # Only the brief. `stored` was read before a model call that takes seconds,
     # so anything of the agenda's in it is already potentially out of date — a
     # refresh may well have landed in the meantime, and writing this copy back
@@ -162,17 +141,11 @@ def write_brief(config, store, today=None, client=None, budget=None):
     return payload
 
 
-def run(config, store, today=None, client=None, budget=None):
-    """Both halves: fetch the calendars, then write the brief. Returns the payload.
-
-    The refresh is deliberately outside the budget: fetching calendars costs a
-    few HTTP requests to somebody else's server, not money, and a family whose
-    dashboard cannot be rewritten today should still have an accurate agenda under
-    yesterday's headline.
-    """
-    require_api_key()  # before the fetch, so a missing key fails in a second
-    refresh_calendars(config, store, today=today, budget=budget)
-    return write_brief(config, store, today=today, client=client, budget=budget)
+def run(config, store, today=None, client=None):
+    """Fetch calendars, then write the daily headline."""
+    require_api_key()
+    refresh_calendars(config, store, today=today)
+    return write_brief(config, store, today=today, client=client)
 
 
 def require_api_key():

@@ -4,9 +4,7 @@ The settings home has two personalities. While a family is being set up it
 shows a checklist that leads somewhere; once the first dashboard is written it
 shows the day's controls. Which one, and which steps are done, is decided
 here from the config and the stored dashboard and nothing else — no stored
-"onboarding step", no mode check — so a freshly cloned Pi running the
-untouched example file gets the same checklist as a hosted family five
-seconds old.
+"onboarding step" to drift out of sync.
 
 `config.is_set_up` is the engine's half of the same question: it is what
 holds the first brief back until the answers are real, and the two must keep

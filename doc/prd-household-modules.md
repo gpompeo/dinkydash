@@ -28,15 +28,14 @@ agenda and the shopping list, but not chores or countdowns, cannot have that.
 - Chores and reminders become one module, **Tasks**, with real recurrence, assignment rules,
   check-ins from a phone and a per-person streak.
 - A family shopping list that is edited on a phone and shown on the wall.
-- Optional sign-in for the self-hosted app, so it can be reached beyond the local network and so a
-  phone knows who is ticking.
+- Optional sign-in for the self-hosted app, so a phone knows who is ticking. It remains a
+  trusted-network application; public internet access is separate work.
 - The wall screen stays read-only and calm, and follows changes from phones within about fifteen
   seconds.
 
 ### Non-goals
 
-- **Multi-tenant cloud mode.** It stays in the repository, frozen: this work adds nothing to it. A
-  separate issue evaluates removing it.
+- **Multi-tenant cloud mode.** The app is self-hosted.
 - Touch interaction on the wall screen.
 - Points, badges, leaderboards, rewards.
 - Times of day on tasks. The agenda already carries anything with a clock time.
@@ -71,7 +70,7 @@ agenda and the shopping list, but not chores or countdowns, cannot have that.
 | D21 | Celebration on finishing the day and "best streak" appear on the phone only. |
 | D22 | Shopping items, completions and streaks never reach the model. Caps: 40 tasks, 100 shopping items, 80-character titles, 40-character quantities. |
 | D23 | Activity page in settings: streaks, a thirty-day grid per person, and every unticked due occurrence in the last fourteen days with a one-tap tick. |
-| D24 | Single mode is the product. Cloud code is frozen. |
+| D24 | Self-hosting is the product; multi-tenant cloud mode is removed. |
 
 ## 4. Design
 
@@ -103,10 +102,8 @@ tasks:               # replaces `recurring`
       people: [<person id>, ...]
 ```
 
-`recurring` is migrated on load by `with_defaults`: each chore becomes a daily task with
-`assignment.mode: rotate`, its names converted to person ids, and a rotation offset chosen so the
-person on duty on the day of the upgrade is unchanged. Rotation then counts occurrences, so it
-differs from the old day-of-year rule at the year boundary, where the old rule restarted.
+`recurring` is not read: `with_defaults` raises `ConfigError` for it and nothing is written (see
+`doc/upgrading.md`). Rotation counts occurrences, from `assignment.offset`.
 
 Shopping items and completions are not config: they change too often and grow without bound.
 
@@ -125,8 +122,7 @@ All of it lives under `dinkydash/` and takes `today` as a parameter.
 
 ### 4.3 Storage
 
-The storage seam grows, for `FileStore` only. `PostgresStore` is not changed (D24), so the new
-operations are absent there and the features are forced off when cloud mode is selected.
+The storage seam grows through `FileStore`.
 
 - `load_completions(since)`, `record_completion(entry)`, `remove_completion(entry)`.
   Completions are a list of `{task_id, date, person_id, completed_at}` in `completions.json` beside
@@ -183,13 +179,14 @@ Acceptance:
 - With nothing configured, behaviour is unchanged for an existing install: no sign-in, same pages.
 - Switching a feature off removes it from the wall, the settings home and the phone page, and
   switching it back on restores its data.
-- With `DINKYDASH_PARENT_PASSWORD` set, `/settings` and `/h` are refused without a session, `/`
-  redirects to sign-in, and the wall works at `/s/<token>`.
+- With `DINKYDASH_PARENT_PASSWORD` set, `/settings` requires a parent session and `/h` requires a
+  selected person with a verified PIN or a parent session. `/` redirects to sign-in, and the wall
+  works at `/s/<token>`.
 - Editing the config in another browser moves the wall within the poll interval.
 
 ### Phase 2 — tasks
 
-- `tasks` config, the `recurring` migration, the recurrence engine, assignment modes.
+- `tasks` config, the recurrence engine, assignment modes.
 - Completions storage, check-in on the phone, streaks, the wall card, the yesterday group.
 - The Activity page and parent corrections.
 - Glossary, README and settings copy updated in the same change (section 9).
@@ -239,7 +236,8 @@ With it set:
 - **Parent:** signs in with the password. Settings, Activity, corrections, PIN and token
   management.
 - **Member:** a person from the People list who picks their name on the phone page and enters a PIN
-  if the parent set one. A member ticks their own tasks and "Anyone" tasks, and adds, edits, ticks
+  set by a parent. Without a PIN, they need to ask a parent to set one. A signed-in parent can pick
+  anyone without a PIN. A member ticks their own tasks and "Anyone" tasks, and adds, edits, ticks
   and deletes shopping items. A member cannot tick another person's task.
 - **Wall:** the dashboard moves to `/s/<token>`, a random token created on first use and rotatable
   from settings. `/` redirects to sign-in. The token page is `noindex` and `no-store`, makes no
@@ -248,7 +246,8 @@ With it set:
   in `auth.json`: gitignored, mode 0600, PINs hashed with the standard library's `scrypt`, compared
   in constant time. Nothing goes in `config.yaml`, which is exported and edited by hand.
 - **Session:** a signed cookie keyed on `DINKYDASH_SECRET_KEY`, thirty days on a phone, CSRF checked
-  on every writing form (the existing session code, and the test that walks the templates, apply).
+  on every writing form. Setting, changing or removing a person's PIN invalidates their member sessions,
+  including across restarts.
 - **Abuse:** failed sign-ins and screen-token misses are rate limited per IP with the existing
   in-process limiter. Tokens and PINs stay out of every log; the access-log scrubber covers the new
   routes.
@@ -258,7 +257,7 @@ With it set:
 ## 8. Privacy and safety
 
 - Task titles and today's assignees go to the model, as chore titles do now. Shopping items,
-  completions and streaks do not. The privacy page and sub-processor list are unchanged, and a test
+  completions and streaks do not. The "What leaves your machine" notes in `doc/self-hosting.md` are unchanged, and a test
   fails if a shopping string or a completion reaches a prompt.
 - User-entered text (titles, quantities, names) is escaped by the template engine; no new `|safe`.
 - Every new writing route checks CSRF and the access rule in section 7 before it reads the body.
@@ -281,7 +280,7 @@ New tests live in `tests/`, one file per module:
 
 - `test_recurrence.py` — every kind, month ends, leap day, last weekday in 4- and 5-week months,
   daylight-saving days.
-- `test_task_migration.py` — `recurring` to `tasks`, same person on the day of the upgrade.
+- `test_legacy_chores.py` — `recurring` is refused without writing; a current config round-trips.
 - `test_streaks.py` — rename, delete, skipped days, today open versus done, anyone tasks.
 - `test_completions_store.py` — add, remove, trim at 400 days, atomic write.
 - `test_shopping.py` — caps, ticking, twenty-four-hour clear.
@@ -300,15 +299,14 @@ These were not discussed and are defaults to confirm or change in the relevant i
    birthday falls on 28 February in a common year.
 2. A PIN is four to eight digits.
 3. The celebration runs when a person's last due task of the day is ticked, once per day.
-4. The cloud-mode code that reads `recurring` is updated only as far as keeping the suite green;
-   the features are forced off there (section 4.3).
+4. The app is self-hosted; no cloud storage implementation is needed.
 5. The poll pauses while the page is hidden and resumes on focus.
 
 ## 12. Roadmap (not in these phases)
 
-- Tell the headline about streaks and completions, with the privacy-page change that implies.
+- Tell the headline about streaks and completions, with the privacy-notes change that implies.
 - Shopping autocomplete from a ninety-day history.
 - Touch interaction on the wall screen.
 - Push updates (SSE) behind the same page hook.
-- Evaluate removing the frozen cloud mode.
+- Secure internet-facing deployment is separate work.
 - Review `doc/operations.md`.

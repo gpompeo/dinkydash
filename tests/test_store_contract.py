@@ -1,13 +1,4 @@
-"""The storage contract, asserted identically against both implementations.
-
-Every test here runs twice: once over `FileStore` on `tmp_path`, once over
-`PostgresStore` against a real database. Same assertions, no branching — that
-parity is most of the value of having named the seam at all, because a suite
-that only ever ran against files would not notice the day the two drifted.
-
-The Postgres half skips when `DINKYDASH_TEST_DATABASE_URL` is unset, so a
-self-hoster with no database still gets a green suite. CI sets it.
-"""
+"""The file-backed storage contract."""
 
 from datetime import datetime, timezone
 
@@ -49,21 +40,10 @@ PAYLOAD = {
 }
 
 
-@pytest.fixture(params=["file", "postgres"])
-def store(request, tmp_path):
-    """The same seeded family, once as files and once as rows."""
-    if request.param == "file":
-        (tmp_path / "config.yaml").write_text(CONFIG_YAML)
-        return FileStore(tmp_path / "config.yaml")
-
-    # Pulled lazily, so the file run never asks for a database.
-    pool = request.getfixturevalue("pg_pool")
-    family_id = request.getfixturevalue("pg_family")
-    from dinkydash.pgstore import PostgresStore
-
-    store = PostgresStore(pool, family_id)
-    store.save_config(dict(CONFIG_DICT))
-    return store
+@pytest.fixture
+def store(tmp_path):
+    (tmp_path / "config.yaml").write_text(CONFIG_YAML)
+    return FileStore(tmp_path / "config.yaml")
 
 
 @pytest.fixture
@@ -139,22 +119,14 @@ class TestTheBoard:
         assert after["generated_at"] == "2026-09-03T04:00:00+00:00"
 
     def test_stamps_come_back_in_utc(self, store, config):
-        # The two stores must agree about what time a dashboard was written, or the
-        # settings page renders the wrong clock on one of them.
+        # UTC timestamps keep the settings page clock correct.
         save_board(store, config, dict(PAYLOAD))
         written = store.load_payload(config)["generated_at"]
         assert datetime.fromisoformat(written) == datetime(
             2026, 9, 3, 4, 0, tzinfo=timezone.utc)
 
     def test_a_payload_with_no_stamps_at_all_is_fine(self, store, config):
-        """A missing stamp must not be a write error on either side.
-
-        The contract is that `.get()` agrees, not that the dicts are identical:
-        `FileStore` returns what was written, so an absent key stays absent,
-        while `PostgresStore` reassembles from columns and hands back None. Every
-        consumer — `board.build_view`, `schedule.due`, the settings page — reads
-        through `.get()`, so the two are the same answer.
-        """
+        """Missing stamps remain readable without a write error."""
         bare = {"generated_for_date": "2026-09-03", "headline": "Hi",
                 "note": "There", "note_kind": "fact", "events": []}
         save_board(store, config, bare)
@@ -229,13 +201,7 @@ class TestNeitherDoorWritesTheOthersKeys:
         assert after["generated_for_date"] == "2026-09-03"
 
     def test_a_key_the_caller_stops_sending_disappears(self, store, config):
-        """Each half is *replaced*, not merged into.
-
-        `PostgresStore` writes whole rows, so an omitted `model` or token count
-        comes back as None. `FileStore` merged instead and left the old value
-        behind — a Pi and the cloud disagreeing about what was stored, which is
-        the one thing this suite exists to catch. It did not, until now.
-        """
+        """An omitted key must not survive the replacement."""
         save_board(store, config, dict(PAYLOAD))
         leaner = {k: v for k, v in PAYLOAD.items()
                   if k not in ("model", "input_tokens", "output_tokens")}

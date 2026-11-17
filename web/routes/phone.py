@@ -5,21 +5,23 @@ which a family member uses, and `pins` under `/settings/pins`, where a parent
 sets and resets PINs.
 
 **With sign-in off the page works on trust**: pick your name and carry on.
-With it on, a person with a PIN must type it, wrong tries are rate limited, and
-a parent who has signed in may pick anybody without one. A person with no PIN
-set can be picked by anyone who can reach the page, which is what "optional"
-means. The name picked is the only thing the session holds about the phone.
+With it on, a member needs a PIN, wrong tries are rate limited, and a parent
+who has signed in may pick anybody without one. Member sessions are bound to
+the current PIN hash so changing or removing a PIN invalidates them.
 
 **Hashes live in `auth.json`**, through the store, never in `config.yaml`.
 Nothing here logs a PIN, and no template echoes one.
 """
 
 from datetime import date, timedelta
+import hashlib
+import hmac
 
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template, request,
                    session, url_for)
 
 from dinkydash import config as config_module
+from dinkydash.config import THEME_COLOURS, theme_of
 from dinkydash import checkin, pins, shopping, streaks, taskform
 from dinkydash.context import tasks_for
 from web import manifest as manifest_module
@@ -32,6 +34,7 @@ pins_bp = Blueprint("pins", __name__)
 
 # The session key that says whose phone this is.
 PERSON = "phone_person"
+PIN_PROOF = "phone_pin_proof"
 # Person id to the day that person was last celebrated on this phone, so a
 # finished day is celebrated once per person however often a name is picked.
 CELEBRATED = "phone_celebrated"
@@ -43,6 +46,7 @@ FAILURE_SECONDS = 900
 WRONG = "That PIN didn't work."
 SLOW_DOWN = "Too many tries. Wait a few minutes, then try again."
 NEEDS_PIN = "Type your PIN to continue."
+NO_PIN = "Ask a parent to set a PIN for you in Settings."
 
 NO_STORE = {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}
 
@@ -79,6 +83,25 @@ def _has_pin(person_id):
     return bool((current_store().load_auth().get("pins") or {}).get(person_id))
 
 
+def _pin_proof(person_id, stored):
+    """Bind verification to this person and their current salted PIN hash."""
+    key = current_app.secret_key
+    if isinstance(key, str):
+        key = key.encode("utf-8")
+    return hmac.new(key, f"{person_id}\0{stored}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _phone_person(config):
+    person = _person(config, session.get(PERSON))
+    if person is None or not parent.enabled() or parent.is_parent():
+        return person
+    stored = (current_store().load_auth().get("pins") or {}).get(person["id"])
+    proof = session.get(PIN_PROOF)
+    if not stored or not isinstance(proof, str):
+        return None
+    return person if hmac.compare_digest(proof, _pin_proof(person["id"], stored)) else None
+
+
 def _tabs(config):
     """The tabs this phone offers: the features that are on, and no others."""
     tabs = []
@@ -97,21 +120,22 @@ def _render(template, **context):
 @bp.route("/h/manifest.webmanifest")
 def manifest():
     """What a phone needs to save this page. Carries no family content."""
+    colour = THEME_COLOURS[theme_of(current_store().load_config())]
     return manifest_module.response(
         id=url_for("phone.home"),
-        name="DinkyDash",
-        short_name="DinkyDash",
+        name="PompDash",
+        short_name="PompDash",
         description="Tick off tasks and add to the shopping list.",
         start_url=url_for("phone.home"),
-        background_color=manifest_module.PAGE_COLOUR,
-        theme_color=manifest_module.PAGE_COLOUR,
+        background_color=colour,
+        theme_color=colour,
     )
 
 
 @bp.route("/h/changes")
 def changes():
     """The change counter for this page: only a phone that has picked a name."""
-    if _person(_config(), session.get(PERSON)) is None:
+    if _phone_person(_config()) is None:
         return "", 401, NO_STORE
     return change_counter(current_store())
 
@@ -128,9 +152,10 @@ def tab(tab):
 
 def _tab(name):
     config = _config()
-    person = _person(config, session.get(PERSON))
+    person = _phone_person(config)
     if person is None:
         session.pop(PERSON, None)
+        session.pop(PIN_PROOF, None)
         return redirect(url_for("phone.who"))
     tabs = _tabs(config)
     keys = [key for key, _ in tabs]
@@ -227,7 +252,7 @@ def tick():
     says so.
     """
     config = _config()
-    actor = _person(config, session.get(PERSON))
+    actor = _phone_person(config)
     if actor is None:
         return "", 401, NO_STORE
     try:
@@ -263,13 +288,12 @@ def _shopper():
 
     The Shopping switch comes first so a hidden module answers 404 to every
     route; then a phone with no name picked gets 401. CSRF has already been
-    checked app-wide. With sign-in on, every member may write to the list, so
-    being a named person is the whole access rule.
+    checked app-wide. With sign-in on, a member must have verified their PIN.
     """
     config = _config()
     if not config_module.feature_on(config, "shopping"):
         abort(404)
-    actor = _person(config, session.get(PERSON))
+    actor = _phone_person(config)
     if actor is None:
         abort(401)
     return config, actor
@@ -348,12 +372,17 @@ def who():
     config = _config()
     people = _people(config)
     pinned = _pinned(people)
+    require_pin = parent.enabled() and not parent.is_parent()
     if request.method == "GET":
-        return _render("phone/who.html", people=people, pinned=pinned)
+        return _render("phone/who.html", people=people, pinned=pinned, require_pin=require_pin,
+                       no_pin=NO_PIN)
 
     person = _person(config, request.form.get("person", ""))
     if person is None:
         return redirect(url_for("phone.who"))
+    if require_pin and person["id"] not in pinned:
+        return _who_refused(people, pinned, person, NO_PIN, 401)
+    stored = None
     if person["id"] in pinned:
         attempt = request.form.get("pin", "")
         if not attempt:
@@ -362,7 +391,7 @@ def who():
         # password's does.
         if not _limiter().allow(parent.caller()):
             return _who_refused(people, pinned, person, SLOW_DOWN, 429)
-        stored = current_store().load_auth()["pins"][person["id"]]
+        stored = (current_store().load_auth().get("pins") or {}).get(person["id"])
         if not pins.check_pin(attempt, stored):
             return _who_refused(people, pinned, person, WRONG, 401)
     # Keep a parent's session: picking a name on their own phone must not sign
@@ -374,18 +403,22 @@ def who():
             session[CELEBRATED] = celebrated
     session.permanent = True
     session[PERSON] = person["id"]
+    session.pop(PIN_PROOF, None)
+    if stored:
+        session[PIN_PROOF] = _pin_proof(person["id"], stored)
     return redirect(url_for("phone.home"))
 
 
 def _who_refused(people, pinned, person, problem, status):
     page = render_template("phone/who.html", people=people, pinned=pinned,
-                           asking=person["id"], problem=problem)
+                           require_pin=True, no_pin=NO_PIN, asking=person["id"], problem=problem)
     return page, status, NO_STORE
 
 
 @bp.route("/h/leave", methods=["POST"])
 def leave():
     session.pop(PERSON, None)
+    session.pop(PIN_PROOF, None)
     return redirect(url_for("phone.who"))
 
 
@@ -429,5 +462,5 @@ def reset_pin(person_id):
     if person is None:
         abort(404)
     current_store().update_auth(lambda auth: (auth.get("pins") or {}).pop(person_id, None))
-    flash(f"{person.get('name')} doesn't need a PIN any more.", "ok")
+    flash(f"PIN removed for {person.get('name')}. They'll need a new one to use their phone.", "ok")
     return redirect(url_for("pins.pin_list"))

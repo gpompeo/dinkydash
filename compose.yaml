@@ -6,6 +6,13 @@ services:
     environment:
       DINKYDASH_CONFIG: /data/config.yaml
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DINKYDASH_MODE: ${DINKYDASH_MODE:-single}
+      DINKYDASH_PARENT_PASSWORD: ${DINKYDASH_PARENT_PASSWORD:-}
+      DINKYDASH_SECRET_KEY: ${DINKYDASH_SECRET_KEY:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      DINKYDASH_MAIL_FROM: ${DINKYDASH_MAIL_FROM:-}
+      DINKYDASH_MAIL_REPLY_TO: ${DINKYDASH_MAIL_REPLY_TO:-}
+      DINKYDASH_FEEDBACK_TO: ${DINKYDASH_FEEDBACK_TO:-}
     ports:
       - "5000:5000"
     volumes:
@@ -18,6 +25,7 @@ services:
     environment:
       DINKYDASH_CONFIG: /data/config.yaml
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DINKYDASH_MODE: ${DINKYDASH_MODE:-single}
     command:
       - sh
       - -c

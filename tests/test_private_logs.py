@@ -11,9 +11,7 @@ import generate as cli
 from dinkydash import runner
 from dinkydash.claude_client import GenerationError
 from dinkydash.store import FileStore
-from test_worker import FakeBudget, FakePool
-from web.routes.auth import quieten_the_request_log
-from worker import tick_all
+from web.request_log import quieten_the_request_log
 
 
 @pytest.mark.parametrize("logger_name", ["werkzeug", "gunicorn.access"])
@@ -100,10 +98,9 @@ def generated_store(tmp_path, monkeypatch):
     return store
 
 
-def test_real_worker_tick_logs_metadata_without_generated_text(generated_store, caplog):
+def test_scheduled_tick_logs_metadata_without_generated_text(generated_store, caplog):
     with caplog.at_level(logging.INFO):
-        assert tick_all(FakePool(["family"]), store_factory=lambda _: generated_store,
-                        budget_factory=FakeBudget).ticked == 1
+        assert cli.tick(generated_store.load_config(), generated_store) == 0
     assert "Dashboard written for" in caplog.text
     assert "123 tokens in, 45 out" in caplog.text
     assert "Private headline marker" not in caplog.text
@@ -118,13 +115,12 @@ def test_an_explicit_cli_run_still_reports_its_result(generated_store, caplog):
     assert "Private note marker" in caplog.text
 
 
-def test_a_failed_worker_generation_still_reports_the_failure(generated_store, caplog, monkeypatch):
+def test_a_failed_scheduled_generation_still_reports_the_failure(generated_store, caplog, monkeypatch):
     def failed(*args, **kwargs):
         raise GenerationError("Provider unavailable")
 
     monkeypatch.setattr(runner, "generate", failed)
     with caplog.at_level(logging.INFO):
-        tick_all(FakePool(["family"]), store_factory=lambda _: generated_store,
-                 budget_factory=FakeBudget)
+        cli.tick(generated_store.load_config(), generated_store)
     assert "Provider unavailable" in caplog.text
     assert "the next tick will try again" in caplog.text

@@ -1,5 +1,5 @@
 {
-  "about": "Names follow Unicode's emoji-test.txt (Unicode License v3, https://www.unicode.org/license.txt); the extra search words are DinkyDash's own. Nothing here is newer than Emoji 13.1, so a Raspberry Pi's Noto Color Emoji draws all of it.",
+  "about": "Names follow Unicode's emoji-test.txt (Unicode License v3, https://www.unicode.org/license.txt); the extra search words are PompDash's own. Nothing here is newer than Emoji 13.1, so a Raspberry Pi's Noto Color Emoji draws all of it.",
   "groups": [
     {
       "name": "Smileys",

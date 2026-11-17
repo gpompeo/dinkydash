@@ -33,7 +33,7 @@ def config_file(tmp_path):
 class TestDefaults:
     def test_missing_keys_get_defaults(self, config_file):
         config = config_module.load_config(config_file)
-        assert config["theme"] == "light"
+        assert config["theme"] == "dark"
         assert config["claude_model"] == "claude-haiku-4-5"
         assert config["pets"] == []
         assert config["tasks"] == []
@@ -41,7 +41,7 @@ class TestDefaults:
     def test_an_unknown_theme_is_corrected(self, tmp_path):
         path = tmp_path / "config.yaml"
         path.write_text("theme: chartreuse\n")
-        assert config_module.load_config(path)["theme"] == "light"
+        assert config_module.load_config(path)["theme"] == "dark"
 
     def test_an_empty_file_still_loads(self, tmp_path):
         path = tmp_path / "config.yaml"

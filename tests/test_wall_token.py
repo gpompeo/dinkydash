@@ -9,7 +9,7 @@ import pytest
 from dinkydash.store import FileStore
 from tests.conftest import client_for
 from web import create_app, parent
-from web.routes.auth import NoTokens
+from web.request_log import NoTokens
 from web.routes.wall import TOKEN_KEY
 
 CONFIG = """\
@@ -166,3 +166,11 @@ def test_access_log_scrubber_covers_the_routes():
     record = logging.LogRecord("werkzeug", logging.INFO, "", 0, '"%s" %s', ('GET /s/secret-token-abc/manifest.webmanifest HTTP/1.1', 200), None)
     NoTokens().filter(record)
     assert "secret-token-abc" not in record.getMessage()
+
+
+def test_self_hosted_app_redacts_screen_tokens_in_access_logs(locked_app, caplog):
+    token = token_of(locked_app)
+    logger = logging.getLogger("werkzeug")
+    with caplog.at_level(logging.INFO, logger="werkzeug"):
+        logger.info('"%s" %s', f"GET /s/{token}/changes HTTP/1.1", 200)
+    assert token not in caplog.text

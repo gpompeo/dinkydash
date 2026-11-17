@@ -17,11 +17,14 @@
     </div>
 </div>
 {% endmacro -%}
+{# How this screen is set up (see dinkydash/pages.py). A view built without one,
+   as a fixture is, is a single static dashboard. #}
+{%- set screen = view.screen if view.screen is defined else {"touch": false, "initial": "main", "rotate": false, "interval": 30, "main_label": "Dashboard", "pages": [{"key": "main", "label": "Dashboard"}]} -%}
 <!doctype html>
 <html lang="en" data-theme="{{ view.theme }}" data-clock="{{ view.clock }}">
 <head>
     <meta charset="utf-8">
-    <title>{{ view.family_name or "DinkyDash" }}</title>
+    <title>{{ view.family_name or "PompDash" }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     {# The page refreshes itself from the script at the foot of the body, which
@@ -34,74 +37,23 @@
          full-screen dashboard with no browser around it. -->
     {# Which manifest depends on how this dashboard was reached: the signed-in view
    has one behind the session, a wall panel needs the token-scoped one, or
-   "save to home screen" gets a redirect to /login instead of a name. #}
+   "save to home screen" gets a sign-in redirect instead of a name. #}
 <link rel="manifest" href="{{ manifest_url }}">
     <link rel="apple-touch-icon" href="{{ static_url('apple-touch-icon.png') }}">
-    <meta name="apple-mobile-web-app-title" content="{{ view.family_name or 'DinkyDash' }}">
+    <meta name="apple-mobile-web-app-title" content="{{ view.family_name or 'PompDash' }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="{{ '#17120f' if view.theme == 'dark' else '#fdf8f2' }}">
+    <meta name="theme-color" content="{{ view.theme_colour }}">
     {% include "_fonts.html" %}
+    {% set follow_system = false %}{% include "_theme.html" %}
     <style>
-        /* Light is the default palette; dark redefines the same tokens so every
-           rule below is written once. */
+        /* The palette is in _theme.html, shared with the settings UI and the
+           phone page; this block holds only what is the dashboard's own. */
         :root {
-            --bg: #fdf8f2;
-            /* Depth comes from gradients and shadows only. No blur and no
-               filter: a Pi paints each of these once and then leaves it. */
-            --page: radial-gradient(130% 70% at 50% -10%, #fffefb 0%, #fdf8f2 60%, #faf3ea 100%);
-            --card: linear-gradient(180deg, #ffffff 0%, #fffbf7 100%);
-            --card-edge: rgba(74, 48, 28, 0.08);
-            --card-lift: inset 0 1px 0 rgba(255, 255, 255, 0.85),
-                         0 1px 2px rgba(74, 48, 28, 0.05),
-                         0 4px 10px -2px rgba(74, 48, 28, 0.07),
-                         0 14px 32px -10px rgba(74, 48, 28, 0.12);
-            --chore-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
-            --chore-1-edge: inset 0 0 0 1px rgba(180, 67, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(74, 48, 28, 0.06);
-            --chore-2-edge: inset 0 0 0 1px rgba(107, 79, 168, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 1px 2px rgba(74, 48, 28, 0.06);
-            --box: #fff5ec;
-            --text: #2d2319;
-            --text-mid: #5c4a3a;
-            --text-muted: #786658;
-            --text-faint: #786658;
-            --accent: #b44314;
-            --chore-1-bg: rgba(232, 93, 36, 0.1);
-            --chore-1-fg: #b44314;
-            --chore-2-bg: rgba(124, 92, 191, 0.1);
-            --chore-2-fg: #6b4fa8;
-            --warn-bg: #fdf6e7;
-            --warn-fg: #b45309;
-            --stale-box: #faf6f1;
             /* The agenda's time column. It does not shrink, so it is sized for
                the widest time that clock can write, and today and tomorrow
                share the left edge it sets. */
             --time-column: 5.2rem;
-        }
-
-        [data-theme="dark"] {
-            --bg: #17120f;
-            --page: radial-gradient(130% 70% at 50% -10%, #1f1814 0%, #17120f 60%, #130f0c 100%);
-            --card: linear-gradient(180deg, #2a211b 0%, #231b16 100%);
-            --card-edge: rgba(255, 255, 255, 0.06);
-            --card-lift: inset 0 1px 0 rgba(255, 255, 255, 0.05),
-                         0 1px 2px rgba(0, 0, 0, 0.3),
-                         0 14px 32px -10px rgba(0, 0, 0, 0.5);
-            --chore-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0));
-            --chore-1-edge: inset 0 0 0 1px rgba(255, 122, 69, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --chore-2-edge: inset 0 0 0 1px rgba(157, 125, 222, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            --box: #241c17;
-            --text: #f6efe7;
-            --text-mid: #cbb9a7;
-            --text-muted: #9d8a78;
-            --text-faint: #9d8a78;
-            --accent: #ff7a45;
-            --chore-1-bg: rgba(255, 122, 69, 0.16);
-            --chore-1-fg: #ffa477;
-            --chore-2-bg: rgba(157, 125, 222, 0.2);
-            --chore-2-fg: #bda3ee;
-            --warn-bg: #3a2c14;
-            --warn-fg: #f2b968;
-            --stale-box: #221b16;
         }
 
         /* The suffix is a smaller span, so the column is the width of "12:00"
@@ -509,29 +461,190 @@
                 .body { column-gap: 1.8rem; }
             }
         }
+
+        /* Pages other than the one on screen are in the markup and hidden. The
+           attribute loses to any display rule below, so it is restated here. */
+        .board[hidden], .page[hidden], .pager[hidden] { display: none; }
+        .page {
+            flex-grow: 1;
+            min-height: 0;
+            padding: 1.45rem 2.2rem 1.5rem;
+        }
+
+        /* ---- week page --------------------------------------------------
+           Seven columns sized off the root like the rest of the dashboard.
+           Nothing here scrolls: a column clips, and the server has already
+           capped each day and counted what it left out. No flex gap: the
+           margins match the rest of this file. */
+        .page[data-page="week"]:not([hidden]) { display: flex; flex-direction: column; }
+        .week { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .week > * + * { margin-top: 1rem; }
+        .week-days {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-rows: minmax(0, 1fr);
+            grid-column-gap: 0.55rem;
+            column-gap: 0.55rem;
+        }
+        .week-day {
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
+            padding: 0.55rem 0.45rem;
+            background: var(--card);
+            border: 1px solid var(--card-edge);
+            box-shadow: var(--card-lift);
+            border-radius: 0.8rem;
+        }
+        .week-day.past { opacity: 0.72; }
+        .week-day.today {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), var(--card-lift);
+        }
+        .week-day-head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.35rem;
+            border-bottom: 1px solid var(--card-edge);
+        }
+        .week-weekday {
+            font-size: max(0.72rem, 12px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .week-day.today .week-weekday { color: var(--accent-dark); }
+        .week-daynum {
+            font-family: 'Inter', 'Nunito', system-ui, -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-left: 0.3rem;
+        }
+        .week-events { list-style: none; margin: 0; padding: 0; }
+        .week-event + .week-event { margin-top: 0.5rem; }
+        .week-time {
+            display: block;
+            font-family: 'Inter', 'Nunito', system-ui, -apple-system, sans-serif;
+            font-variant-numeric: tabular-nums;
+            font-size: max(0.72rem, 12px);
+            font-weight: 700;
+            line-height: 1.2;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .week-time.all-day { color: var(--text-muted); }
+        .week-title {
+            display: block;
+            font-size: max(0.78rem, 12px);
+            font-weight: 700;
+            line-height: 1.18;
+            overflow-wrap: break-word;
+        }
+        .week-more, .week-none {
+            font-size: max(0.72rem, 12px);
+            font-weight: 800;
+            color: var(--text-muted);
+        }
+        .week-more { margin-top: 0.5rem; }
+        .week-more[hidden], .week-event.shed { display: none; }
+        .week-none { font-weight: 600; }
+
+        /* ---- shopping page ----------------------------------------------
+           What is still to get, in as many columns as the width holds. The
+           list clips rather than scrolls: the server caps it and fitShopping()
+           hides what the screen cannot hold, counting it in "+N more". */
+        .page[data-page="shopping"]:not([hidden]) { display: flex; flex-direction: column; }
+        .shop-page { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+        .shop-page > * + * { margin-top: 1rem; }
+        .shop-page-list {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: hidden;
+            list-style: none;
+            margin: 0;
+            padding: 0.2rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+            grid-auto-rows: min-content;
+            grid-column-gap: 0.9rem;
+            column-gap: 0.9rem;
+            align-content: start;
+            align-items: start;
+        }
+        .shop-page-item {
+            display: flex;
+            align-items: baseline;
+            min-width: 0;
+            padding: 0.55rem 0.2rem;
+            border-bottom: 1px solid var(--card-edge);
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        .shop-page-mark { width: 1.1rem; height: 1.1rem; flex-shrink: 0; margin-right: 0.6rem; align-self: center; color: var(--accent); }
+        .shop-page-text { min-width: 0; overflow-wrap: break-word; font-weight: 650; }
+        .shop-page-qty { flex-shrink: 0; margin-left: 0.5rem; color: var(--text-muted); }
+        .shop-page-item.shed { display: none; }
+        .shop-page-more, .shop-page-empty { font-size: 1.4rem; font-weight: 700; color: var(--text-muted); }
+        .shop-page-more[hidden] { display: none; }
+        .shop-page-empty { margin-top: 2rem; }
+
+        /* The touch controls sit under the page in their own strip, so they
+           never cover content and the fit script counts them in its height. */
+        .pager {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.3rem 1rem 0.55rem;
+            color: var(--text-muted);
+        }
+        .pager > * + * { margin-left: 1.1rem; }
+        .pager button {
+            appearance: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: max(2.5rem, 44px);
+            min-height: max(2.5rem, 44px);
+            padding: 0 0.5rem;
+            border: 1px solid var(--card-edge);
+            border-radius: 999px;
+            background: var(--surface);
+            color: var(--text-mid);
+            font: inherit;
+            cursor: pointer;
+        }
+        .pager button svg { width: 1.25rem; height: 1.25rem; }
+        .pager button[aria-pressed="true"] {
+            background: rgba(var(--accent-rgb), 0.18);
+            border-color: var(--accent);
+            color: var(--accent-dark);
+        }
+        .pager button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        .pager-label {
+            min-width: 7rem;
+            text-align: center;
+            font-size: max(0.82rem, 12px);
+            font-weight: 700;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 {# What the refresh script reads. `data-version` is the page's own
    (`assets.board_version`): a copy with a different one is a deploy, and gets
    a real reload. `data-today` is only on a dashboard that is *for* a day — the
-   ended screen has no date on it, and a frozen one says its dates are paused
-   — so only those escalate to "Showing Thursday's dashboard". #}
-<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}"{% if changes_url %} data-changes="{{ changes_url }}"{% endif %}>
+   day, so the page can report when its date has gone stale. #}
+<body data-reload="{{ view.reload_seconds }}" data-version="{{ board_version() }}"{% if view.state in ('first', 'ready', 'stale') %} data-today="{{ view.today }}"{% endif %} data-timezone="{{ view.timezone }}"{% if changes_url %} data-changes="{{ changes_url }}"{% endif %} data-screen-mode="{{ 'touch' if screen.touch else 'static' }}" data-screen-page="{{ screen.initial }}" data-screen-rotate="{{ 1 if screen.rotate else 0 }}" data-screen-every="{{ screen.interval }}" data-screen-pages="{{ screen.pages | length }}">
 
-{% if view.state == 'ended' %}
-<div class="waiting">
-    <div class="family">DinkyDash</div>
-    <div class="waiting-head">Your trial or subscription has ended</div>
-    <div class="waiting-sub">Dashboard updates are paused. Open your settings on a phone or computer to manage your account.</div>
-</div>
-
-{% else %}
-
-{% if view.state == 'frozen' %}
-<div class="banner">
-    Your trial or subscription has ended. Showing the last saved dashboard; its dates and turns are paused.
-</div>
-{% elif view.overdue %}
+{% if view.overdue %}
 {# The headline on screen is the one worked out from the day. The banner says
    so, and only once this morning's brief was actually due. #}
 <div class="banner">
@@ -540,7 +653,7 @@
 </div>
 {% endif %}
 
-<div class="board">
+<div class="board" data-page="main" data-label="{{ screen.main_label }}"{% if screen.initial != 'main' %} hidden{% endif %}>
     <div class="head">
         <div class="family">{{ view.family_name }}</div>
         <div class="date">{{ view.date_display }}</div>
@@ -642,6 +755,28 @@
     </div>
 </div>
 
+{# Every other available page, hidden until the script shows it. Nothing is
+   registered beyond the main dashboard yet, so on a household with one page
+   this renders nothing and the dashboard is exactly what it was. #}
+{% for page in screen.pages if page.key != 'main' %}
+<section class="page" data-page="{{ page.key }}" data-label="{{ page.label }}"{% if screen.initial != page.key %} hidden{% endif %}>
+    {% if page.template %}{% include page.template %}{% endif %}
+</section>
+{% endfor %}
+
+{% if screen.touch and screen.pages | length > 1 %}
+<nav class="pager" aria-label="Dashboard pages">
+    <button type="button" data-pager="previous" aria-label="Previous page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>
+    </button>
+    <span class="pager-label" role="status" aria-live="polite"></span>
+    <button type="button" data-pager="next" aria-label="Next page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+    </button>
+    <button type="button" data-pager="rotate" aria-label="Rotate pages automatically" aria-pressed="{{ 'true' if screen.rotate else 'false' }}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"></path><path d="M20 4v5h-5"></path></svg>
+    </button>
+</nav>
 {% endif %}
 
 {# Filled in and shown by the script below when a copy of the page could not
@@ -664,8 +799,8 @@
    the ones that would not fit.
 
    2. Refreshing. The page fetches its next copy and swaps the body in, rather
-   than reloading. A reload that fails — the Wi-Fi dropped, the hosted app is
-   mid-deploy — replaces the dashboard with the browser's error page, and a
+   than reloading. A reload that fails when Wi-Fi drops replaces the dashboard
+   with the browser's error page, and a
    kiosk has nobody to press Back. A fetch that fails leaves the last good
    dashboard where it is, with a badge saying when it was last updated, and
    tries again in a minute. The <noscript> meta refresh in the head does what
@@ -817,9 +952,59 @@
         }
     }
 
+    // A week column is fixed by the screen, not by its events, so what does
+    // not fit is hidden from the end of the day and counted in its "+N more".
+    // The first event of a day always stays.
+    function fitWeek() {
+        var days = document.querySelectorAll(".page:not([hidden]) .week-day");
+        for (var i = 0; i < days.length; i++) {
+            var day = days[i];
+            var rows = day.querySelectorAll(".week-event");
+            var more = day.querySelector(".week-more");
+            var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+            for (var r = 0; r < rows.length; r++) { rows[r].classList.remove("shed"); }
+            if (more) {
+                more.hidden = !left;
+                more.textContent = left ? "+" + left + " more" : "";
+            }
+            var hidden = 0;
+            for (var k = rows.length - 1; k > 0 && day.scrollHeight > day.clientHeight + 1; k--) {
+                rows[k].classList.add("shed");
+                hidden++;
+                if (more) {
+                    more.hidden = false;
+                    more.textContent = "+" + (left + hidden) + " more";
+                }
+            }
+        }
+    }
+
+    // The shopping list clips like a week column: what the screen cannot hold
+    // is hidden from the end and joins the server's own count. The first item
+    // always stays.
+    function fitShopping() {
+        var list = document.querySelector(".page:not([hidden]) .shop-page-list");
+        if (!list) return;
+        var rows = list.querySelectorAll(".shop-page-item");
+        var more = document.querySelector(".page:not([hidden]) .shop-page-more");
+        var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+        for (var r = 0; r < rows.length; r++) { rows[r].classList.remove("shed"); }
+        if (more) { more.hidden = !left; more.textContent = left ? "+" + left + " more" : ""; }
+        var hidden = 0;
+        for (var k = rows.length - 1; k > 0 && list.scrollHeight > list.clientHeight + 1; k--) {
+            rows[k].classList.add("shed");
+            hidden++;
+            if (more) { more.hidden = false; more.textContent = "+" + (left + hidden) + " more"; }
+        }
+    }
+
     function fit() {
         // Let a phone viewer enlarge the dashboard without shrinking it back.
         if (window.visualViewport && window.visualViewport.scale > 1) return;
+        // Fitting is the main dashboard's; measuring while another page is
+        // shown would size the type to that page instead.
+        var shown = document.querySelector(".board");
+        if (shown && shown.hidden) { fitWeek(); fitShopping(); return; }
         var room = window.innerHeight;
         clearShed();
         // A comfortable day fits at or above the floor and stops here. The
@@ -842,6 +1027,117 @@
        fallback, so a size measured before it lands can overflow once it swaps
        in — measured at 557px of content in a 480px panel. Re-fit when it does. */
     if (document.fonts && document.fonts.ready) { document.fonts.ready.then(fit); }
+
+    /* ---- pages ------------------------------------------------------------
+       Each available page is a direct child of <body> carrying data-page. The
+       link this screen was opened with is its whole setup (data-screen-*), and
+       the one thing a person can change on the screen itself, whether pages
+       rotate, is kept in this browser only. A refresh replaces the body, so
+       what is showing is held here and put back afterwards, and only against
+       pages the new copy still has. */
+
+    var ROTATE_STORE = "pompdash.rotate";
+    var shownKey = null;
+    var pageTimer = null;
+
+    function screenAttr(name) { return document.body.getAttribute("data-screen-" + name); }
+    function isTouch() { return screenAttr("mode") === "touch"; }
+
+    function pageNodes() {
+        var found = document.querySelectorAll("body > [data-page]"), list = [];
+        for (var i = 0; i < found.length; i++) { list.push(found[i]); }
+        return list;
+    }
+
+    function pageKeys() {
+        return pageNodes().map(function (node) { return node.getAttribute("data-page"); });
+    }
+
+    function rotating() {
+        if (pageKeys().length < 2) { return false; }
+        if (isTouch()) {
+            try {
+                var saved = window.localStorage.getItem(ROTATE_STORE);
+                if (saved === "1") { return true; }
+                if (saved === "0") { return false; }
+            } catch (e) {}
+        }
+        return screenAttr("rotate") === "1";
+    }
+
+    function showPage(key) {
+        var nodes = pageNodes(), label = "";
+        for (var i = 0; i < nodes.length; i++) {
+            var on = nodes[i].getAttribute("data-page") === key;
+            nodes[i].hidden = !on;
+            if (on) { label = nodes[i].getAttribute("data-label") + " (" + (i + 1) + " of " + nodes.length + ")"; }
+        }
+        shownKey = key;
+        var text = document.querySelector(".pager-label");
+        if (text) { text.textContent = label; }
+        var toggle = document.querySelector('[data-pager="rotate"]');
+        if (toggle) { toggle.setAttribute("aria-pressed", rotating() ? "true" : "false"); }
+        fit();
+    }
+
+    function schedulePage() {
+        clearTimeout(pageTimer);
+        pageTimer = null;
+        if (!rotating()) { return; }
+        var seconds = parseInt(screenAttr("every"), 10) || 30;
+        pageTimer = setTimeout(function () { step(1); }, seconds * 1000);
+    }
+
+    // Wraps round, and counts only the pages this copy of the dashboard has.
+    function step(by) {
+        var keys = pageKeys();
+        if (keys.length < 2) { return; }
+        var at = keys.indexOf(shownKey);
+        showPage(keys[(at + by + keys.length) % keys.length]);
+        schedulePage();      // a manual move restarts the countdown too
+    }
+
+    // Opens on the page the link asked for, or keeps the one on screen if the
+    // new copy still has it; anything else is the link's page, then the first.
+    function restorePage() {
+        var keys = pageKeys();
+        if (!keys.length) { return; }
+        var wanted = keys.indexOf(shownKey) >= 0 ? shownKey : screenAttr("page");
+        showPage(keys.indexOf(wanted) >= 0 ? wanted : keys[0]);
+        schedulePage();
+    }
+
+    document.addEventListener("click", function (event) {
+        var button = event.target.closest ? event.target.closest("[data-pager]") : null;
+        if (!button || !isTouch()) { return; }
+        var action = button.getAttribute("data-pager");
+        if (action === "previous") { step(-1); }
+        else if (action === "next") { step(1); }
+        else if (action === "rotate") {
+            var on = !rotating();
+            try { window.localStorage.setItem(ROTATE_STORE, on ? "1" : "0"); } catch (e) {}
+            button.setAttribute("aria-pressed", on ? "true" : "false");
+            schedulePage();
+        }
+    });
+
+    // A horizontal drag of 50px or more that is mostly sideways. Zoomed in, a
+    // drag is a pan and is left alone.
+    var touchFrom = null;
+    document.addEventListener("touchstart", function (event) {
+        var t = event.touches && event.touches[0];
+        touchFrom = t && event.touches.length === 1 ? {x: t.clientX, y: t.clientY} : null;
+    }, {passive: true});
+    document.addEventListener("touchend", function (event) {
+        var from = touchFrom, t = event.changedTouches && event.changedTouches[0];
+        touchFrom = null;
+        if (!from || !t || !isTouch()) { return; }
+        if (window.visualViewport && window.visualViewport.scale > 1) { return; }
+        var dx = t.clientX - from.x, dy = t.clientY - from.y;
+        if (Math.abs(dx) >= 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) { step(dx < 0 ? 1 : -1); }
+    }, {passive: true});
+
+    restorePage();
 
     /* ---- the refresh ---------------------------------------------------- */
 
@@ -984,7 +1280,7 @@
     function swap(next) {
         // Both live on <html>, which a swap keeps, so each has to be carried
         // across by hand or the new body is drawn with the old chrome.
-        root.setAttribute("data-theme", next.documentElement.getAttribute("data-theme") || "light");
+        root.setAttribute("data-theme", next.documentElement.getAttribute("data-theme") || "dark");
         root.setAttribute("data-clock", next.documentElement.getAttribute("data-clock") || "24h");
         document.title = next.title;
         var colour = document.querySelector('meta[name="theme-color"]');
@@ -994,6 +1290,7 @@
         var scripts = next.body.querySelectorAll("script");
         for (var i = 0; i < scripts.length; i++) { scripts[i].parentNode.removeChild(scripts[i]); }
         document.body.parentNode.replaceChild(next.body, document.body);
+        restorePage();
         fit();
     }
 

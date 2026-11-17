@@ -18,7 +18,7 @@ RESPONSE_SCHEMA = {
 }
 
 SYSTEM_PROMPT = """\
-You write the daily headline for DinkyDash, a family dashboard that hangs on a \
+You write the daily headline for PompDash, a family dashboard that hangs on a \
 kitchen wall. Young children read it, so keep the language simple and warm. It \
 is a glanceable display, not an article: every word has to earn its place.
 

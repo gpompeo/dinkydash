@@ -1,6 +1,6 @@
 # Voice and copy
 
-How anything a customer reads should sound: the marketing site, the settings UI, email,
+How anything a customer reads should sound: the settings UI, documentation, email,
 the model's system prompt, and the README. [doc/terminology.md](terminology.md) settles
 *which word*; this file settles *how the sentence sounds*.
 
@@ -13,7 +13,7 @@ surrounding page is not a defence when the surrounding page has the same fault.
 
 The fuller craft guide these rules come from is
 `~/repos/keepthescore/documentation/copywriting/` — `writing-style.md` for voice,
-`page-types.md` for the shape of a marketing page. Read them before a large piece of
+`page-types.md` for the shape of a page. Read them before a large piece of
 writing. Take the craft and leave the rest: keyword research, conversion arguments and
 plan-naming there are another product's, and the commercial half belongs in Linear
 either way.
@@ -47,8 +47,7 @@ rather than softening everything around it.
 "a compatible device". Replace "various" and "several" with the actual examples, or cut
 the sentence.
 
-**5. Say the awkward part.** Setting up a Pi is an afternoon. There is no login on the
-self-hosted app. An Echo Show closes its browser and we say so on its own page. A caveat
+**5. Say the awkward part.** Setting up a Pi is an afternoon. Sign-in is optional, and the app belongs on a trusted network. An Echo Show closes its browser and we say so on its own page. A caveat
 stated plainly is worth more than the sentence it complicates, and the honesty is the
 product's argument, not a cost of making it.
 
@@ -78,10 +77,9 @@ Not in another page of copy, which may have the same fault. The usual places:
 | A claim about | Read |
 |---|---|
 | When anything happens on a schedule | `dinkydash/schedule.py` — there are two cadences, and one of them is a time the family chooses |
-| What is stored, sent, or kept | `website/content/privacy.md`, and the code it describes |
-| The link a wall screen uses | `dinkydash/screens.py` |
+| What is stored, sent, or kept | `doc/self-hosting.md` ("What leaves your machine"), and the code it describes |
+| The link a wall screen uses | `web/routes/wall.py` |
 | What a family can change | `web/routes/settings.py` and `web/templates/settings/` |
-| What the trial does and what billing can do | `doc/billing.md`, `dinkydash/billing.py` |
 
 Three claims that are wrong in ways that read as right:
 
@@ -89,7 +87,7 @@ Three claims that are wrong in ways that read as right:
   The calendars refresh on their own, separate, much shorter cycle. "The morning job" is
   neither of those things.
 - **"Backed up."** There is an **Export** button. Infrastructure snapshots are a deletion
-  caveat in the privacy policy, not a feature somebody can use.
+  caveat in the privacy notes, not a feature somebody can use.
 - **"Never leaves your house."** Self-hosting still sends the day's agenda to Anthropic,
   under the reader's own key. What is true is that *we* never see it.
 
@@ -99,7 +97,7 @@ Write the sentence that is true instead.
 ## What is not written here
 
 Prices may appear; the argument for a price may not. Positioning, keyword research,
-competitor tables and anything framing the site as a funnel are Linear documents on the
+competitor tables and anything framing the product as a funnel are Linear documents on the
 **Dinky Dash (`DIN`)** team, per the root [CLAUDE.md](../CLAUDE.md). This file is craft.
 
 ## Before you ship it

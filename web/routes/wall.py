@@ -29,7 +29,7 @@ from flask import (Blueprint, abort, current_app, flash, make_response, redirect
 
 from web import parent, ratelimit
 from web.family import current_store
-from web.routes.board import change_counter, manifest_for, render_board
+from web.routes.board import change_counter, manifest_for, render_board, setup_suffix
 
 log = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ admin_bp = Blueprint("wall_admin", __name__)
 
 TOKEN_KEY = "screen_token"
 
-# Thirty wrong tokens per caller an hour, like the hosted screen.
+# Thirty wrong tokens per caller an hour.
 MOST_MISSES = 30
 PER_SECONDS = 3600
 
@@ -120,7 +120,8 @@ def manifest(token):
     store = _checked(token)
     if store is None:
         return _refused()
-    return _respond(manifest_for(store.load_config(), url_for("wall.board", token=token)))
+    return _respond(manifest_for(store.load_config(), url_for("wall.board", token=token),
+                                  setup_suffix()))
 
 
 @bp.route("/s/<token>/changes")
