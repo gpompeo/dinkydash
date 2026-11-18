@@ -1,7 +1,9 @@
 {# The week page: the seven days of the current week, read-only. Everything
    here comes from view.week (dinkydash/board.py `week_view`), already on the
-   family's clock and with locations left out. Each day reads special dates,
-   then all-day events (and any timed event whose time cannot be read), then the Morning / Afternoon / Evening rows. Event titles are calendar
+   family's clock and with locations left out. One grid: a gutter naming the Morning / Afternoon / Evening
+   bands once, then seven days. Each day reads special dates, then all-day events
+   (and any timed event whose time cannot be read), then its three bands; every
+   band shares one row track across the week, so the bands line up. Event titles are calendar
    input, so they are only ever printed through autoescape. #}
 {% macro event_list(events, more, extra_class="", all_day=false) %}
 <ul class="week-events{{ extra_class }}">
@@ -20,32 +22,38 @@
         <div class="date">{{ view.week.range }}</div>
     </div>
     <div class="week-days">
+        <div class="week-gutter" data-gutter>
+            {% for row in view.week.days[0].rows %}
+            <div class="week-gutter-label" data-band="{{ row.key }}">{{ row.label }}</div>
+            {% endfor %}
+        </div>
         {% for day in view.week.days %}
         <div class="week-day{{ ' today' if day.today }}{{ ' past' if day.past }}" data-date="{{ day.date }}"{% if day.today %} aria-current="date"{% endif %}>
+            <div class="week-card" aria-hidden="true"></div>
             <div class="week-day-head">
                 <span class="week-weekday" aria-label="{{ day.weekday_name }}">{{ day.weekday }}</span>
                 <span class="week-daynum">{{ day.day }}</span>
             </div>
-            {% if day.empty %}
-            <div class="week-none">Nothing on</div>
-            {% endif %}
-            {% if day.special %}
-            <ul class="week-special">
-                {% for item in day.special %}
-                <li class="week-special-item"><span class="week-special-emoji" aria-hidden="true">{{ item.emoji }}</span> <span class="week-title">{{ item.title }}</span></li>
-                {% endfor %}
-            </ul>
-            {% endif %}
-            {% if day.all_day %}
-            {{ event_list(day.all_day, 0, " week-allday", true) }}
-            {% endif %}
+            <div class="week-above week-special-cell{{ ' is-empty' if not day.special }}">
+                {% if day.special %}
+                <ul class="week-special">
+                    {% for item in day.special %}
+                    <li class="week-special-item"><span class="week-special-emoji" aria-hidden="true">{{ item.emoji }}</span> <span class="week-title">{{ item.title }}</span></li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            <div class="week-above week-allday-cell{{ ' is-empty' if not day.all_day }}">
+                {% if day.all_day %}
+                {{ event_list(day.all_day, 0, " week-allday", true) }}
+                {% endif %}
+            </div>
             {% for row in day.rows %}
-            <section class="week-row{{ ' is-empty' if not row.events }}" data-row="{{ row.key }}">
-                <h3 class="week-row-label">{{ row.label }}</h3>
+            <div class="week-band{{ ' is-empty' if not row.events }}" data-band="{{ row.key }}" role="group" aria-label="{{ day.weekday_name }} {{ row.label|lower }}">
                 {% if row.events %}
                 {{ event_list(row.events, row.more) }}
                 {% endif %}
-            </section>
+            </div>
             {% endfor %}
         </div>
         {% endfor %}

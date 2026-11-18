@@ -97,15 +97,47 @@ def test_the_week_fits_the_screen_in_both_themes(browser, origin, width, height)
                     hscroll: document.documentElement.scrollWidth > innerWidth,
                     title: Math.min(...Array.from(document.querySelectorAll('.week-title'))
                         .map(n => parseFloat(getComputedStyle(n).fontSize))),
-                    rows: document.querySelectorAll('.week-row-label').length,
+                    rows: document.querySelectorAll('.week-gutter-label').length,
+                    bands: document.querySelectorAll('.week-band').length,
                     special: document.querySelectorAll('.week-special-item').length,
                     today: document.querySelectorAll('.week-day.today').length};
         }""")
-        assert found["rows"] == 21 and found["special"] == 2
+        assert found["rows"] == 3 and found["bands"] == 21 and found["special"] == 2
         assert found["visible"] and found["days"] == 7 and found["today"] == 1
         assert found["inside"] and not found["hscroll"] and found["clipped"] == 0
         assert found["title"] >= 12
         first = page.get_attribute(".week-day .week-weekday", "aria-label")
         assert first == "Monday"
+    finally:
+        page.close()
+
+
+@pytest.mark.parametrize("width,height", SIZES)
+def test_the_bands_line_up_across_the_week(browser, origin, width, height):
+    page = browser.new_page(viewport={"width": width, "height": height})
+    try:
+        page.goto(f"{origin}/?page=week", wait_until="networkidle")
+        found = page.evaluate("""() => {
+            const out = {};
+            for (const key of ['morning', 'afternoon', 'evening']) {
+                const cells = Array.from(document.querySelectorAll(`.week-band[data-band="${key}"]`));
+                const boxes = cells.map(c => c.getBoundingClientRect());
+                const label = document.querySelector(`.week-gutter-label[data-band="${key}"]`)
+                    .getBoundingClientRect();
+                out[key] = {n: cells.length,
+                    tops: Math.max(...boxes.map(b => b.top)) - Math.min(...boxes.map(b => b.top)),
+                    heights: Math.max(...boxes.map(b => b.height)) - Math.min(...boxes.map(b => b.height)),
+                    overflow: cells.filter(c => c.scrollHeight > c.clientHeight + 1).length,
+                    centred: Math.abs((label.top + label.bottom) / 2 - (boxes[0].top + boxes[0].bottom) / 2),
+                    tall: label.height > label.width,
+                    size: parseFloat(getComputedStyle(document.querySelector('.week-gutter-label')).fontSize)};
+            }
+            return out;
+        }""")
+        for key, band in found.items():
+            assert band["n"] == 7, key
+            assert band["tops"] < 0.5 and band["heights"] < 0.5, key
+            assert band["overflow"] == 0, key
+            assert band["centred"] < 1 and band["tall"] and band["size"] >= 12, key
     finally:
         page.close()

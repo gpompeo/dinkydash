@@ -266,11 +266,16 @@ nothing extra is drawn. The pager is a flex strip under the board, no `gap` (Saf
 Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pages_browser.py`.
 
 The **week page** (`_week.html`, `board.week_view`) is the first registered page: seven columns, read-only,
-available while a calendar is switched on. Each column reads special dates and birthdays (gated by the
-`special_dates` switch, found with `context.special_dates_on`), then all-day events (plus any timed event whose time cannot be read), then three always-drawn
-Morning / Afternoon / Evening rows (`week.row_of`, boundaries 12:00 and 18:00). Its columns are fixed by the
-screen, so `fitWeek()` in `board.html` hides trailing events of the last overflowing list in a column and
-counts them in that list's `+N more`; it runs from `fit()`'s early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
+available while a calendar is switched on. The page is one CSS grid, not seven independent columns: a gutter, then seven days whose wrappers are
+`display: contents`, so every day's parts sit on shared row tracks (head, special dates, all-day, then
+Morning / Afternoon / Evening; subgrid is avoided for old kiosk browsers). The special-date and all-day
+tracks take the tallest day; the three bands (`week.row_of`, boundaries 12:00 and 18:00) split the rest
+equally, so each band has the same top and height in every column. The labels are drawn once in the gutter,
+rotated to read bottom-to-top, and each band cell carries an `aria-label` ("Monday morning"). Special dates and
+birthdays are gated by the `special_dates` switch (`context.special_dates_on`); all-day events include any timed
+event whose time cannot be read. A band never grows, so `fitWeek()` in `board.html` hides trailing events of an
+overflowing band and counts them in that band's `+N more`; it runs from `fit()`'s early return while the main
+page is hidden. There is no "Nothing on" line: the empty bands are the statement. Locations stay off and sizes are `rem`.
 Tests: `tests/test_week.py`, `tests/test_week_browser.py`.
 
 The **shopping page** (`_shopping.html`, `board.build_view` `shopping_page`) is read-only and registered with
