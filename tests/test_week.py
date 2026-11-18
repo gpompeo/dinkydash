@@ -5,6 +5,7 @@ Behaviour through public interfaces. The browser layout is in
 """
 
 import json
+import re
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -396,6 +397,27 @@ class TestTheRoute:
         section = html[html.index(SECTION):]
         section = section[:section.index("</section>")]
         assert "<form" not in section and "<button" not in section and "<a " not in section
+
+    def week_html(self, client):
+        html = client.get("/?page=week").get_data(as_text=True)
+        section = html[html.index(SECTION):]
+        return section[:section.index("</section>")]
+
+    def test_the_row_labels_are_drawn_once_in_a_gutter(self, client):
+        section = self.week_html(client)
+        assert section.count('class="week-gutter"') == 1
+        assert re.findall(r'<div class="week-gutter-label"[^>]*>(\w+)</div>', section) == \
+            ["Morning", "Afternoon", "Evening"]
+        assert "week-row-label" not in section
+
+    def test_every_day_has_its_three_bands_in_order(self, client):
+        section = self.week_html(client)
+        days = re.split(r'<div class="week-day[ "]', section)[1:]
+        assert len(days) == 7
+        for day in days:
+            assert re.findall(r'data-band="(\w+)"', day) == ["morning", "afternoon", "evening"]
+            assert re.findall(r'role="group" aria-label="[A-Z][a-z]+day (morning|afternoon|evening)"',
+                              day) == ["morning", "afternoon", "evening"]
 
     def test_event_titles_are_escaped(self, client):
         html = client.get("/?page=week").get_data(as_text=True)

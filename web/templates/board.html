@@ -479,25 +479,89 @@
         .page[data-page="week"]:not([hidden]) { display: flex; flex-direction: column; }
         .week { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
         .week > * + * { margin-top: 1rem; }
+        /* One grid for the whole week: a gutter column, then seven days. The
+           day wrapper is display: contents, so its parts sit on the shared row
+           tracks (head, special dates, all-day, then Morning / Afternoon /
+           Evening) and line up across the week without subgrid. The tracks
+           above the bands take the tallest day; the bands split what is left
+           equally. */
         .week-days {
             flex: 1 1 auto;
             min-height: 0;
             display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            grid-template-rows: minmax(0, 1fr);
+            grid-template-columns: auto repeat(7, minmax(0, 1fr));
+            grid-template-rows: auto auto auto repeat(3, minmax(0, 1fr));
             grid-column-gap: 0.55rem;
             column-gap: 0.55rem;
         }
-        .week-day {
-            min-width: 0;
-            min-height: 0;
-            overflow: hidden;
-            padding: 0.55rem 0.45rem;
+        .week-day { display: contents; }
+        .week-card {
+            grid-row: 1 / 7;
             background: var(--card);
             border: 1px solid var(--card-edge);
             box-shadow: var(--card-lift);
             border-radius: 0.8rem;
         }
+        .week-day > * { min-width: 0; min-height: 0; }
+        .week-day:nth-child(2) > * { grid-column: 2; }
+        .week-day:nth-child(3) > * { grid-column: 3; }
+        .week-day:nth-child(4) > * { grid-column: 4; }
+        .week-day:nth-child(5) > * { grid-column: 5; }
+        .week-day:nth-child(6) > * { grid-column: 6; }
+        .week-day:nth-child(7) > * { grid-column: 7; }
+        .week-day:nth-child(8) > * { grid-column: 8; }
+        .week-day-head { grid-row: 1; }
+        .week-special-cell { grid-row: 2; }
+        .week-allday-cell { grid-row: 3; }
+        .week-band[data-band="morning"] { grid-row: 4; }
+        .week-band[data-band="afternoon"] { grid-row: 5; }
+        .week-band[data-band="evening"] { grid-row: 6; }
+        .week-gutter { display: contents; }
+        .week-gutter-label {
+            grid-column: 1;
+            align-self: center;
+            justify-self: center;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            font-size: max(0.68rem, 12px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+        .week-gutter-label[data-band="morning"] { grid-row: 4; }
+        .week-gutter-label[data-band="afternoon"] { grid-row: 5; }
+        .week-gutter-label[data-band="evening"] { grid-row: 6; }
+        .week-day.past > :not(.week-card) { opacity: 0.72; }
+        .week-day.past > .week-card { opacity: 0.72; }
+        .week-day.today > .week-card {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px var(--accent), var(--card-lift);
+        }
+        .week-day-head { grid-row: 1; }
+        .week-special-cell { grid-row: 2; }
+        .week-allday-cell { grid-row: 3; }
+        .week-band[data-band="morning"] { grid-row: 4; }
+        .week-band[data-band="afternoon"] { grid-row: 5; }
+        .week-band[data-band="evening"] { grid-row: 6; }
+        .week-gutter { display: contents; }
+        .week-gutter-label {
+            grid-column: 1;
+            align-self: center;
+            justify-self: center;
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            font-size: max(0.68rem, 12px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+        .week-gutter-label[data-band="morning"] { grid-row: 4; }
+        .week-gutter-label[data-band="afternoon"] { grid-row: 5; }
+        .week-gutter-label[data-band="evening"] { grid-row: 6; }
         .week-day.past { opacity: 0.72; }
         .week-day.today {
             border-color: var(--accent);
@@ -508,7 +572,7 @@
             flex-wrap: wrap;
             align-items: baseline;
             justify-content: space-between;
-            margin-bottom: 0.5rem;
+            margin: 0.55rem 0.45rem 0;
             padding-bottom: 0.35rem;
             border-bottom: 1px solid var(--card-edge);
         }
@@ -548,30 +612,26 @@
             line-height: 1.18;
             overflow-wrap: break-word;
         }
-        .week-more, .week-none {
+        .week-more {
+            margin-top: 0.5rem;
             font-size: max(0.72rem, 12px);
             font-weight: 800;
             color: var(--text-muted);
         }
-        .week-more { margin-top: 0.5rem; }
         .week-more[hidden], .week-event.shed { display: none; }
-        .week-none { font-weight: 600; margin-bottom: 0.4rem; }
-        .week-special, .week-allday { list-style: none; margin: 0 0 0.5rem; padding: 0; }
+        .week-above { margin: 0 0.45rem; padding-top: 0.4rem; }
+        .week-above.is-empty { padding-top: 0; }
+        .week-special, .week-allday { list-style: none; margin: 0; padding: 0; }
         .week-special-item { font-size: max(0.78rem, 12px); line-height: 1.18; }
         .week-special-item + .week-special-item { margin-top: 0.3rem; }
         .week-special-item .week-title { display: inline; color: var(--accent-dark); }
-        .week-allday { padding-bottom: 0.4rem; border-bottom: 1px solid var(--card-edge); }
-        .week-row { padding-top: 0.35rem; }
-        .week-row + .week-row { margin-top: 0.35rem; border-top: 1px solid var(--card-edge); }
-        .week-row-label {
-            margin: 0 0 0.25rem;
-            font-size: max(0.68rem, 12px);
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--text-muted);
+        .week-band {
+            margin: 0 0.45rem;
+            padding: 0.4rem 0;
+            overflow: hidden;
+            border-top: 1px solid var(--card-edge);
         }
-        .week-row.is-empty .week-row-label { opacity: 0.55; }
+        .week-band[data-band="evening"] { padding-bottom: 0.55rem; }
 
         /* ---- shopping page ----------------------------------------------
            What is still to get, in as many columns as the width holds. The
@@ -968,47 +1028,35 @@
         }
     }
 
-    // A week column is fixed by the screen, not by its events, so what does
-    // not fit is hidden from the end of the day and counted in its "+N more".
-    // The first event of a day always stays.
-    // The most events one column can shed, so a column that cannot fit stops.
+    // A week band is fixed by the screen, not by its events: the three bands
+    // share their row tracks across the week, so what does not fit is hidden
+    // from the end of that band and counted in its "+N more". A band never
+    // grows, which keeps every day's bands aligned. The first event of a band
+    // always stays.
+    // The most events one band can shed, so a band that cannot fit stops.
     var WEEK_SHED_GUARD = 200;
 
     function fitWeek() {
-        var days = document.querySelectorAll(".page:not([hidden]) .week-day");
-        var lists = [];
-        var i, j;
-        for (i = 0; i < days.length; i++) {
-            var found = days[i].querySelectorAll(".week-events");
-            for (j = 0; j < found.length; j++) {
-                var more = found[j].querySelector(".week-more");
-                var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
-                var items = found[j].querySelectorAll(".week-event");
-                for (var r = 0; r < items.length; r++) { items[r].classList.remove("shed"); }
-                if (more) {
-                    more.hidden = !left;
-                    more.textContent = left ? "+" + left + " more" : "";
-                }
-                lists.push({day: days[i], more: more, left: left, items: items, hidden: 0});
+        var bands = document.querySelectorAll(".page:not([hidden]) .week-band");
+        var i, r;
+        for (i = 0; i < bands.length; i++) {
+            var band = bands[i];
+            var more = band.querySelector(".week-more");
+            var items = band.querySelectorAll(".week-event");
+            var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+            for (r = 0; r < items.length; r++) { items[r].classList.remove("shed"); }
+            if (more) {
+                more.hidden = !left;
+                more.textContent = left ? "+" + left + " more" : "";
             }
-        }
-        // Shed from the last list of an overflowing column first, one event
-        // at a time; the first event of each list stays, so a list is never
-        // emptied.
-        for (i = 0; i < days.length; i++) {
-            var mine = lists.filter(function (l) { return l.day === days[i]; });
-            var guard = 0;
-            while (days[i].scrollHeight > days[i].clientHeight + 1 && guard++ < WEEK_SHED_GUARD) {
-                var target = null;
-                for (j = mine.length - 1; j >= 0; j--) {
-                    if (mine[j].items.length - mine[j].hidden > 1) { target = mine[j]; break; }
-                }
-                if (!target) break;
-                target.hidden++;
-                target.items[target.items.length - target.hidden].classList.add("shed");
-                if (target.more) {
-                    target.more.hidden = false;
-                    target.more.textContent = "+" + (target.left + target.hidden) + " more";
+            var hidden = 0;
+            while (band.scrollHeight > band.clientHeight + 1 && hidden < WEEK_SHED_GUARD &&
+                   items.length - hidden > 1) {
+                hidden++;
+                items[items.length - hidden].classList.add("shed");
+                if (more) {
+                    more.hidden = false;
+                    more.textContent = "+" + (left + hidden) + " more";
                 }
             }
         }
