@@ -16,7 +16,7 @@ import traceback
 import pytest
 import requests
 
-from dinkydash.mail import MailError, MailRefused, send, support_address
+from dinkydash.mail import MailError, MailRefused, send
 
 
 class FakeResponse:
@@ -41,11 +41,20 @@ class Recorder:
 def send_ok(**kwargs):
     """Send with a recorded transport and a key, returning the recorder."""
     post = Recorder(**{k: kwargs.pop(k) for k in ("response", "raises") if k in kwargs})
+    kwargs.setdefault("sender", "dash@example.test")
+    kwargs.setdefault("reply_to", "help@example.test")
     kwargs.setdefault("to", "parent@example.test")
     kwargs.setdefault("subject", "Your DinkyDash link")
     kwargs.setdefault("text", "Tap to sign in.")
     send(transport=post, api_key="SG.test", **kwargs)
     return post
+
+
+@pytest.fixture(autouse=True)
+def configured_addresses(monkeypatch):
+    """A configured install; tests that need a missing one delete it."""
+    monkeypatch.setenv("DINKYDASH_MAIL_FROM", "dash@example.test")
+    monkeypatch.setenv("DINKYDASH_MAIL_REPLY_TO", "help@example.test")
 
 
 class TestTheRequest:
@@ -59,13 +68,17 @@ class TestTheRequest:
         body = send_ok(to="parent@example.test").json
         assert body["personalizations"][0]["to"][0]["email"] == "parent@example.test"
 
-    def test_the_sender_is_on_the_authenticated_domain(self):
-        """DKIM only signs for the domain SendGrid validated."""
-        assert send_ok().json["from"]["email"].endswith("@dinkydash.co")
+    def test_the_sender_is_the_configured_one(self, monkeypatch):
+        monkeypatch.setenv("DINKYDASH_MAIL_FROM", "env@example.test")
+        assert send_ok(sender=None).json["from"]["email"] == "env@example.test"
 
-    def test_the_sender_can_be_overridden_from_the_environment(self, monkeypatch):
-        monkeypatch.setenv("DINKYDASH_MAIL_FROM", "login@dinkydash.co")
-        assert send_ok().json["from"]["email"] == "login@dinkydash.co"
+    def test_a_missing_sender_is_refused_not_guessed(self, monkeypatch):
+        monkeypatch.delenv("DINKYDASH_MAIL_FROM", raising=False)
+        post = Recorder()
+        with pytest.raises(MailRefused, match="DINKYDASH_MAIL_FROM"):
+            send("parent@example.test", "Hi", "Body", reply_to="help@example.test",
+                 transport=post, api_key="SG.test")
+        assert post.url is None
 
     def test_there_is_a_timeout(self):
         """A send that hangs forever would hang whatever asked for it."""
@@ -73,13 +86,18 @@ class TestTheRequest:
 
 
 class TestWhereAReplyGoes:
-    def test_by_default_it_is_the_support_inbox(self):
-        """`dinkydash.co` has no MX records; a reply to the From address is lost."""
-        assert send_ok().json["reply_to"]["email"] == support_address()
-
-    def test_it_can_be_overridden_from_the_environment(self, monkeypatch):
+    def test_the_configured_address_is_used_with_our_name(self, monkeypatch):
         monkeypatch.setenv("DINKYDASH_MAIL_REPLY_TO", "support@example.test")
-        assert send_ok().json["reply_to"]["email"] == "support@example.test"
+        assert send_ok(reply_to=None).json["reply_to"] == {
+            "email": "support@example.test", "name": "PompDash"}
+
+    def test_a_missing_reply_to_is_refused_not_guessed(self, monkeypatch):
+        monkeypatch.delenv("DINKYDASH_MAIL_REPLY_TO", raising=False)
+        post = Recorder()
+        with pytest.raises(MailRefused, match="DINKYDASH_MAIL_REPLY_TO"):
+            send("parent@example.test", "Hi", "Body", sender="dash@example.test",
+                 transport=post, api_key="SG.test")
+        assert post.url is None
 
     def test_a_caller_can_point_it_somewhere_else(self):
         """Feedback: the message arrives with the family's own address on it."""

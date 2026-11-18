@@ -87,8 +87,9 @@ cursor, and on a list page the link stretches over the whole row (`a.row-main::a
 avatar and the pill open the item the way the home page's rows already did; anything that must
 stay its own target inside a row sits above it the way `.move` does.
 
-**The feedback pill is offered only when `web.feedback.enabled()` finds a mail key.**
-The route composes one message to `feedback.recipient()` via SendGrid. The message is never
+**The feedback pill is offered only when `web.feedback.enabled()` finds the key, sender,
+reply-to and recipient all set.** There is no default address. The route composes one message to
+`feedback.recipient()` via SendGrid; unconfigured, the page says feedback isn't set up. The message is never
 logged, and `doc/self-hosting.md` must describe this optional flow.
 
 **A route gets its store from `web.family.current_store()`.** It returns the `FileStore`
@@ -117,7 +118,7 @@ zone step reads the phone's own zone with `Intl.DateTimeFormat` and offers it as
 `POST /settings/timezone`, which refuses any name `zoneinfo` does not know.
 
 **The settings shell** is shared by the settings pages and parent sign-in. The dashboard is
-outside this shell. `web.feedback.enabled()` gates the optional feedback route on its mail key.
+outside this shell. `web.feedback.enabled()` gates the optional feedback route on its full mail configuration.
 
 ## The dashboard's layout
 

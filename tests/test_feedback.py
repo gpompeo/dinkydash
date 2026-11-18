@@ -56,21 +56,19 @@ def outbox(monkeypatch):
     return box
 
 
-@pytest.fixture(autouse=True)
-def a_mail_key(monkeypatch):
-    """The form is offered because there is somewhere to send it."""
-    monkeypatch.setenv("SENDGRID_API_KEY", "SG.test")
+SETTINGS = {
+    "SENDGRID_API_KEY": "SG.test",
+    "DINKYDASH_MAIL_FROM": "dash@example.com",
+    "DINKYDASH_MAIL_REPLY_TO": "help@example.com",
+    "DINKYDASH_FEEDBACK_TO": "inbox@example.com",
+}
 
 
 @pytest.fixture(autouse=True)
-def no_redirected_mailbox(monkeypatch):
-    """Where feedback goes is the default here, whatever the machine has set.
-
-    A developer with a real `DINKYDASH_FEEDBACK_TO` in the environment would
-    otherwise fail the tests that assert the default, and pass the one below
-    for the wrong reason.
-    """
-    monkeypatch.delenv(feedback.FEEDBACK_TO, raising=False)
+def fully_configured(monkeypatch):
+    """Feedback is offered because every setting is present."""
+    for name, value in SETTINGS.items():
+        monkeypatch.setenv(name, value)
 
 
 # -- what a message is made of ----------------------------------------------
@@ -98,36 +96,40 @@ class TestComposing:
 
 
 class TestWhereItGoes:
-    """The mailbox is movable; the address the app prints is not."""
+    def test_the_configured_mailbox_is_the_recipient(self):
+        assert feedback.recipient() == "inbox@example.com"
 
-    def test_by_default_it_is_the_address_we_give_out(self):
-        assert feedback.recipient() == mail.support_address()
-
-    def test_a_chosen_mailbox_wins(self, monkeypatch):
-        monkeypatch.setenv(feedback.FEEDBACK_TO, "elsewhere@example.com")
-        assert feedback.recipient() == "elsewhere@example.com"
-
-    def test_a_blank_one_is_no_choice(self, monkeypatch):
+    def test_unset_or_blank_there_is_no_recipient(self, monkeypatch):
         monkeypatch.setenv(feedback.FEEDBACK_TO, "   ")
-        assert feedback.recipient() == mail.support_address()
-
-    def test_moving_it_leaves_the_address_on_the_page_alone(self, monkeypatch):
-        monkeypatch.setenv(feedback.FEEDBACK_TO, "elsewhere@example.com")
-        assert feedback.support_address() == mail.support_address()
-        assert feedback.support_address() != feedback.recipient()
+        assert feedback.recipient() == ""
+        monkeypatch.delenv(feedback.FEEDBACK_TO)
+        assert feedback.recipient() == ""
 
 
 class TestWhetherItExists:
-    def test_it_is_off_without_a_way_to_send(self, monkeypatch):
-        monkeypatch.delenv("SENDGRID_API_KEY")
-        assert feedback.enabled() is False
-
-    def test_a_blank_key_is_no_key(self, monkeypatch):
-        monkeypatch.setenv("SENDGRID_API_KEY", "   ")
-        assert feedback.enabled() is False
-
-    def test_it_is_on_with_one(self):
+    def test_it_is_on_with_all_four_set(self):
         assert feedback.enabled() is True
+
+    def test_with_nothing_set_it_is_off(self, monkeypatch):
+        for name in SETTINGS:
+            monkeypatch.delenv(name)
+        assert feedback.enabled() is False
+
+    def test_a_key_alone_is_not_enough(self, monkeypatch):
+        for name in SETTINGS:
+            if name != "SENDGRID_API_KEY":
+                monkeypatch.delenv(name)
+        assert feedback.enabled() is False
+
+    @pytest.mark.parametrize("missing", list(SETTINGS))
+    def test_any_one_missing_turns_it_off(self, monkeypatch, missing):
+        monkeypatch.delenv(missing)
+        assert feedback.enabled() is False
+
+    @pytest.mark.parametrize("blank", list(SETTINGS))
+    def test_a_blank_one_is_missing(self, monkeypatch, blank):
+        monkeypatch.setenv(blank, "   ")
+        assert feedback.enabled() is False
 
 
 # -- self-hosted ------------------------------------------------------------
@@ -148,26 +150,54 @@ class TestSelfHosted:
         assert outbox.only["text"].startswith(MESSAGE)
         assert outbox.only["reply_to"] is None
 
-    def test_with_no_mail_provider_there_is_no_page(self, single, monkeypatch):
-        monkeypatch.delenv("SENDGRID_API_KEY")
-        assert single.get("/settings/feedback").status_code == 404
+    def test_unconfigured_the_page_says_so_without_an_address(self, single, monkeypatch):
+        monkeypatch.delenv("DINKYDASH_FEEDBACK_TO")
+        response = single.get("/settings/feedback")
+        page = response.get_data(as_text=True)
+        assert response.status_code == 404
+        assert "Feedback isn&#39;t set up on this install" in page
+        assert "<form" not in page
+        assert "mailto:" not in page
 
-    def test_and_no_pill(self, single, monkeypatch):
+    def test_unconfigured_nothing_is_sent(self, single, outbox, monkeypatch):
         monkeypatch.delenv("SENDGRID_API_KEY")
-        assert PILL not in single.get("/settings/").get_data(as_text=True)
+        single.post("/settings/feedback", data={"message": MESSAGE})
+        assert outbox.sent == []
+
+    def test_a_key_alone_leaves_no_pill_and_no_link(self, single, monkeypatch):
+        for name in SETTINGS:
+            if name != "SENDGRID_API_KEY":
+                monkeypatch.delenv(name)
+        page = single.get("/settings/").get_data(as_text=True)
+        assert PILL not in page
+        assert "/settings/feedback" not in page
+
+    def test_with_nothing_set_there_is_no_pill_and_no_link(self, single, monkeypatch):
+        for name in SETTINGS:
+            monkeypatch.delenv(name)
+        page = single.get("/settings/").get_data(as_text=True)
+        assert PILL not in page
+        assert "/settings/feedback" not in page
 
 
 class TestSending:
-    def test_it_goes_to_the_support_inbox(self, single, outbox):
+    def test_it_goes_to_the_configured_recipient(self, single, outbox):
         single.post("/settings/feedback", data={"message": MESSAGE})
-        assert outbox.only["to"] == mail.support_address()
+        assert outbox.only["to"] == "inbox@example.com"
 
-    def test_or_to_the_mailbox_that_was_chosen_instead(self, single, outbox, monkeypatch):
-        monkeypatch.setenv(feedback.FEEDBACK_TO, "elsewhere@example.com")
+    def test_from_the_configured_sender_with_the_configured_reply_to(self, single, monkeypatch):
+        bodies = []
+
+        def post(url, json=None, headers=None, timeout=None):
+            bodies.append(json)
+            return type("R", (), {"status_code": 202})()
+
+        monkeypatch.setattr("requests.post", post)
         single.post("/settings/feedback", data={"message": MESSAGE})
-        assert outbox.only["to"] == "elsewhere@example.com"
-        # Still the family's own address to reply to, wherever it landed.
-        assert outbox.only["reply_to"] is None
+        body = bodies[0]
+        assert body["personalizations"][0]["to"][0]["email"] == "inbox@example.com"
+        assert body["from"]["email"] == "dash@example.com"
+        assert body["reply_to"]["email"] == "help@example.com"
 
 
 
@@ -184,11 +214,11 @@ class TestRefusing:
         assert outbox.sent == []
         assert "Write something first" in response.get_data(as_text=True)
 
-    def test_too_long_sends_nothing_and_offers_the_address_instead(self, single, outbox):
+    def test_too_long_sends_nothing_and_says_how_long_it_may_be(self, single, outbox):
         response = single.post("/settings/feedback",
                                data={"message": "x" * (feedback.LONGEST + 1)})
         assert outbox.sent == []
-        assert mail.support_address() in response.get_data(as_text=True)
+        assert "Trim it to 4,000 characters" in response.get_data(as_text=True)
 
     def test_what_was_typed_is_handed_back_rather_than_lost(self, single, outbox):
         response = single.post("/settings/feedback",

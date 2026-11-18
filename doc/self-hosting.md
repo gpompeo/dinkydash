@@ -33,9 +33,10 @@ headline. You only need a key for the headline written each day.
   reaches back to the first day of your week. Those earlier events are stored in the dashboard
   file on your machine and drawn on the wall; they are never added to the headline prompt, which
   carries today's events and the next few days' titles only.
-- **Feedback** from the settings page exists only if `SENDGRID_API_KEY` is set. It goes to
-  `DINKYDASH_FEEDBACK_TO`, or to the default support address in `dinkydash/mail.py` when that is
-  unset. See [security.md](security.md).
+- **Feedback** from the settings page exists only if `SENDGRID_API_KEY`, `DINKYDASH_MAIL_FROM`,
+  `DINKYDASH_MAIL_REPLY_TO` and `DINKYDASH_FEEDBACK_TO` are all set. With any of them missing the
+  link is hidden and nothing is sent. It goes through SendGrid to the address you chose, and no
+  address belonging to the PompDash project is built in. See [security.md](security.md).
 
 Everything else, including `config.yaml`, the generated dashboard and your completions, stays in
 the files on your machine. A screen's page setup (touch or not, first page, rotation) lives in the

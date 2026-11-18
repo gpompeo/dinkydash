@@ -7,10 +7,18 @@
 {% block feedback %}{% endblock %}
 
 {% block content %}
+{% if unavailable %}
+<div class="card pad">
+    <div class="hint">
+        {{ unavailable }} Set the mail variables listed in <code>.env.example</code>
+        and restart to turn it on.
+    </div>
+</div>
+{% else %}
 <div class="card pad">
     <div class="hint">
         Something broken, missing or irritating — or something you like. It goes
-        straight to the person who builds PompDash, and every one is read.
+        to whoever looks after this PompDash.
     </div>
 </div>
 
@@ -36,8 +44,5 @@
     </div>
     <button class="btn" type="submit">Send feedback</button>
 </form>
-
-<div class="hint" style="text-align:center;">
-    Or write to <a href="mailto:{{ support }}">{{ support }}</a> — it is the same inbox.
-</div>
+{% endif %}
 {% endblock %}

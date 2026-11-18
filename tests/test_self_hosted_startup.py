@@ -19,6 +19,9 @@ def test_feedback_rate_limit_applies_on_a_local_network(monkeypatch, tmp_path):
     from web.routes.settings import MOST_FEEDBACK
 
     monkeypatch.setenv("SENDGRID_API_KEY", "invented-key")
+    monkeypatch.setenv("DINKYDASH_MAIL_FROM", "dash@example.com")
+    monkeypatch.setenv("DINKYDASH_MAIL_REPLY_TO", "help@example.com")
+    monkeypatch.setenv("DINKYDASH_FEEDBACK_TO", "inbox@example.com")
     sent = []
     monkeypatch.setattr(mail, "send", lambda *args, **kwargs: sent.append(args))
     client = client_for(create_app(FileStore(tmp_path / "config.yaml")))

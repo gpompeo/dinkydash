@@ -54,6 +54,10 @@ repository and its issues.
   **Those are claims about this code**: change what the app stores, sends, or sends it to, and change
   them in the same commit. Anything new that sends data to a third party is named in that section
   and in any in-app privacy notice in the same commit.
+- **Feedback email has no built-in address.** `web/feedback.enabled()` needs `SENDGRID_API_KEY`,
+  `DINKYDASH_MAIL_FROM`, `DINKYDASH_MAIL_REPLY_TO` and `DINKYDASH_FEEDBACK_TO`; with any missing
+  the link is hidden and `mail.send` refuses rather than guessing a sender or reply-to. Only what
+  the person types is sent, through SendGrid, and never logged. Tests: `test_mail.py`, `test_feedback.py`.
 - **Log the label, never the URL** (`fetch_events` logs `entry["label"]`). **Ticks log metadata,
   never generated family text.** Access-log redaction covers malformed and encoded screen URLs too
   (`tests/test_private_logs.py`).

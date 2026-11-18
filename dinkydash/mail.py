@@ -10,21 +10,10 @@ logger = logging.getLogger(__name__)
 SEND_URL = "https://api.sendgrid.com/v3/mail/send"
 DEFAULT_TIMEOUT = 10
 
-# Who the mail comes from. A subdomain of the authenticated domain would need
-# its own DKIM records; the apex is what SendGrid validated.
-DEFAULT_FROM = "hello@dinkydash.co"
+# The display name on a message. The sender and reply-to addresses have no
+# default: they come from `DINKYDASH_MAIL_FROM` and `DINKYDASH_MAIL_REPLY_TO`,
+# and a send without them is refused rather than guessed.
 DEFAULT_FROM_NAME = "PompDash"
-
-# **Where a reply goes, which is not the `From` address.** `dinkydash.co` has no
-# MX records — it is authenticated for *sending* and nothing receives on it — so
-# anybody replying to a sign-in email was writing to a mailbox that does not
-# exist, and the bounce went nowhere either. That is a poor thing to discover
-# from the person who was trying to tell you their link did not work.
-#
-# `keepthescore.com` is on Google Workspace and is the same person, which is
-# also what the privacy policy gives as the contact address. When PompDash gets
-# MX records of its own, this moves and the policy moves with it.
-DEFAULT_REPLY_TO = "hi@keepthescore.com"
 
 
 class MailError(Exception):
@@ -42,11 +31,6 @@ class MailRefused(MailError):
     """
 
 
-def support_address():
-    """The support address shown when feedback cannot be sent."""
-    return _reply_to()
-
-
 def send(to, subject, text, html=None, transport=None, api_key=None,
          sender=None, sender_name=None, reply_to=None, timeout=DEFAULT_TIMEOUT):
     """Send one message. Returns None, raises `MailError` if it did not go.
@@ -55,20 +39,22 @@ def send(to, subject, text, html=None, transport=None, api_key=None,
     `requests.post` does and must behave the same way, which is why the default
     is literally `requests.post` rather than a wrapper around it.
 
-    `reply_to` overrides where a reply lands, and the feedback form is what it
-    is for: a message arrives in the support inbox with the family's own
-    address on it, so answering is Reply rather than a copy and paste. It goes
-    through `_clean_address` like the recipient does — a value that reaches a
-    header is a header injection wherever it came from.
+    `reply_to` overrides where a reply lands; without it the configured
+    `DINKYDASH_MAIL_REPLY_TO` is used. It goes through `_clean_address` like
+    the recipient does — a value that reaches a header is a header injection
+    wherever it came from. A missing sender or reply-to is a refusal.
     """
     recipient = _clean_address(to)
     key = _clean_key(api_key if api_key is not None else os.environ.get("SENDGRID_API_KEY"))
+    from_address = _clean_address(sender or os.environ.get("DINKYDASH_MAIL_FROM"),
+                                  "DINKYDASH_MAIL_FROM is not set")
+    reply = _reply(reply_to)
     post = transport or requests.post
 
     body = {
         "personalizations": [{"to": [{"email": recipient}]}],
-        "from": {"email": sender or _sender(), "name": sender_name or DEFAULT_FROM_NAME},
-        "reply_to": _reply(reply_to),
+        "from": {"email": from_address, "name": sender_name or DEFAULT_FROM_NAME},
+        "reply_to": reply,
         "subject": subject,
         "content": _content(text, html),
     }
@@ -121,12 +107,11 @@ def _content(text, html):
     return content
 
 
-def _clean_address(to):
+def _clean_address(to, missing="no email address to send to"):
     """The recipient, or a refusal. No validation beyond what protects the account.
 
-    Bounces and suppressions are shared across six domains on this account, so a
-    malformed address is worth catching here rather than discovering as a hard
-    bounce against KeepTheScore's reputation. This is not an attempt to validate
+    A malformed address is worth catching here rather than discovering as a
+    hard bounce against the sender's reputation. This is not an attempt to validate
     email addresses properly, which is not possible — it rejects what is
     obviously not one, and lets SendGrid judge the rest.
 
@@ -136,7 +121,7 @@ def _clean_address(to):
     """
     address = (to or "").strip()
     if not address:
-        raise MailRefused("no email address to send to")
+        raise MailRefused(missing)
     if any(c in address for c in "\r\n"):
         raise MailRefused("that email address contains a line break")
     if address.count("@") != 1 or address.startswith("@") or address.endswith("@"):
@@ -147,9 +132,8 @@ def _clean_address(to):
 def _clean_key(key):
     """The send-only key, checked before it can reach an HTTP header.
 
-    The key in `.env` is scoped to `mail.send` alone — it cannot read the
-    account, mint further keys or touch the other five domains on it. It comes
-    from the environment: never a literal, never per-family.
+    The key should be scoped to `mail.send` alone. It comes from the
+    environment: never a literal, never per-family.
 
     **This exists to keep the key out of tracebacks.** `requests` validates
     header values and quotes the bad one in `InvalidHeader`, so a key carrying
@@ -172,25 +156,18 @@ def _clean_key(key):
     return cleaned
 
 
-def _sender():
-    return os.environ.get("DINKYDASH_MAIL_FROM") or DEFAULT_FROM
-
-
 def _reply(reply_to):
-    """The `reply_to` block. Ours carries a name; somebody else's does not.
+    """The `reply_to` block, from the caller or from `DINKYDASH_MAIL_REPLY_TO`.
 
-    A name is a label the sender chose for themselves, and "PompDash" on a
-    family's own address would be a mail client showing our name against their
-    mailbox.
+    The name is a label the sender chose for themselves, so only the configured
+    address carries it: "PompDash" on somebody else's mailbox would be a mail
+    client showing our name against theirs.
     """
     if reply_to:
         return {"email": _clean_address(reply_to)}
-    return {"email": _reply_to(), "name": DEFAULT_FROM_NAME}
-
-
-def _reply_to():
-    """Where a reply lands by default. Overridable, never the send-only address."""
-    return os.environ.get("DINKYDASH_MAIL_REPLY_TO") or DEFAULT_REPLY_TO
+    configured = os.environ.get("DINKYDASH_MAIL_REPLY_TO")
+    return {"email": _clean_address(configured, "DINKYDASH_MAIL_REPLY_TO is not set"),
+            "name": DEFAULT_FROM_NAME}
 
 
 def _why(exc):
