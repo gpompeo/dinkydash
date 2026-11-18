@@ -1329,3 +1329,11 @@ class TestHomeLinksToScreenSetup:
     def test_the_colours_page_does_not_carry_the_link(self, client):
         page = client.get("/settings/screen").get_data(as_text=True)
         assert "/settings/screen/setup" not in page
+
+
+class TestScreenSetupBackLink:
+    def test_the_back_link_goes_to_the_settings_home(self, client):
+        page = client.get("/settings/screen/setup").get_data(as_text=True)
+        link = re.search(r'<a class="back" href="([^"]*)">.*?<span>([^<]*)</span>', page, re.S)
+        assert link.group(1) == "/settings/"
+        assert link.group(2) == "Settings"
