@@ -366,11 +366,9 @@ to those pages in the same commit.
 are built: dropping `generations.brief` after 90 days, and deleting a lapsed family after 90 days.
 Both are DIN-57. Neither sweep is written, so neither is in the policy.
 
-**`dinkydash.co` has no MX records.** It is an authenticated *sending* domain and nothing receives
-on it, so every sign-in email had a reply address that reached nobody and a bounce that went
-nowhere. `dinkydash/mail.py` now sets `Reply-To: hi@keepthescore.com`, which is what the policy also
-gives as the contact address. Three things move together the day DinkyDash gets a mailbox:
-`DEFAULT_REPLY_TO`, `privacy.md` and `terms.md`.
+**Hosted-era mail note.** The hosted service's sending domain received no mail, so its replies
+went to a separate mailbox. `dinkydash/mail.py` has no built-in sender or reply-to now: they come
+from `DINKYDASH_MAIL_FROM` and `DINKYDASH_MAIL_REPLY_TO`.
 
 **Export and delete are buttons** on `/settings/account`, not requests to answer by hand:
 

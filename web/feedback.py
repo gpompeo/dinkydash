@@ -2,13 +2,13 @@
 
 import os
 
-# The key `dinkydash.mail` sends with, named here rather than imported so that
-# asking whether the form can work costs nothing and imports nothing. That is
-# with no key the pill is not drawn and the route is a 404.
+# The settings `dinkydash.mail` sends with, named here rather than imported so
+# that asking whether the form can work costs nothing and imports nothing.
 MAIL_KEY = "SENDGRID_API_KEY"
+MAIL_FROM = "DINKYDASH_MAIL_FROM"
+MAIL_REPLY_TO = "DINKYDASH_MAIL_REPLY_TO"
 
-# Where the form sends, when it should not be the address the app publishes.
-# Named here for the same reason `MAIL_KEY` is: reading it costs no import.
+# Where the form sends. There is no default: the install chooses its own.
 FEEDBACK_TO = "DINKYDASH_FEEDBACK_TO"
 
 # What one message may carry. Generous, because somebody describing a bug may
@@ -22,8 +22,13 @@ SUBJECT = "PompDash feedback"
 
 
 def enabled():
-    """Is there anywhere to send feedback? Read at render time, never cached."""
-    return bool(os.environ.get(MAIL_KEY, "").strip())
+    """Is feedback fully configured? Read at render time, never cached.
+
+    It needs a key, a sender, a reply-to and a recipient; with any missing the
+    form is not offered.
+    """
+    return all(os.environ.get(name, "").strip()
+               for name in (MAIL_KEY, MAIL_FROM, MAIL_REPLY_TO, FEEDBACK_TO))
 
 
 def clean(message):
@@ -47,9 +52,8 @@ def subject_for():
 
 
 def recipient():
-    """Read the chosen mailbox at send time, defaulting to support."""
-    chosen = os.environ.get(FEEDBACK_TO, "").strip()
-    return chosen or support_address()
+    """The configured mailbox, read at send time. Empty when unset."""
+    return os.environ.get(FEEDBACK_TO, "").strip()
 
 
 def submit(message):
@@ -58,13 +62,3 @@ def submit(message):
 
     mail.send(recipient(), subject_for(), compose(message), reply_to=None)
 
-
-def support_address():
-    """The address the app gives out: the fallback for a send that did not go.
-
-    Where feedback lands as well, unless `recipient()` has been pointed
-    elsewhere.
-    """
-    from dinkydash import mail
-
-    return mail.support_address()

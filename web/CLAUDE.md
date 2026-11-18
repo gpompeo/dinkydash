@@ -87,8 +87,9 @@ cursor, and on a list page the link stretches over the whole row (`a.row-main::a
 avatar and the pill open the item the way the home page's rows already did; anything that must
 stay its own target inside a row sits above it the way `.move` does.
 
-**The feedback pill is offered only when `web.feedback.enabled()` finds a mail key.**
-The route composes one message to `feedback.recipient()` via SendGrid. The message is never
+**The feedback pill is offered only when `web.feedback.enabled()` finds the key, sender,
+reply-to and recipient all set.** There is no default address. The route composes one message to
+`feedback.recipient()` via SendGrid; unconfigured, the page says feedback isn't set up. The message is never
 logged, and `doc/self-hosting.md` must describe this optional flow.
 
 **A route gets its store from `web.family.current_store()`.** It returns the `FileStore`
@@ -117,7 +118,7 @@ zone step reads the phone's own zone with `Intl.DateTimeFormat` and offers it as
 `POST /settings/timezone`, which refuses any name `zoneinfo` does not know.
 
 **The settings shell** is shared by the settings pages and parent sign-in. The dashboard is
-outside this shell. `web.feedback.enabled()` gates the optional feedback route on its mail key.
+outside this shell. `web.feedback.enabled()` gates the optional feedback route on its full mail configuration.
 
 ## The dashboard's layout
 
@@ -265,9 +266,11 @@ nothing extra is drawn. The pager is a flex strip under the board, no `gap` (Saf
 Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pages_browser.py`.
 
 The **week page** (`_week.html`, `board.week_view`) is the first registered page: seven columns, read-only,
-available while a calendar is switched on. Its columns are fixed by the screen, so `fitWeek()` in `board.html`
-hides trailing events of a column that overflows and counts them in its `+N more`; it runs from `fit()`'s
-early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
+available while a calendar is switched on. Each column reads special dates and birthdays (gated by the
+`special_dates` switch, found with `context.special_dates_on`), then all-day events (plus any timed event whose time cannot be read), then three always-drawn
+Morning / Afternoon / Evening rows (`week.row_of`, boundaries 12:00 and 18:00). Its columns are fixed by the
+screen, so `fitWeek()` in `board.html` hides trailing events of the last overflowing list in a column and
+counts them in that list's `+N more`; it runs from `fit()`'s early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.
 Tests: `tests/test_week.py`, `tests/test_week_browser.py`.
 
 The **shopping page** (`_shopping.html`, `board.build_view` `shopping_page`) is read-only and registered with

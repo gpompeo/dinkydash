@@ -1023,43 +1023,44 @@ def system():
 # -- telling us something ---------------------------------------------------
 
 NOTHING_WRITTEN = "Write something first, then press Send."
-TOO_LONG = ("That is longer than this form sends. Trim it to {longest:,} characters, "
-            "or email it to {support} instead.")
-TOO_MUCH = ("That is more than this form takes in an hour. Email {support} and it "
-            "will reach the same person.")
-DID_NOT_GO = ("That did not send — the fault is ours, not yours. Try again in a "
-              "minute, or email it to {support}.")
-IT_WENT = "Thank you — that has gone to a person, and every one is read."
+TOO_LONG = "That's longer than this form sends. Trim it to {longest:,} characters."
+TOO_MUCH = "That's more than this form takes in an hour. Try again later."
+DID_NOT_GO = ("That didn't send — the fault is with the mail setup, not you. Try "
+              "again in a minute.")
+NOT_SET_UP = "Feedback isn't set up on this install."
+IT_WENT = "Thank you — that has been sent to the person who runs this install."
 
 
 @bp.route("/feedback", methods=["GET", "POST"])
 def feedback():
-    """Tell us something: one form, one email, nothing stored (DIN-34).
+    """Send feedback: one form, one email, nothing stored.
 
-    A 404 rather than a disabled page when there is nowhere to send it. The
-    condition is `feedback.enabled()`, which is the same one the pill in
-    `settings/base.html` is drawn behind, so a route that cannot work is never a
-    route somebody is offered. It is also what keeps `dinkydash.mail` unimported
+    When `feedback.enabled()` is false, the same condition the pill in
+    `settings/base.html` is drawn behind, the page says plainly that feedback
+    isn't set up and sends nothing. That also keeps `dinkydash.mail` unimported
     on a machine with no mail provider.
 
     The settings guard also protects this page when parent sign-in is on.
     """
     if not feedback_module.enabled():
-        abort(404)
+        # The 404 carries a body on purpose: the status says the route does not
+        # exist here, and the page tells a person who followed a link why.
+        return render_template("settings/feedback.html", unavailable=NOT_SET_UP,
+                               message=None, problem=None,
+                               longest=feedback_module.LONGEST), 404
     if request.method == "GET":
         return _feedback_page()
 
     message = feedback_module.clean(request.form.get("message"))
-    support = feedback_module.support_address()
     if not message:
         return _feedback_page(message, NOTHING_WRITTEN)
     if len(message) > feedback_module.LONGEST:
         return _feedback_page(message, TOO_LONG.format(
-            longest=feedback_module.LONGEST, support=support))
+            longest=feedback_module.LONGEST))
 
     limiter = current_app.config["FEEDBACK_LIMITER"]
     if not limiter.allow(_who_is_writing()):
-        return _feedback_page(message, TOO_MUCH.format(support=support))
+        return _feedback_page(message, TOO_MUCH)
 
     # Imported here for the reason the route is gated at all: on a machine with
     # no key, nothing on this path is ever reached, so nothing imports `mail`.
@@ -1071,7 +1072,7 @@ def feedback():
         # The exception, never the message. What somebody wrote is theirs, and
         # what failed is our mail provider.
         log.warning("A feedback message did not go out: %s", exc)
-        return _feedback_page(message, DID_NOT_GO.format(support=support))
+        return _feedback_page(message, DID_NOT_GO)
 
     # That one went, and nothing of what it said.
     log.info("A feedback message was sent.")
@@ -1082,8 +1083,7 @@ def feedback():
 def _feedback_page(message=None, problem=None):
     """The form, empty or holding back what somebody has already typed."""
     return render_template("settings/feedback.html", message=message,
-                           problem=problem, longest=feedback_module.LONGEST,
-                           support=feedback_module.support_address())
+                           problem=problem, longest=feedback_module.LONGEST)
 
 
 def _who_is_writing():

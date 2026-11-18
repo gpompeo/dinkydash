@@ -5,6 +5,7 @@ their `week_start` setting every time, never stored, so a dashboard whose last
 calendar fetch was a day ago still shows the right seven days.
 """
 
+import re
 from datetime import timedelta
 
 # Monday is 0, matching `date.weekday()`.
@@ -42,3 +43,27 @@ def range_label(week):
     if first.month != last.month:
         return f"{first.strftime('%-d %B')} – {last.strftime('%-d %B')}"
     return f"{first.day} – {last.strftime('%-d %B')}"
+
+
+# A day's timed events sit in one of three rows by the hour they start. The
+# boundaries are fixed so the same hour reads the same on every family's wall.
+AFTERNOON_STARTS = 12
+EVENING_STARTS = 18
+ROWS = (("morning", "Morning"), ("afternoon", "Afternoon"), ("evening", "Evening"))
+
+_HOUR_MINUTE = re.compile(r"(?:^|T|\s)(\d{1,2}):(\d{2})")
+
+
+def row_of(start):
+    """The row key a start time belongs to, or None when no time can be read.
+
+    Takes `HH:MM` or an ISO `start`; the hour is read as written, which is the
+    family's local time because stored events are already on their clock.
+    """
+    found = _HOUR_MINUTE.search(str(start or ""))
+    if not found or int(found.group(1)) > 23 or int(found.group(2)) > 59:
+        return None
+    hour = int(found.group(1))
+    if hour < AFTERNOON_STARTS:
+        return "morning"
+    return "afternoon" if hour < EVENING_STARTS else "evening"

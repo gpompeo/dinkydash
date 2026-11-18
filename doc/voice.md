@@ -11,12 +11,7 @@ parent deciding whether to trust us with their children's birthdays. Writing the
 in the voice of the first is the most common way this goes wrong, and matching the
 surrounding page is not a defence when the surrounding page has the same fault.
 
-The fuller craft guide these rules come from is
-`~/repos/keepthescore/documentation/copywriting/` — `writing-style.md` for voice,
-`page-types.md` for the shape of a page. Read them before a large piece of
-writing. Take the craft and leave the rest: keyword research, conversion arguments and
-plan-naming there are another product's, and the commercial half belongs in Linear
-either way.
+This file is the whole guide for any piece of writing, however large.
 
 ## Who is reading
 

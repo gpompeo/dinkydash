@@ -78,9 +78,9 @@ first brief is generated as soon as the family configuration is set up. Change t
 
 The GitHub release workflow publishes the version-tagged image and `latest` to
 [GitHub Container Registry](https://github.com/gpompeo/pompdash/pkgs/container/pompdash) for
-both architectures. After the first release, set the GHCR package visibility to **Public** in
-GitHub's package settings if it was created as private; public access is needed for an
-unauthenticated `docker compose pull`.
+both architectures. After the first release, check the package is public by pulling it without
+logging in: `docker pull ghcr.io/gpompeo/pompdash:latest`. If the pull's refused, set the package
+to **Public** in GitHub's package settings.
 
 [Calendar links](doc/calendar-links.md) has provider-specific directions for finding Google, iCloud,
 Outlook and Cozi iCal links, and [self-hosting](doc/self-hosting.md) covers the Raspberry Pi

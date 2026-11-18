@@ -26,7 +26,7 @@ from datetime import date, datetime, timedelta, timezone
 from .calendars import events_on, feed_label
 from .clock import clock_of, format_time
 from .config import THEME_COLOURS, feature_on, theme_of
-from .context import build_countdowns, tasks_for
+from .context import build_countdowns, special_dates_on, tasks_for
 from .schedule import brief_due, refresh_interval
 from . import shopping as shopping_module
 from .streaks import person_streak, task_streak
@@ -41,8 +41,10 @@ MAX_EVENTS = 5
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
 
-# One column of the week page names this many events, then counts the rest. The
-# page is read-only and unscrolled, so a crowded day says how many it left out.
+# Each Morning / Afternoon / Evening row of a week column names this many
+# events, then counts the rest. The page is read-only and unscrolled, so a
+# crowded row says how many it left out. The all-day list is not capped:
+# `fitWeek()` sheds from it when the screen cannot hold it.
 MAX_WEEK_EVENTS = 6
 
 # The wall's shopping card names this many unbought items, then counts the rest.
@@ -86,6 +88,11 @@ def as_shown(events, clock, hide_locations=()):
     return shown
 
 
+def _week_events(events, clock, hidden):
+    """Events as the week page shows them: clock-formatted, never with a location."""
+    return [{**e, "location": None} for e in as_shown(events, clock, hidden)]
+
+
 def week_view(config, today, fetched, clock, hidden):
     """The seven days of the family's current week, for the week page.
 
@@ -96,11 +103,31 @@ def week_view(config, today, fetched, clock, hidden):
     clock like every other.
     """
     days = week_module.days(today, week_module.week_start_of(config))
+    specials_on = feature_on(config, "special_dates")
     shown = []
     for day in days:
         on_day = events_on(fetched, day)
-        rows = [{**e, "location": None}
-                for e in as_shown(on_day[:MAX_WEEK_EVENTS], clock, hidden)]
+        special = [{"emoji": c["emoji"], "title": c["title"]}
+                   for c in special_dates_on(config.get("people"),
+                                             config.get("special_dates"), day)
+                   ] if specials_on else []
+        all_day = [e for e in on_day if e.get("all_day")]
+        timed = [e for e in on_day if not e.get("all_day")]
+        timed.sort(key=lambda e: str(e.get("time") or ""))
+        rows = []
+        # A timed event whose time cannot be read has no row; it is listed with
+        # the all-day events so a day that counts as busy never hides one.
+        unplaced = [e for e in timed
+                    if week_module.row_of(e.get("start") or e.get("time")) is None]
+        for key, label in week_module.ROWS:
+            in_row = [e for e in timed
+                      if week_module.row_of(e.get("start") or e.get("time")) == key]
+            rows.append({
+                "key": key,
+                "label": label,
+                "events": _week_events(in_row[:MAX_WEEK_EVENTS], clock, hidden),
+                "more": max(0, len(in_row) - MAX_WEEK_EVENTS),
+            })
         shown.append({
             "date": day.isoformat(),
             "weekday": day.strftime("%a"),
@@ -108,8 +135,10 @@ def week_view(config, today, fetched, clock, hidden):
             "day": day.day,
             "today": day == today,
             "past": day < today,
-            "events": rows,
-            "more": max(0, len(on_day) - MAX_WEEK_EVENTS),
+            "special": special,
+            "all_day": _week_events(all_day + unplaced, clock, hidden),
+            "rows": rows,
+            "empty": not (special or on_day),
         })
     return {"range": week_module.range_label(days), "days": shown}
 
