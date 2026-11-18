@@ -971,6 +971,9 @@
     // A week column is fixed by the screen, not by its events, so what does
     // not fit is hidden from the end of the day and counted in its "+N more".
     // The first event of a day always stays.
+    // The most events one column can shed, so a column that cannot fit stops.
+    var WEEK_SHED_GUARD = 200;
+
     function fitWeek() {
         var days = document.querySelectorAll(".page:not([hidden]) .week-day");
         var lists = [];
@@ -990,11 +993,12 @@
             }
         }
         // Shed from the last list of an overflowing column first, one event
-        // at a time; the first event of each list always stays.
+        // at a time; the first event of each list stays, so a list is never
+        // emptied.
         for (i = 0; i < days.length; i++) {
             var mine = lists.filter(function (l) { return l.day === days[i]; });
             var guard = 0;
-            while (days[i].scrollHeight > days[i].clientHeight + 1 && guard++ < 200) {
+            while (days[i].scrollHeight > days[i].clientHeight + 1 && guard++ < WEEK_SHED_GUARD) {
                 var target = null;
                 for (j = mine.length - 1; j >= 0; j--) {
                     if (mine[j].items.length - mine[j].hidden > 1) { target = mine[j]; break; }

@@ -280,6 +280,18 @@ class TestTheView:
         day = self.view([event("2026-09-02", time_, "X")])["days"][3]
         assert [len(r["events"]) for r in day["rows"]] == [int(i == row) for i in range(3)]
 
+    def test_a_timed_event_with_an_unreadable_time_is_listed_with_the_all_day_ones(self):
+        day = self.view([event("2026-09-02", "soon", "Mystery", start="soon"),
+                         event("2026-09-02", "08:00", "School run")])["days"][3]
+        assert [e["title"] for e in day["all_day"]] == ["Mystery"]
+        assert [e["title"] for e in day["rows"][0]["events"]] == ["School run"]
+        assert not day["empty"]
+
+    def test_all_day_events_are_not_capped(self):
+        many = [event("2026-09-02", "00:00", f"Day {i}", all_day=True) for i in range(8)]
+        day = self.view(many)["days"][3]
+        assert len(day["all_day"]) == 8
+
     def test_events_keep_their_order_within_a_row(self):
         day = self.view([event("2026-09-02", "10:00", "Later"),
                          event("2026-09-02", "08:00", "Earlier")])["days"][3]
@@ -324,7 +336,8 @@ class TestTheView:
         assert "12 Private Road" not in json.dumps(shown)
 
     def test_a_crowded_day_is_capped_and_counts_the_rest(self):
-        many = [event("2026-09-02", f"{9 + i:02d}:00", f"Thing {i}") for i in range(9)]
+        many = [event("2026-09-02", f"{i % 12:02d}:00", f"Thing {i}")
+                for i in range(board.MAX_WEEK_EVENTS + 3)]
         many.append(event("2026-09-02", "19:00", "Dinner"))
         day = self.view(many)["days"][3]
         morning, afternoon, evening = day["rows"]

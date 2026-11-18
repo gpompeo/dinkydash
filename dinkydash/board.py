@@ -41,10 +41,11 @@ MAX_EVENTS = 5
 MAX_TOMORROW = 3
 MAX_COUNTDOWNS = 3
 
-# Each all-day list and each Morning / Afternoon / Evening row of a week column
-# names this many events, then counts the rest. The page is read-only and
-# unscrolled, so a crowded row says how many it left out.
-MAX_WEEK_EVENTS = 3
+# Each Morning / Afternoon / Evening row of a week column names this many
+# events, then counts the rest. The page is read-only and unscrolled, so a
+# crowded row says how many it left out. The all-day list is not capped:
+# `fitWeek()` sheds from it when the screen cannot hold it.
+MAX_WEEK_EVENTS = 6
 
 # The wall's shopping card names this many unbought items, then counts the rest.
 MAX_SHOPPING = 8
@@ -114,6 +115,10 @@ def week_view(config, today, fetched, clock, hidden):
         timed = [e for e in on_day if not e.get("all_day")]
         timed.sort(key=lambda e: str(e.get("time") or ""))
         rows = []
+        # A timed event whose time cannot be read has no row; it is listed with
+        # the all-day events so a day that counts as busy never hides one.
+        unplaced = [e for e in timed
+                    if week_module.row_of(e.get("start") or e.get("time")) is None]
         for key, label in week_module.ROWS:
             in_row = [e for e in timed
                       if week_module.row_of(e.get("start") or e.get("time")) == key]
@@ -131,8 +136,7 @@ def week_view(config, today, fetched, clock, hidden):
             "today": day == today,
             "past": day < today,
             "special": special,
-            "all_day": _week_events(all_day[:MAX_WEEK_EVENTS], clock, hidden),
-            "all_day_more": max(0, len(all_day) - MAX_WEEK_EVENTS),
+            "all_day": _week_events(all_day + unplaced, clock, hidden),
             "rows": rows,
             "empty": not (special or on_day),
         })

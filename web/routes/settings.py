@@ -1023,12 +1023,12 @@ def system():
 # -- telling us something ---------------------------------------------------
 
 NOTHING_WRITTEN = "Write something first, then press Send."
-TOO_LONG = "That is longer than this form sends. Trim it to {longest:,} characters."
-TOO_MUCH = "That is more than this form takes in an hour. Try again later."
-DID_NOT_GO = ("That did not send — the fault is with the mail setup, not you. Try "
+TOO_LONG = "That's longer than this form sends. Trim it to {longest:,} characters."
+TOO_MUCH = "That's more than this form takes in an hour. Try again later."
+DID_NOT_GO = ("That didn't send — the fault is with the mail setup, not you. Try "
               "again in a minute.")
 NOT_SET_UP = "Feedback isn't set up on this install."
-IT_WENT = "Thank you — that has gone to a person, and every one is read."
+IT_WENT = "Thank you — that has been sent to the person who runs this install."
 
 
 @bp.route("/feedback", methods=["GET", "POST"])
@@ -1043,6 +1043,8 @@ def feedback():
     The settings guard also protects this page when parent sign-in is on.
     """
     if not feedback_module.enabled():
+        # The 404 carries a body on purpose: the status says the route does not
+        # exist here, and the page tells a person who followed a link why.
         return render_template("settings/feedback.html", unavailable=NOT_SET_UP,
                                message=None, problem=None,
                                longest=feedback_module.LONGEST), 404

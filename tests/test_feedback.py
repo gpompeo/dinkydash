@@ -204,7 +204,7 @@ class TestSending:
     def test_it_says_so_and_goes_back_to_the_settings(self, single, outbox):
         response = single.post("/settings/feedback", data={"message": MESSAGE},
                                follow_redirects=True)
-        assert "gone to a person" in response.get_data(as_text=True)
+        assert "sent to the person who runs this install" in response.get_data(as_text=True)
 
 
 
@@ -238,7 +238,7 @@ class TestRefusing:
         monkeypatch.setattr(mail, "send", Outbox(raises=mail.MailError("nope")))
         response = single.post("/settings/feedback", data={"message": MESSAGE})
         page = response.get_data(as_text=True)
-        assert "did not send" in page
+        assert "send" in page and "fault is with the mail setup" in page
         assert MESSAGE in page
 
 

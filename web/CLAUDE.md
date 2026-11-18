@@ -267,7 +267,7 @@ Tests: `tests/test_pages.py`, `tests/test_board_pages.py`, `tests/test_board_pag
 
 The **week page** (`_week.html`, `board.week_view`) is the first registered page: seven columns, read-only,
 available while a calendar is switched on. Each column reads special dates and birthdays (gated by the
-`special_dates` switch, found with `context.special_dates_on`), then all-day events, then three always-drawn
+`special_dates` switch, found with `context.special_dates_on`), then all-day events (plus any timed event whose time cannot be read), then three always-drawn
 Morning / Afternoon / Evening rows (`week.row_of`, boundaries 12:00 and 18:00). Its columns are fixed by the
 screen, so `fitWeek()` in `board.html` hides trailing events of the last overflowing list in a column and
 counts them in that list's `+N more`; it runs from `fit()`'s early return while the main page is hidden. It leaves locations off and sizes in `rem` like the rest.

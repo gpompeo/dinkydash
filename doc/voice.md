@@ -11,7 +11,7 @@ parent deciding whether to trust us with their children's birthdays. Writing the
 in the voice of the first is the most common way this goes wrong, and matching the
 surrounding page is not a defence when the surrounding page has the same fault.
 
-This file is the whole guide; there is no longer one to read before a large piece of writing.
+This file is the whole guide for any piece of writing, however large.
 
 ## Who is reading
 
