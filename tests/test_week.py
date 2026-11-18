@@ -205,6 +205,31 @@ TODAY = date(2026, 9, 3)  # a Thursday
 SECTION = '<section class="page" data-page="week"'
 
 
+def titles(day):
+    """Every event title of a day, all-day first then the rows in order."""
+    return [e["title"] for e in day["all_day"]] + \
+        [e["title"] for r in day["rows"] for e in r["events"]]
+
+
+class TestTheRowOfADay:
+    @pytest.mark.parametrize("time_,row", [
+        ("00:00", "morning"), ("11:59", "morning"), ("12:00", "afternoon"),
+        ("17:59", "afternoon"), ("18:00", "evening"), ("23:59", "evening")])
+    def test_the_boundaries(self, time_, row):
+        assert week.row_of(time_) == row
+
+    def test_it_reads_a_full_start_too(self):
+        assert week.row_of("2026-09-02T17:59:00+01:00") == "afternoon"
+
+    def test_the_boundaries_are_named_constants(self):
+        assert (week.AFTERNOON_STARTS, week.EVENING_STARTS) == (12, 18)
+        assert [key for key, _ in week.ROWS] == ["morning", "afternoon", "evening"]
+
+    @pytest.mark.parametrize("bad", [None, "", "soon", "25:00"])
+    def test_an_unreadable_time_has_no_row(self, bad):
+        assert week.row_of(bad) is None
+
+
 class TestTheView:
     def view(self, events, config=None, today=TODAY):
         return build_view({**CONFIG, **(config or {})}, {"events": events}, today)["week"]
@@ -215,7 +240,7 @@ class TestTheView:
         assert [d["date"] for d in shown["days"]] == [
             "2026-08-30", "2026-08-31", "2026-09-01", "2026-09-02",
             "2026-09-03", "2026-09-04", "2026-09-05"]
-        assert [d["events"][0]["title"] for d in shown["days"] if d["events"]] == \
+        assert [titles(d)[0] for d in shown["days"] if titles(d)] == \
             ["Sunday brunch", "Swimming", "Party"]
         assert shown["range"] == "30 August – 5 September"
 
@@ -234,21 +259,64 @@ class TestTheView:
 
     def test_events_outside_the_week_are_not_shown(self):
         shown = self.view([event("2026-08-29"), event("2026-09-06")])
-        assert all(not d["events"] for d in shown["days"])
+        assert all(not titles(d) for d in shown["days"])
 
-    def test_an_empty_day_has_no_events_and_says_so_in_the_view(self):
-        assert self.view([])["days"][1]["events"] == []
+    def test_an_empty_day_is_empty_and_still_has_its_three_rows(self):
+        day = self.view([])["days"][1]
+        assert day["empty"] and day["special"] == [] and day["all_day"] == []
+        assert [r["label"] for r in day["rows"]] == ["Morning", "Afternoon", "Evening"]
+        assert all(r["events"] == [] and r["more"] == 0 for r in day["rows"])
 
-    def test_all_day_events_stay_all_day_and_lead_their_day(self):
-        days = self.view([event("2026-09-01", "00:00", "Inset day", all_day=True),
-                          event("2026-09-01", "08:00", "School run")])["days"]
-        assert [(e["title"], e["all_day"]) for e in days[2]["events"]] == \
-            [("Inset day", True), ("School run", False)]
+    def test_all_day_events_sit_above_the_rows_not_in_them(self):
+        day = self.view([event("2026-09-01", "00:00", "Inset day", all_day=True),
+                         event("2026-09-01", "08:00", "School run")])["days"][2]
+        assert [e["title"] for e in day["all_day"]] == ["Inset day"]
+        assert [e["title"] for e in day["rows"][0]["events"]] == ["School run"]
+        assert not day["empty"]
+
+    @pytest.mark.parametrize("time_,row", [
+        ("00:00", 0), ("11:59", 0), ("12:00", 1), ("17:59", 1), ("18:00", 2), ("23:59", 2)])
+    def test_a_timed_event_lands_in_the_row_its_start_falls_in(self, time_, row):
+        day = self.view([event("2026-09-02", time_, "X")])["days"][3]
+        assert [len(r["events"]) for r in day["rows"]] == [int(i == row) for i in range(3)]
+
+    def test_events_keep_their_order_within_a_row(self):
+        day = self.view([event("2026-09-02", "10:00", "Later"),
+                         event("2026-09-02", "08:00", "Earlier")])["days"][3]
+        assert [e["title"] for e in day["rows"][0]["events"]] == ["Earlier", "Later"]
 
     def test_times_follow_the_clock_setting(self):
         evening = event("2026-09-02", "15:45")
-        assert self.view([evening])["days"][3]["events"][0]["time"] == "15:45"
-        assert self.view([evening], {"clock": "12h"})["days"][3]["events"][0]["time"] == "3:45 pm"
+        assert self.view([evening])["days"][3]["rows"][1]["events"][0]["time"] == "15:45"
+        assert self.view([evening], {"clock": "12h"})["days"][3]["rows"][1]["events"][0]["time"] \
+            == "3:45 pm"
+
+    def test_twelve_hour_times_are_written_in_their_own_row(self):
+        late = event("2026-09-02", "23:59")
+        row = self.view([late], {"clock": "12h"})["days"][3]["rows"][2]
+        assert row["events"][0]["time"] == "11:59 pm"
+
+    PEOPLE = [{"id": "a", "name": "Ada", "date_of_birth": "2015-09-02"}]
+    SPECIAL = [{"title": "Name day", "emoji": "🎉", "date": "09/04"}]
+
+    def test_a_birthday_and_a_special_date_lead_their_day(self):
+        shown = self.view([], {"people": self.PEOPLE, "special_dates": self.SPECIAL})["days"]
+        assert [(s["emoji"], s["title"]) for s in shown[3]["special"]] == \
+            [("🎂", "Ada's birthday")]
+        assert [(s["emoji"], s["title"]) for s in shown[5]["special"]] == [("🎉", "Name day")]
+        assert not shown[3]["empty"]
+        assert shown[2]["special"] == [] and shown[4]["special"] == []
+
+    def test_the_special_dates_switch_hides_both_like_the_countdowns(self):
+        config = {"people": self.PEOPLE, "special_dates": self.SPECIAL,
+                  "features": {"special_dates": False}}
+        assert all(d["special"] == [] for d in self.view([], config)["days"])
+
+    def test_a_leap_day_is_found_in_a_leap_year_week(self):
+        config = {"special_dates": [{"title": "Leap", "emoji": "", "date": "02/29"}]}
+        week_of = self.view([], config, today=date(2028, 2, 28))["days"]
+        assert [d["special"][0]["title"] for d in week_of if d["special"]] == ["Leap"]
+        assert [d["date"] for d in week_of if d["special"]] == ["2028-02-29"]
 
     def test_a_calendar_that_hides_locations_does_not_show_them(self):
         config = {"calendars": [{"label": "Family", "url": "x", "show_locations": False}]}
@@ -257,9 +325,21 @@ class TestTheView:
 
     def test_a_crowded_day_is_capped_and_counts_the_rest(self):
         many = [event("2026-09-02", f"{9 + i:02d}:00", f"Thing {i}") for i in range(9)]
+        many.append(event("2026-09-02", "19:00", "Dinner"))
         day = self.view(many)["days"][3]
-        assert len(day["events"]) == board.MAX_WEEK_EVENTS
-        assert day["more"] == 9 - board.MAX_WEEK_EVENTS
+        morning, afternoon, evening = day["rows"]
+        assert len(morning["events"]) == board.MAX_WEEK_EVENTS
+        assert len(evening["events"]) == 1 and evening["more"] == 0
+        assert day["all_day"] == []
+
+    def test_more_than_the_cap_counts_in_that_row_only(self):
+        n = board.MAX_WEEK_EVENTS + 2
+        many = [event("2026-09-02", f"{i % 12:02d}:00", f"M{i}") for i in range(n)]
+        many.append(event("2026-09-02", "13:00", "Lunch"))
+        morning, afternoon, evening = self.view(many)["days"][3]["rows"]
+        assert (len(morning["events"]), morning["more"]) == (board.MAX_WEEK_EVENTS, 2)
+        assert (len(afternoon["events"]), afternoon["more"]) == (1, 0)
+        assert (len(evening["events"]), evening["more"]) == (0, 0)
 
     def test_the_week_is_worked_out_from_the_date_not_the_payload(self):
         # A payload fetched days ago still produces today's week.

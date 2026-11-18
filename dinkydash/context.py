@@ -170,3 +170,13 @@ def build_countdowns(people, special_dates, today, limit=None):
         })
     countdowns.sort(key=lambda c: c["days"])
     return countdowns[:limit] if limit else countdowns
+
+
+def special_dates_on(people, special_dates, day):
+    """The birthdays and special dates that fall on `day`, as the countdowns name them.
+
+    The countdown computation with `day` as the reference date: whatever is
+    zero days away is on that day, so leap days and yearly recurrence behave as
+    they do for the countdowns.
+    """
+    return [c for c in build_countdowns(people, special_dates, day) if c["days"] == 0]

@@ -555,7 +555,23 @@
         }
         .week-more { margin-top: 0.5rem; }
         .week-more[hidden], .week-event.shed { display: none; }
-        .week-none { font-weight: 600; }
+        .week-none { font-weight: 600; margin-bottom: 0.4rem; }
+        .week-special, .week-allday { list-style: none; margin: 0 0 0.5rem; padding: 0; }
+        .week-special-item { font-size: max(0.78rem, 12px); line-height: 1.18; }
+        .week-special-item + .week-special-item { margin-top: 0.3rem; }
+        .week-special-item .week-title { display: inline; color: var(--accent-dark); }
+        .week-allday { padding-bottom: 0.4rem; border-bottom: 1px solid var(--card-edge); }
+        .week-row { padding-top: 0.35rem; }
+        .week-row + .week-row { margin-top: 0.35rem; border-top: 1px solid var(--card-edge); }
+        .week-row-label {
+            margin: 0 0 0.25rem;
+            font-size: max(0.68rem, 12px);
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+        }
+        .week-row.is-empty .week-row-label { opacity: 0.55; }
 
         /* ---- shopping page ----------------------------------------------
            What is still to get, in as many columns as the width holds. The
@@ -957,23 +973,38 @@
     // The first event of a day always stays.
     function fitWeek() {
         var days = document.querySelectorAll(".page:not([hidden]) .week-day");
-        for (var i = 0; i < days.length; i++) {
-            var day = days[i];
-            var rows = day.querySelectorAll(".week-event");
-            var more = day.querySelector(".week-more");
-            var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
-            for (var r = 0; r < rows.length; r++) { rows[r].classList.remove("shed"); }
-            if (more) {
-                more.hidden = !left;
-                more.textContent = left ? "+" + left + " more" : "";
-            }
-            var hidden = 0;
-            for (var k = rows.length - 1; k > 0 && day.scrollHeight > day.clientHeight + 1; k--) {
-                rows[k].classList.add("shed");
-                hidden++;
+        var lists = [];
+        var i, j;
+        for (i = 0; i < days.length; i++) {
+            var found = days[i].querySelectorAll(".week-events");
+            for (j = 0; j < found.length; j++) {
+                var more = found[j].querySelector(".week-more");
+                var left = more ? parseInt(more.getAttribute("data-left"), 10) || 0 : 0;
+                var items = found[j].querySelectorAll(".week-event");
+                for (var r = 0; r < items.length; r++) { items[r].classList.remove("shed"); }
                 if (more) {
-                    more.hidden = false;
-                    more.textContent = "+" + (left + hidden) + " more";
+                    more.hidden = !left;
+                    more.textContent = left ? "+" + left + " more" : "";
+                }
+                lists.push({day: days[i], more: more, left: left, items: items, hidden: 0});
+            }
+        }
+        // Shed from the last list of an overflowing column first, one event
+        // at a time; the first event of each list always stays.
+        for (i = 0; i < days.length; i++) {
+            var mine = lists.filter(function (l) { return l.day === days[i]; });
+            var guard = 0;
+            while (days[i].scrollHeight > days[i].clientHeight + 1 && guard++ < 200) {
+                var target = null;
+                for (j = mine.length - 1; j >= 0; j--) {
+                    if (mine[j].items.length - mine[j].hidden > 1) { target = mine[j]; break; }
+                }
+                if (!target) break;
+                target.hidden++;
+                target.items[target.items.length - target.hidden].classList.add("shed");
+                if (target.more) {
+                    target.more.hidden = false;
+                    target.more.textContent = "+" + (target.left + target.hidden) + " more";
                 }
             }
         }

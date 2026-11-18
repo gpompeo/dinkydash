@@ -6,7 +6,7 @@ offered and has events (past ones included). Nothing here is real family data.
 
 import os
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from werkzeug.serving import make_server
@@ -17,6 +17,8 @@ from web import create_app
 
 SIZES = [(800, 480), (1280, 720), (1024, 768)]
 CONFIG = ('family_name: "The Wilsons"\ntimezone: "Europe/Berlin"\nweek_start: "monday"\n'
+          'people:\n  - name: "Ada"\n    date_of_birth: "{birth}"\n'
+          'special_dates:\n  - title: "Name day"\n    emoji: "🎉"\n    date: "{special}"\n'
           'calendars:\n  - label: "Family"\n    url: "https://example.com/private-xxxx.ics"\n')
 
 
@@ -64,7 +66,10 @@ def _events(today):
 def origin(request, tmp_path_factory):
     folder = tmp_path_factory.mktemp("week")
     path = folder / "config.yaml"
-    path.write_text(CONFIG + f'theme: "{request.param}"\n')
+    monday = date.today() - timedelta(days=date.today().weekday())
+    birth = f"2015-{(monday + timedelta(days=1)):%m-%d}"
+    special = f"{(monday + timedelta(days=3)):%m/%d}"
+    path.write_text(CONFIG.format(birth=birth, special=special) + f'theme: "{request.param}"\n')
     store = FileStore(path)
     config = store.load_config()
     store.save_agenda(config, {"events": _events(config_module.today_for(config)),
@@ -92,8 +97,11 @@ def test_the_week_fits_the_screen_in_both_themes(browser, origin, width, height)
                     hscroll: document.documentElement.scrollWidth > innerWidth,
                     title: Math.min(...Array.from(document.querySelectorAll('.week-title'))
                         .map(n => parseFloat(getComputedStyle(n).fontSize))),
+                    rows: document.querySelectorAll('.week-row-label').length,
+                    special: document.querySelectorAll('.week-special-item').length,
                     today: document.querySelectorAll('.week-day.today').length};
         }""")
+        assert found["rows"] == 21 and found["special"] == 2
         assert found["visible"] and found["days"] == 7 and found["today"] == 1
         assert found["inside"] and not found["hscroll"] and found["clipped"] == 0
         assert found["title"] >= 12

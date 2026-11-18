@@ -1,6 +1,7 @@
 {# The week page: the seven days of the current week, read-only. Everything
    here comes from view.week (dinkydash/board.py `week_view`), already on the
-   family's clock and with locations left out. Event titles are calendar
+   family's clock and with locations left out. Each day reads special dates,
+   then all-day events, then the Morning / Afternoon / Evening rows. Event titles are calendar
    input, so they are only ever printed through autoescape. #}
 <div class="week" data-week>
     <div class="head week-head">
@@ -14,19 +15,43 @@
                 <span class="week-weekday" aria-label="{{ day.weekday_name }}">{{ day.weekday }}</span>
                 <span class="week-daynum">{{ day.day }}</span>
             </div>
-            {% if day.events %}
-            <ul class="week-events">
-                {% for event in day.events %}
+            {% if day.empty %}
+            <div class="week-none">Nothing on</div>
+            {% endif %}
+            {% if day.special %}
+            <ul class="week-special">
+                {% for item in day.special %}
+                <li class="week-special-item"><span class="week-special-emoji" aria-hidden="true">{{ item.emoji }}</span> <span class="week-title">{{ item.title }}</span></li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if day.all_day %}
+            <ul class="week-events week-allday">
+                {% for event in day.all_day %}
                 <li class="week-event">
-                    <span class="week-time{{ ' all-day' if event.all_day }}">{% if event.all_day %}All day{% else %}{{ event.time }}{% endif %}</span>
+                    <span class="week-time all-day">All day</span>
                     <span class="week-title">{{ event.title }}</span>
                 </li>
                 {% endfor %}
-                <li class="week-more" data-left="{{ day.more }}"{% if not day.more %} hidden{% endif %}>{% if day.more %}+{{ day.more }} more{% endif %}</li>
+                <li class="week-more" data-left="{{ day.all_day_more }}"{% if not day.all_day_more %} hidden{% endif %}>{% if day.all_day_more %}+{{ day.all_day_more }} more{% endif %}</li>
             </ul>
-            {% else %}
-            <div class="week-none">Nothing on</div>
             {% endif %}
+            {% for row in day.rows %}
+            <section class="week-row{{ ' is-empty' if not row.events }}" data-row="{{ row.key }}">
+                <h3 class="week-row-label">{{ row.label }}</h3>
+                {% if row.events %}
+                <ul class="week-events">
+                    {% for event in row.events %}
+                    <li class="week-event">
+                        <span class="week-time">{{ event.time }}</span>
+                        <span class="week-title">{{ event.title }}</span>
+                    </li>
+                    {% endfor %}
+                    <li class="week-more" data-left="{{ row.more }}"{% if not row.more %} hidden{% endif %}>{% if row.more %}+{{ row.more }} more{% endif %}</li>
+                </ul>
+                {% endif %}
+            </section>
+            {% endfor %}
         </div>
         {% endfor %}
     </div>
